@@ -116,6 +116,20 @@ CREATE TABLE prayer_times_cache (
 );
 
 -- ============================================
+-- SCHEDULED MESSAGES TABLE
+-- ============================================
+CREATE TABLE scheduled_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  mosque_id UUID REFERENCES mosques(id) ON DELETE CASCADE NOT NULL,
+  content TEXT NOT NULL,
+  scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'cancelled')),
+  sent_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_by UUID REFERENCES admins(id) ON DELETE SET NULL
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX idx_subscribers_mosque ON subscribers(mosque_id);
@@ -128,6 +142,8 @@ CREATE INDEX idx_messages_sent_at ON messages(sent_at DESC);
 CREATE INDEX idx_admins_mosque ON admins(mosque_id);
 CREATE INDEX idx_admins_user ON admins(user_id);
 CREATE INDEX idx_prayer_times_cache_lookup ON prayer_times_cache(mosque_id, date);
+CREATE INDEX idx_scheduled_messages_pending ON scheduled_messages(scheduled_at, status) WHERE status = 'pending';
+CREATE INDEX idx_scheduled_messages_mosque ON scheduled_messages(mosque_id);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -140,6 +156,7 @@ ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hadith ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prayer_times_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scheduled_messages ENABLE ROW LEVEL SECURITY;
 
 -- Public can view mosques (for landing pages)
 CREATE POLICY "Public mosques are viewable by everyone"
@@ -221,6 +238,50 @@ CREATE POLICY "Hadith is public"
 CREATE POLICY "Prayer times cache is readable by everyone"
   ON prayer_times_cache FOR SELECT
   USING (true);
+
+-- Admins can view their mosque's scheduled messages
+CREATE POLICY "Admins can view their mosque scheduled messages"
+  ON scheduled_messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM admins
+      WHERE admins.mosque_id = scheduled_messages.mosque_id
+      AND admins.user_id = auth.uid()
+    )
+  );
+
+-- Admins can create scheduled messages for their mosque
+CREATE POLICY "Admins can create scheduled messages"
+  ON scheduled_messages FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM admins
+      WHERE admins.mosque_id = scheduled_messages.mosque_id
+      AND admins.user_id = auth.uid()
+    )
+  );
+
+-- Admins can update (cancel) scheduled messages for their mosque
+CREATE POLICY "Admins can update scheduled messages"
+  ON scheduled_messages FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM admins
+      WHERE admins.mosque_id = scheduled_messages.mosque_id
+      AND admins.user_id = auth.uid()
+    )
+  );
+
+-- Admins can delete scheduled messages for their mosque
+CREATE POLICY "Admins can delete scheduled messages"
+  ON scheduled_messages FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM admins
+      WHERE admins.mosque_id = scheduled_messages.mosque_id
+      AND admins.user_id = auth.uid()
+    )
+  );
 
 -- ============================================
 -- FUNCTIONS

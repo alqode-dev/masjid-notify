@@ -104,6 +104,17 @@ export type PrayerTimesCache = {
   created_at: string;
 };
 
+export type ScheduledMessage = {
+  id: string;
+  mosque_id: string;
+  content: string;
+  scheduled_at: string;
+  status: "pending" | "sent" | "cancelled";
+  sent_at: string | null;
+  created_at: string;
+  created_by: string | null;
+};
+
 // Client-side Supabase client (for use in React components)
 export function createClientSupabase() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey);
