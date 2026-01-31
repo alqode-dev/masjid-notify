@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { generateToken } from "@/lib/utils";
+import { generateToken, normalizePhoneNumber } from "@/lib/utils";
 import { getWebhookRateLimiter, getClientIP } from "@/lib/ratelimit";
 
 /**
@@ -138,11 +138,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Find the subscriber
+    // Find the subscriber using normalized phone number
+    const normalizedPhone = normalizePhoneNumber(from);
     const { data: subscriber } = await supabaseAdmin
       .from("subscribers")
       .select("*, mosques(*)")
-      .eq("phone_number", "+" + from)
+      .eq("phone_number", normalizedPhone)
       .single();
 
     if (!subscriber) {

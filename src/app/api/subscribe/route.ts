@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendWhatsAppMessage, getWelcomeMessage } from '@/lib/whatsapp'
-import { formatPhoneNumber, isValidSAPhoneNumber } from '@/lib/utils'
+import { normalizePhoneNumber, isValidSAPhoneNumber } from '@/lib/utils'
 import { getSubscribeRateLimiter, getClientIP } from '@/lib/ratelimit'
 
 export async function POST(request: NextRequest) {
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Format phone number
-    const formattedPhone = formatPhoneNumber(phone_number)
+    // Normalize phone number to +27 format
+    const formattedPhone = normalizePhoneNumber(phone_number)
 
     // Get mosque details
     const { data: mosque, error: mosqueError } = await supabaseAdmin
