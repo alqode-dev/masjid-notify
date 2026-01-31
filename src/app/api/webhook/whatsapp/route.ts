@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
         break;
 
       case text === "RESUME" || text === "START":
-        await handleResume(subscriber.id, from, mosque.name);
+        await handleResume(subscriber.id, from, mosque.name, subscriber.status);
         break;
 
       default:
@@ -266,7 +266,7 @@ async function handlePause(
   );
 }
 
-async function handleResume(subscriberId: string, phone: string, mosqueName: string) {
+async function handleResume(subscriberId: string, phone: string, mosqueName: string, currentStatus: string) {
   await supabaseAdmin
     .from("subscribers")
     .update({
@@ -275,8 +275,16 @@ async function handleResume(subscriberId: string, phone: string, mosqueName: str
     })
     .eq("id", subscriberId);
 
-  await sendWhatsAppMessage(
-    phone,
-    `Welcome back! You will now receive notifications from ${mosqueName}.\n\nReply SETTINGS to update your preferences.`
-  );
+  // Send appropriate message based on previous status
+  if (currentStatus === "unsubscribed") {
+    await sendWhatsAppMessage(
+      phone,
+      `Welcome back! You have been resubscribed to ${mosqueName}.\n\nYou will now receive notifications again.\n\nReply SETTINGS to update your preferences.`
+    );
+  } else {
+    await sendWhatsAppMessage(
+      phone,
+      `Welcome back! You will now receive notifications from ${mosqueName}.\n\nReply SETTINGS to update your preferences.`
+    );
+  }
 }
