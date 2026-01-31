@@ -1,12 +1,14 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes } from "@/lib/prayer-times";
 import { LandingPage } from "./landing-page";
 
+// Force dynamic rendering - don't pre-render at build time
+export const dynamic = "force-dynamic";
 export const revalidate = 300; // Revalidate every 5 minutes
 
 async function getMosqueData() {
   // For MVP, we're using a single mosque - Test Masjid
-  const { data: mosque, error } = await supabaseAdmin
+  const { data: mosque, error } = await getSupabaseAdmin()
     .from("mosques")
     .select("*")
     .eq("slug", "test-masjid")
