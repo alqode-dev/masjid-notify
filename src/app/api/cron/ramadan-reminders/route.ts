@@ -71,12 +71,14 @@ export async function GET(request: NextRequest) {
     setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
-      // Get prayer times for Suhoor (Fajr) and Iftar (Maghrib)
+      // Get prayer times for Suhoor (Fajr) and Iftar (Maghrib) - with caching
       const prayerTimes = await getPrayerTimes(
         mosque.latitude,
         mosque.longitude,
         mosque.calculation_method,
-        mosque.madhab
+        mosque.madhab,
+        undefined, // Use today's date
+        mosque.id  // Enable caching for this mosque
       );
 
       if (!prayerTimes) {

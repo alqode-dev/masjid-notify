@@ -1,3 +1,5 @@
+import { supabaseAdmin } from './supabase'
+
 const ALADHAN_API_URL = process.env.ALADHAN_API_URL || 'https://api.aladhan.com/v1'
 
 interface PrayerTimings {
@@ -71,43 +73,139 @@ export const MADHAB = {
   'hanafi': 1, // Hanafi
 } as const
 
+// Get date string in YYYY-MM-DD format for cache key
+function getDateString(date: Date): string {
+  return date.toISOString().split('T')[0]
+}
+
+// Fetch prayer times from cache
+async function getCachedPrayerTimes(
+  mosqueId: string,
+  dateStr: string
+): Promise<PrayerTimes | null> {
+  const { data, error } = await supabaseAdmin
+    .from('prayer_times_cache')
+    .select('times')
+    .eq('mosque_id', mosqueId)
+    .eq('date', dateStr)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  // Return cached times with the date
+  return {
+    ...data.times,
+    date: dateStr,
+  }
+}
+
+// Store prayer times in cache
+async function cachePrayerTimes(
+  mosqueId: string,
+  dateStr: string,
+  times: Omit<PrayerTimes, 'date'>
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('prayer_times_cache')
+    .upsert({
+      mosque_id: mosqueId,
+      date: dateStr,
+      times,
+    }, {
+      onConflict: 'mosque_id,date',
+    })
+
+  if (error) {
+    console.error('Error caching prayer times:', error)
+  }
+}
+
+// Fetch prayer times from Aladhan API
+async function fetchPrayerTimesFromAPI(
+  latitude: number,
+  longitude: number,
+  method: number,
+  madhab: 'hanafi' | 'shafii',
+  targetDate: Date
+): Promise<PrayerTimes | null> {
+  const day = targetDate.getDate()
+  const month = targetDate.getMonth() + 1
+  const year = targetDate.getFullYear()
+
+  const url = `${ALADHAN_API_URL}/timings/${day}-${month}-${year}?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${MADHAB[madhab]}`
+
+  const response = await fetch(url)
+  const data: AladhanResponse = await response.json()
+
+  if (data.code !== 200) {
+    console.error('Aladhan API error:', data)
+    return null
+  }
+
+  const timings = data.data.timings
+
+  return {
+    fajr: formatTime(timings.Fajr),
+    sunrise: formatTime(timings.Sunrise),
+    dhuhr: formatTime(timings.Dhuhr),
+    asr: formatTime(timings.Asr),
+    maghrib: formatTime(timings.Maghrib),
+    isha: formatTime(timings.Isha),
+    imsak: formatTime(timings.Imsak),
+    date: data.data.date.gregorian.date,
+    hijriDate: data.data.date.hijri.date,
+    hijriMonth: data.data.date.hijri.month.en,
+  }
+}
+
+/**
+ * Get prayer times for a mosque with caching support.
+ * If mosqueId is provided, checks cache first and caches API response.
+ * Cache is automatically invalidated daily via date-based lookups.
+ */
 export async function getPrayerTimes(
   latitude: number,
   longitude: number,
   method: number = 3, // Default: Muslim World League
   madhab: 'hanafi' | 'shafii' = 'hanafi',
-  date?: Date
+  date?: Date,
+  mosqueId?: string
 ): Promise<PrayerTimes | null> {
   try {
     const targetDate = date || new Date()
-    const day = targetDate.getDate()
-    const month = targetDate.getMonth() + 1
-    const year = targetDate.getFullYear()
+    const dateStr = getDateString(targetDate)
 
-    const url = `${ALADHAN_API_URL}/timings/${day}-${month}-${year}?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${MADHAB[madhab]}`
+    // Check cache if mosqueId is provided
+    if (mosqueId) {
+      const cached = await getCachedPrayerTimes(mosqueId, dateStr)
+      if (cached) {
+        return cached
+      }
+    }
 
-    const response = await fetch(url)
-    const data: AladhanResponse = await response.json()
+    // Fetch from API
+    const prayerTimes = await fetchPrayerTimesFromAPI(
+      latitude,
+      longitude,
+      method,
+      madhab,
+      targetDate
+    )
 
-    if (data.code !== 200) {
-      console.error('Aladhan API error:', data)
+    if (!prayerTimes) {
       return null
     }
 
-    const timings = data.data.timings
-
-    return {
-      fajr: formatTime(timings.Fajr),
-      sunrise: formatTime(timings.Sunrise),
-      dhuhr: formatTime(timings.Dhuhr),
-      asr: formatTime(timings.Asr),
-      maghrib: formatTime(timings.Maghrib),
-      isha: formatTime(timings.Isha),
-      imsak: formatTime(timings.Imsak),
-      date: data.data.date.gregorian.date,
-      hijriDate: data.data.date.hijri.date,
-      hijriMonth: data.data.date.hijri.month.en,
+    // Cache the result if mosqueId is provided
+    if (mosqueId) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { date: _date, ...timesToCache } = prayerTimes
+      await cachePrayerTimes(mosqueId, dateStr, timesToCache)
     }
+
+    return prayerTimes
   } catch (error) {
     console.error('Error fetching prayer times:', error)
     return null
