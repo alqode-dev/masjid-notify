@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes, isWithinMinutes, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
 import {
-  sendWhatsAppMessage,
   getSuhoorReminderMessage,
   getIftarReminderMessage,
   getTaraweehReminderMessage,
@@ -11,10 +10,14 @@ import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
   logCronError,
-  incrementMessageCount,
   setCronMetadata,
   finalizeCronLog,
 } from "@/lib/logger";
+import {
+  sendMessagesConcurrently,
+  getSuccessfulSubscriberIds,
+  batchUpdateLastMessageAt,
+} from "@/lib/message-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // Check if a ramadan reminder was already sent recently (within last 10 minutes)
@@ -110,25 +113,22 @@ export async function GET(request: NextRequest) {
             mosque.name
           );
 
-          let sentCount = 0;
-          for (const sub of subscribers as Subscriber[]) {
-            const result = await sendWhatsAppMessage(sub.phone_number, message);
-            if (result.success) {
-              sentCount++;
-              incrementMessageCount(logger);
+          // Send messages concurrently with p-limit (max 10 concurrent)
+          const batchResult = await sendMessagesConcurrently(
+            subscribers as Subscriber[],
+            message,
+            logger
+          );
 
-              await supabaseAdmin
-                .from("subscribers")
-                .update({ last_message_at: new Date().toISOString() })
-                .eq("id", sub.id);
-            }
-          }
+          // Batch update last_message_at for successful sends
+          const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+          await batchUpdateLastMessageAt(successfulIds);
 
           await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "ramadan",
             content: message,
-            sent_to_count: sentCount,
+            sent_to_count: batchResult.successful,
             status: "sent",
             metadata: { reminder_type: "suhoor" },
           });
@@ -152,25 +152,22 @@ export async function GET(request: NextRequest) {
             mosque.name
           );
 
-          let sentCount = 0;
-          for (const sub of subscribers as Subscriber[]) {
-            const result = await sendWhatsAppMessage(sub.phone_number, message);
-            if (result.success) {
-              sentCount++;
-              incrementMessageCount(logger);
+          // Send messages concurrently with p-limit (max 10 concurrent)
+          const batchResult = await sendMessagesConcurrently(
+            subscribers as Subscriber[],
+            message,
+            logger
+          );
 
-              await supabaseAdmin
-                .from("subscribers")
-                .update({ last_message_at: new Date().toISOString() })
-                .eq("id", sub.id);
-            }
-          }
+          // Batch update last_message_at for successful sends
+          const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+          await batchUpdateLastMessageAt(successfulIds);
 
           await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "ramadan",
             content: message,
-            sent_to_count: sentCount,
+            sent_to_count: batchResult.successful,
             status: "sent",
             metadata: { reminder_type: "iftar" },
           });
@@ -194,25 +191,22 @@ export async function GET(request: NextRequest) {
             const formattedTime = formatDbTime(mosque.taraweeh_time);
             const message = getTaraweehReminderMessage(formattedTime, mosque.name);
 
-            let sentCount = 0;
-            for (const sub of subscribers as Subscriber[]) {
-              const result = await sendWhatsAppMessage(sub.phone_number, message);
-              if (result.success) {
-                sentCount++;
-                incrementMessageCount(logger);
+            // Send messages concurrently with p-limit (max 10 concurrent)
+            const batchResult = await sendMessagesConcurrently(
+              subscribers as Subscriber[],
+              message,
+              logger
+            );
 
-                await supabaseAdmin
-                  .from("subscribers")
-                  .update({ last_message_at: new Date().toISOString() })
-                  .eq("id", sub.id);
-              }
-            }
+            // Batch update last_message_at for successful sends
+            const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+            await batchUpdateLastMessageAt(successfulIds);
 
             await supabaseAdmin.from("messages").insert({
               mosque_id: mosque.id,
               type: "ramadan",
               content: message,
-              sent_to_count: sentCount,
+              sent_to_count: batchResult.successful,
               status: "sent",
               metadata: { reminder_type: "taraweeh" },
             });

@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes, isWithinMinutes } from "@/lib/prayer-times";
-import { sendWhatsAppMessage, getPrayerReminderMessage } from "@/lib/whatsapp";
+import { getPrayerReminderMessage } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
   logCronError,
-  incrementMessageCount,
   setCronMetadata,
   finalizeCronLog,
 } from "@/lib/logger";
+import {
+  sendMessagesConcurrently,
+  getSuccessfulSubscriberIds,
+  batchUpdateLastMessageAt,
+} from "@/lib/message-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // Check if a prayer reminder was already sent recently (within last 10 minutes)
@@ -135,24 +139,16 @@ export async function GET(request: NextRequest) {
               mosque.name
             );
 
-            let batchSent = 0;
-            for (const sub of subs) {
-              const result = await sendWhatsAppMessage(
-                sub.phone_number,
-                message
-              );
+            // Send messages concurrently with p-limit (max 10 concurrent)
+            const batchResult = await sendMessagesConcurrently(
+              subs,
+              message,
+              logger
+            );
 
-              if (result.success) {
-                batchSent++;
-                incrementMessageCount(logger);
-
-                // Update last_message_at
-                await supabaseAdmin
-                  .from("subscribers")
-                  .update({ last_message_at: new Date().toISOString() })
-                  .eq("id", sub.id);
-              }
-            }
+            // Batch update last_message_at for successful sends
+            const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+            await batchUpdateLastMessageAt(successfulIds);
 
             // Log the batch
             if (subs.length > 0) {
@@ -160,7 +156,7 @@ export async function GET(request: NextRequest) {
                 mosque_id: mosque.id,
                 type: "prayer",
                 content: message,
-                sent_to_count: batchSent,
+                sent_to_count: batchResult.successful,
                 status: "sent",
                 metadata: {
                   prayer: prayer.key,

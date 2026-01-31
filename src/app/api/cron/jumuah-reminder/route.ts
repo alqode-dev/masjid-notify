@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWhatsAppMessage, getJumuahReminderMessage } from "@/lib/whatsapp";
+import { getJumuahReminderMessage } from "@/lib/whatsapp";
 import { isFriday, formatTime12h } from "@/lib/utils";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
   logCronError,
-  incrementMessageCount,
   setCronMetadata,
   finalizeCronLog,
 } from "@/lib/logger";
+import {
+  sendMessagesConcurrently,
+  getSuccessfulSubscriberIds,
+  batchUpdateLastMessageAt,
+} from "@/lib/message-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // This should run every Friday morning (e.g., 10:00 AM)
@@ -59,20 +63,18 @@ export async function GET(request: NextRequest) {
         mosque.name
       );
 
-      let sentCount = 0;
+      // Send messages concurrently with p-limit (max 10 concurrent)
+      const batchResult = await sendMessagesConcurrently(
+        subscribers as Subscriber[],
+        message,
+        logger
+      );
 
-      for (const sub of subscribers as Subscriber[]) {
-        const result = await sendWhatsAppMessage(sub.phone_number, message);
-        if (result.success) {
-          sentCount++;
-          incrementMessageCount(logger);
+      // Batch update last_message_at for successful sends
+      const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+      await batchUpdateLastMessageAt(successfulIds);
 
-          await supabaseAdmin
-            .from("subscribers")
-            .update({ last_message_at: new Date().toISOString() })
-            .eq("id", sub.id);
-        }
-      }
+      const sentCount = batchResult.successful;
 
       // Log the message
       await supabaseAdmin.from("messages").insert({
