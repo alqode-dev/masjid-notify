@@ -1,0 +1,100 @@
+{
+  "name": "Masjid Notify Production Deployment",
+  "description": "Complete production deployment of WhatsApp notification system for mosques before Ramadan 2025",
+  "created": "2026-01-31",
+  "deadline": "2025-02-28",
+  "status": "in_progress",
+  "phases": [
+    {
+      "id": 1,
+      "name": "WhatsApp Templates",
+      "status": "pending",
+      "critical_path": true,
+      "tasks": [
+        {"id": "US-001", "title": "Create prayer reminder template", "status": "pending"},
+        {"id": "US-002", "title": "Create welcome message template", "status": "pending"},
+        {"id": "US-003", "title": "Create Ramadan templates", "status": "pending"},
+        {"id": "US-004", "title": "Create announcement template", "status": "pending"},
+        {"id": "US-005", "title": "Create Jumu'ah and Hadith templates", "status": "pending"},
+        {"id": "US-006", "title": "Refactor message sending to use templates", "status": "pending"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Security Hardening",
+      "status": "pending",
+      "tasks": [
+        {"id": "US-007", "title": "Implement rate limiting on subscribe", "status": "pending"},
+        {"id": "US-008", "title": "Implement rate limiting on webhook", "status": "pending"},
+        {"id": "US-009", "title": "Add webhook signature verification", "status": "pending"},
+        {"id": "US-010", "title": "Add server-side admin authentication", "status": "pending"},
+        {"id": "US-011", "title": "Fix settings token persistence", "status": "pending"},
+        {"id": "US-012", "title": "Use constant-time comparison for cron secret", "status": "pending"},
+        {"id": "US-013", "title": "Normalize phone number format", "status": "pending"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Monitoring & Reliability",
+      "status": "pending",
+      "tasks": [
+        {"id": "US-014", "title": "Integrate Sentry error tracking", "status": "pending"},
+        {"id": "US-015", "title": "Add structured logging for cron jobs", "status": "pending"},
+        {"id": "US-016", "title": "Fix prayer reminder window", "status": "pending"},
+        {"id": "US-017", "title": "Implement concurrent message sending", "status": "pending"},
+        {"id": "US-018", "title": "Add prayer times caching", "status": "pending"},
+        {"id": "US-019", "title": "Batch subscriber updates", "status": "pending"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Message Scheduling",
+      "status": "pending",
+      "tasks": [
+        {"id": "US-020", "title": "Add scheduling database schema", "status": "pending"},
+        {"id": "US-021", "title": "Create scheduling UI", "status": "pending"},
+        {"id": "US-022", "title": "Extend cron for scheduled messages", "status": "pending"},
+        {"id": "US-023", "title": "Add scheduled message preview", "status": "pending"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Bug Fixes",
+      "status": "pending",
+      "tasks": [
+        {"id": "US-024", "title": "Fix webhook phone format mismatch", "status": "pending"},
+        {"id": "US-025", "title": "Fix RESUME/START for unsubscribed users", "status": "pending"},
+        {"id": "US-026", "title": "Fix message log count", "status": "pending"},
+        {"id": "US-027", "title": "Remove hardcoded Ramadan dates", "status": "pending"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Production Deployment",
+      "status": "pending",
+      "tasks": [
+        {"id": "US-028", "title": "Create admin user", "status": "pending"},
+        {"id": "US-029", "title": "Deploy to Vercel", "status": "pending"},
+        {"id": "US-030", "title": "Configure environment variables", "status": "pending"},
+        {"id": "US-031", "title": "Configure WhatsApp webhook", "status": "pending"},
+        {"id": "US-032", "title": "Generate production secrets", "status": "pending"},
+        {"id": "US-033", "title": "Add force-dynamic to cron routes", "status": "pending"},
+        {"id": "US-034", "title": "End-to-end production test", "status": "pending"}
+      ]
+    }
+  ],
+  "references": {
+    "prd": "tasks/prd-masjid-notify-production.md",
+    "progress": "progress.txt",
+    "roadmap": ".planning/ROADMAP.md",
+    "requirements": ".planning/REQUIREMENTS.md",
+    "project": ".planning/PROJECT.md",
+    "codebase": ".planning/codebase/"
+  },
+  "notes": [
+    "Phase 1 is critical path - WhatsApp template approval takes up to 48 hours",
+    "Use progress.txt to track what worked and what failed",
+    "Read .planning/research/ for implementation guidance",
+    "All acceptance criteria must pass before marking task complete"
+  ]
+}

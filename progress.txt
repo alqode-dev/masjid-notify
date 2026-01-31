@@ -1,0 +1,134 @@
+# Masjid Notify - Progress Tracking
+
+> This file tracks progress across Ralph loop iterations.
+> Read this FIRST to understand what's done and what failed.
+> Update after each significant action.
+
+---
+
+## Current Status
+
+**Phase:** Not started
+**Last Updated:** 2026-01-31 10:30
+**Current Focus:** Phase 1 - WhatsApp Templates
+
+---
+
+## Completed Tasks
+
+<!-- Mark tasks as complete with date and any notes -->
+
+### Phase 1: WhatsApp Templates
+- [ ] US-001: Prayer reminder template
+- [ ] US-002: Welcome message template
+- [ ] US-003: Ramadan templates (Suhoor, Iftar, Taraweeh)
+- [ ] US-004: Announcement template
+- [ ] US-005: Jumu'ah and Hadith templates
+- [ ] US-006: Refactor message sending to use templates
+
+### Phase 2: Security Hardening
+- [ ] US-007: Rate limiting on subscribe
+- [ ] US-008: Rate limiting on webhook
+- [ ] US-009: Webhook signature verification
+- [ ] US-010: Admin API authentication
+- [ ] US-011: Settings token persistence
+- [ ] US-012: Constant-time cron secret comparison
+- [ ] US-013: Phone number normalization
+
+### Phase 3: Monitoring & Reliability
+- [ ] US-014: Sentry integration
+- [ ] US-015: Structured cron logging
+- [ ] US-016: Fix prayer reminder window
+- [ ] US-017: Concurrent message sending
+- [ ] US-018: Prayer times caching
+- [ ] US-019: Batch subscriber updates
+
+### Phase 4: Message Scheduling
+- [ ] US-020: Scheduling database schema
+- [ ] US-021: Scheduling UI
+- [ ] US-022: Cron for scheduled messages
+- [ ] US-023: Scheduled message preview
+
+### Phase 5: Bug Fixes
+- [ ] US-024: Fix webhook phone format
+- [ ] US-025: Fix RESUME/START for unsubscribed
+- [ ] US-026: Fix message log count
+- [ ] US-027: Remove hardcoded Ramadan dates
+
+### Phase 6: Production Deployment
+- [ ] US-028: Create admin user
+- [ ] US-029: Deploy to Vercel
+- [ ] US-030: Configure environment variables
+- [ ] US-031: Configure WhatsApp webhook
+- [ ] US-032: Generate production secrets
+- [ ] US-033: Add force-dynamic to cron routes
+- [ ] US-034: End-to-end production test
+
+---
+
+## Failed Approaches (DO NOT REPEAT)
+
+<!-- Log what didn't work and WHY so future iterations don't try the same thing -->
+
+### Example Format:
+```
+**Date:** 2026-01-31
+**Task:** US-007 Rate Limiting
+**Approach Tried:** In-memory rate limiting with Map()
+**Why It Failed:** Doesn't work in serverless - each invocation is fresh
+**Correct Approach:** Use Upstash Redis for persistent rate limiting
+```
+
+<!-- Add failed approaches below this line -->
+
+---
+
+## Lessons Learned
+
+<!-- Key insights that apply across multiple tasks -->
+
+1. **WhatsApp Templates:** Must be approved BEFORE testing in production. Allow 48 hours.
+2. **Serverless Constraints:** No in-memory state. Use Redis/KV for persistence.
+3. **Vercel Timeout:** Hobby = 10s, Pro = 60s. Batch messages for scale.
+4. **Raw Body Access:** Must get raw body BEFORE JSON parsing for webhook signatures.
+
+---
+
+## Next Action
+
+**Priority:** Start Phase 1 - WhatsApp Templates
+**Specific Task:** US-001 - Create prayer reminder template
+**Notes:** This is the critical path. Template approval can take 48 hours.
+
+---
+
+## Blockers
+
+<!-- Things that are blocking progress -->
+
+None currently.
+
+---
+
+## Environment Notes
+
+<!-- Important environment details discovered during work -->
+
+- **Supabase Project:** jlqtuynaxuooymbwrwth
+- **Database:** PostgreSQL via Supabase
+- **Deployment Target:** Vercel
+- **WhatsApp API Version:** v18.0
+- **Next.js Version:** 16.1.6
+
+---
+
+## Files Modified This Session
+
+<!-- Track files changed for easy review -->
+
+- (none yet)
+
+---
+
+*Progress file for Ralph autonomous loop*
+*Update after each completed task or failed attempt*
