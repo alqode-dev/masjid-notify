@@ -209,12 +209,16 @@ async function handleSettings(subscriberId: string, phone: string, mosqueName: s
   // Generate a unique settings token
   const token = generateToken(32);
 
-  // Store the token (you might want to add a settings_token column)
-  // For now, we'll use metadata
+  // Calculate expiry time (24 hours from now)
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
+
+  // Store the token in the database
   await supabaseAdmin
     .from("subscribers")
     .update({
-      updated_at: new Date().toISOString(),
+      settings_token: token,
+      settings_token_expires: expiresAt.toISOString(),
     })
     .eq("id", subscriberId);
 
