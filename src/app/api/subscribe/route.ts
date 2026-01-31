@@ -7,23 +7,25 @@ import { previewTemplate } from '@/lib/whatsapp-templates'
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting check
-    const ip = getClientIP(request)
+    // Rate limiting check (optional - only if Upstash is configured)
     const rateLimiter = getSubscribeRateLimiter()
-    const { success, limit, remaining, reset } = await rateLimiter.limit(ip)
+    if (rateLimiter) {
+      const ip = getClientIP(request)
+      const { success, limit, remaining, reset } = await rateLimiter.limit(ip)
 
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
-        {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': limit.toString(),
-            'X-RateLimit-Remaining': remaining.toString(),
-            'X-RateLimit-Reset': reset.toString(),
-          },
-        }
-      )
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please try again later.' },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': limit.toString(),
+              'X-RateLimit-Remaining': remaining.toString(),
+              'X-RateLimit-Reset': reset.toString(),
+            },
+          }
+        )
+      }
     }
 
     const body = await request.json()

@@ -6,25 +6,35 @@ let redis: Redis | null = null
 let subscribeRateLimiterInstance: Ratelimit | null = null
 let webhookRateLimiterInstance: Ratelimit | null = null
 
-function getRedis(): Redis {
+// Check if Upstash is configured
+export function isRateLimitingEnabled(): boolean {
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+}
+
+function getRedis(): Redis | null {
+  if (!isRateLimitingEnabled()) {
+    return null
+  }
+
   if (!redis) {
-    const url = process.env.UPSTASH_REDIS_REST_URL
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN
-
-    if (!url || !token) {
-      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set')
-    }
-
-    redis = new Redis({ url, token })
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
   }
   return redis
 }
 
 // Rate limiter for subscribe endpoint: 10 requests per minute per IP
-export function getSubscribeRateLimiter(): Ratelimit {
+export function getSubscribeRateLimiter(): Ratelimit | null {
+  const redisClient = getRedis()
+  if (!redisClient) {
+    return null
+  }
+
   if (!subscribeRateLimiterInstance) {
     subscribeRateLimiterInstance = new Ratelimit({
-      redis: getRedis(),
+      redis: redisClient,
       limiter: Ratelimit.slidingWindow(10, '1 m'),
       prefix: 'ratelimit:subscribe',
     })
@@ -33,10 +43,15 @@ export function getSubscribeRateLimiter(): Ratelimit {
 }
 
 // Rate limiter for webhook endpoint: 100 requests per minute per IP
-export function getWebhookRateLimiter(): Ratelimit {
+export function getWebhookRateLimiter(): Ratelimit | null {
+  const redisClient = getRedis()
+  if (!redisClient) {
+    return null
+  }
+
   if (!webhookRateLimiterInstance) {
     webhookRateLimiterInstance = new Ratelimit({
-      redis: getRedis(),
+      redis: redisClient,
       limiter: Ratelimit.slidingWindow(100, '1 m'),
       prefix: 'ratelimit:webhook',
     })

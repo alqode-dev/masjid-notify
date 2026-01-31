@@ -50,23 +50,25 @@ function verifyWebhookSignature(rawBody: string, signature: string | null): bool
 
 // Webhook verification (GET)
 export async function GET(request: NextRequest) {
-  // Rate limiting check
-  const ip = getClientIP(request);
+  // Rate limiting check (optional - only if Upstash is configured)
   const rateLimiter = getWebhookRateLimiter();
-  const { success, limit, remaining, reset } = await rateLimiter.limit(ip);
+  if (rateLimiter) {
+    const ip = getClientIP(request);
+    const { success, limit, remaining, reset } = await rateLimiter.limit(ip);
 
-  if (!success) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      {
-        status: 429,
-        headers: {
-          "X-RateLimit-Limit": limit.toString(),
-          "X-RateLimit-Remaining": remaining.toString(),
-          "X-RateLimit-Reset": reset.toString(),
-        },
-      }
-    );
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": remaining.toString(),
+            "X-RateLimit-Reset": reset.toString(),
+          },
+        }
+      );
+    }
   }
 
   const searchParams = request.nextUrl.searchParams;
@@ -97,23 +99,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limiting check (after signature verification to avoid resource exhaustion)
-    const ip = getClientIP(request);
+    // Rate limiting check (optional - only if Upstash is configured)
     const rateLimiter = getWebhookRateLimiter();
-    const { success, limit, remaining, reset } = await rateLimiter.limit(ip);
+    if (rateLimiter) {
+      const ip = getClientIP(request);
+      const { success, limit, remaining, reset } = await rateLimiter.limit(ip);
 
-    if (!success) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Limit": limit.toString(),
-            "X-RateLimit-Remaining": remaining.toString(),
-            "X-RateLimit-Reset": reset.toString(),
-          },
-        }
-      );
+      if (!success) {
+        return NextResponse.json(
+          { error: "Too many requests. Please try again later." },
+          {
+            status: 429,
+            headers: {
+              "X-RateLimit-Limit": limit.toString(),
+              "X-RateLimit-Remaining": remaining.toString(),
+              "X-RateLimit-Reset": reset.toString(),
+            },
+          }
+        );
+      }
     }
 
     // Parse the raw body as JSON
