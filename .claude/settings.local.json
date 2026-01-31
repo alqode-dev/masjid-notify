@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn@latest add dialog -y)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright install chromium)",
+      "Bash(npm run build:*)",
+      "Bash(node scripts/run-schema.mjs:*)",
+      "Bash(node scripts/verify-db.mjs:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(npx get-shit-done-cc:*)",
+      "Bash(uipro init:*)",
+      "Bash(npx shadcn@latest mcp init:*)",
+      "Bash(uipro --version:*)",
+      "WebSearch",
+      "Skill(gsd:map-codebase)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(./ralph.sh:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

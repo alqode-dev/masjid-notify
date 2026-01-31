@@ -1,0 +1,241 @@
+"use client";
+
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
+import { Select } from "./ui/select";
+import { isValidSAPhoneNumber } from "@/lib/utils";
+import { CheckCircle, MessageCircle } from "lucide-react";
+
+interface SubscribeFormProps {
+  mosqueName: string;
+  mosqueId: string;
+}
+
+const REMINDER_OPTIONS = [
+  { value: "5", label: "5 minutes before" },
+  { value: "10", label: "10 minutes before" },
+  { value: "15", label: "15 minutes before" },
+  { value: "30", label: "30 minutes before" },
+];
+
+export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
+  const [step, setStep] = useState<"form" | "success">("form");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [reminderOffset, setReminderOffset] = useState("15");
+
+  // Preferences
+  const [prefFajr, setPrefFajr] = useState(true);
+  const [prefAllPrayers, setPrefAllPrayers] = useState(false);
+  const [prefJumuah, setPrefJumuah] = useState(true);
+  const [prefPrograms, setPrefPrograms] = useState(true);
+  const [prefHadith, setPrefHadith] = useState(false);
+  const [prefRamadan, setPrefRamadan] = useState(true);
+
+  const validatePhone = () => {
+    if (!phone.trim()) {
+      setPhoneError("Phone number is required");
+      return false;
+    }
+    if (!isValidSAPhoneNumber(phone)) {
+      setPhoneError("Please enter a valid South African phone number");
+      return false;
+    }
+    setPhoneError("");
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!validatePhone()) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_number: phone,
+          mosque_id: mosqueId,
+          reminder_offset: parseInt(reminderOffset),
+          pref_fajr: prefFajr,
+          pref_all_prayers: prefAllPrayers,
+          pref_jumuah: prefJumuah,
+          pref_programs: prefPrograms,
+          pref_hadith: prefHadith,
+          pref_ramadan: prefRamadan,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Something went wrong");
+      }
+
+      setStep("success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to subscribe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle "All prayers" toggle
+  const handleAllPrayersChange = (checked: boolean) => {
+    setPrefAllPrayers(checked);
+    if (checked) {
+      setPrefFajr(true);
+    }
+  };
+
+  return (
+    <AnimatePresence mode="wait">
+      {step === "form" ? (
+        <motion.form
+          key="form"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
+          {/* Phone Input */}
+          <Input
+            label="WhatsApp Number"
+            type="tel"
+            placeholder="081 234 5678"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onBlur={validatePhone}
+            error={phoneError}
+            hint="We'll send updates to this number"
+          />
+
+          {/* Reminder Timing */}
+          <Select
+            label="Remind me"
+            value={reminderOffset}
+            onChange={(e) => setReminderOffset(e.target.value)}
+            options={REMINDER_OPTIONS}
+          />
+
+          {/* Preferences */}
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-foreground">
+              What would you like to receive?
+            </p>
+
+            <div className="space-y-3">
+              <Checkbox
+                label="Fajr reminders"
+                description="Wake up for Fajr on time"
+                checked={prefFajr}
+                onChange={(e) => setPrefFajr(e.target.checked)}
+              />
+
+              <Checkbox
+                label="All 5 daily prayers"
+                description="Reminders for every Salah"
+                checked={prefAllPrayers}
+                onChange={(e) => handleAllPrayersChange(e.target.checked)}
+              />
+
+              <Checkbox
+                label="Jumu'ah reminder"
+                description="Friday prayer notifications"
+                checked={prefJumuah}
+                onChange={(e) => setPrefJumuah(e.target.checked)}
+              />
+
+              <Checkbox
+                label="Program announcements"
+                description="Classes, events, and special programs"
+                checked={prefPrograms}
+                onChange={(e) => setPrefPrograms(e.target.checked)}
+              />
+
+              <Checkbox
+                label="Daily hadith"
+                description="Authentic hadith after Fajr"
+                checked={prefHadith}
+                onChange={(e) => setPrefHadith(e.target.checked)}
+              />
+
+              <Checkbox
+                label="Ramadan reminders"
+                description="Suhoor, Iftar, and Taraweeh notifications"
+                checked={prefRamadan}
+                onChange={(e) => setPrefRamadan(e.target.checked)}
+              />
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          {/* Submit */}
+          <Button type="submit" className="w-full" size="lg" loading={loading}>
+            <MessageCircle className="w-5 h-5 mr-2" />
+            Subscribe via WhatsApp
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            By subscribing, you agree to receive messages on WhatsApp.
+            <br />
+            Reply STOP anytime to unsubscribe.
+          </p>
+        </motion.form>
+      ) : (
+        <motion.div
+          key="success"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center py-8"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4"
+          >
+            <CheckCircle className="w-8 h-8 text-primary" />
+          </motion.div>
+
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            You&apos;re subscribed!
+          </h3>
+
+          <p className="text-muted-foreground mb-6">
+            Check your WhatsApp for a confirmation message from {mosqueName}.
+          </p>
+
+          <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+            <p className="text-sm text-primary">
+              <strong>Tip:</strong> Save our number to ensure you receive all
+              notifications.
+            </p>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

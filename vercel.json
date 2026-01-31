@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/prayer-reminders",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/jumuah-reminder",
+      "schedule": "0 10 * * 5"
+    },
+    {
+      "path": "/api/cron/daily-hadith",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/ramadan-reminders",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
