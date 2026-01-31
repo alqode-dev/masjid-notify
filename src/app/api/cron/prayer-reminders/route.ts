@@ -17,6 +17,9 @@ import {
 } from "@/lib/message-sender";
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
 
+// Prevent Next.js from caching this route - cron jobs must run dynamically
+export const dynamic = "force-dynamic";
+
 // Process scheduled messages that are due for sending
 // Called from the main cron handler to check for any pending scheduled messages
 async function processScheduledMessages(logger: CronLogContext): Promise<{

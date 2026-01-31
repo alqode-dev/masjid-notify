@@ -20,6 +20,9 @@ import {
 } from "@/lib/message-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
+// Prevent Next.js from caching this route - cron jobs must run dynamically
+export const dynamic = "force-dynamic";
+
 // Check if a ramadan reminder was already sent recently (within last 10 minutes)
 // This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
 async function wasRamadanReminderSent(

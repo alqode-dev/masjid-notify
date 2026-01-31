@@ -16,6 +16,9 @@ import {
 } from "@/lib/message-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
+// Prevent Next.js from caching this route - cron jobs must run dynamically
+export const dynamic = "force-dynamic";
+
 // This should run every Friday morning (e.g., 10:00 AM)
 export async function GET(request: NextRequest) {
   // Verify cron secret using constant-time comparison for security
