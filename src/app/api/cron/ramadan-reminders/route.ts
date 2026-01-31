@@ -17,6 +17,26 @@ import {
 } from "@/lib/logger";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
+// Check if a ramadan reminder was already sent recently (within last 10 minutes)
+// This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
+async function wasRamadanReminderSent(
+  mosqueId: string,
+  reminderType: string
+): Promise<boolean> {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+  const { data } = await supabaseAdmin
+    .from("messages")
+    .select("id")
+    .eq("mosque_id", mosqueId)
+    .eq("type", "ramadan")
+    .gte("sent_at", tenMinutesAgo)
+    .contains("metadata", { reminder_type: reminderType })
+    .limit(1);
+
+  return data !== null && data.length > 0;
+}
+
 // This should run every 5 minutes during Ramadan
 export async function GET(request: NextRequest) {
   // Verify cron secret using constant-time comparison for security
@@ -82,86 +102,13 @@ export async function GET(request: NextRequest) {
           mosque.timezone
         )
       ) {
-        const message = getSuhoorReminderMessage(
-          prayerTimes.fajr,
-          mosque.name
-        );
-
-        let sentCount = 0;
-        for (const sub of subscribers as Subscriber[]) {
-          const result = await sendWhatsAppMessage(sub.phone_number, message);
-          if (result.success) {
-            sentCount++;
-            incrementMessageCount(logger);
-
-            await supabaseAdmin
-              .from("subscribers")
-              .update({ last_message_at: new Date().toISOString() })
-              .eq("id", sub.id);
-          }
-        }
-
-        await supabaseAdmin.from("messages").insert({
-          mosque_id: mosque.id,
-          type: "ramadan",
-          content: message,
-          sent_to_count: sentCount,
-          status: "sent",
-          metadata: { reminder_type: "suhoor" },
-        });
-      }
-
-      // Check Iftar reminder (before Maghrib)
-      if (
-        isWithinMinutes(
-          prayerTimes.maghrib,
-          mosque.iftar_reminder_mins,
-          mosque.timezone
-        )
-      ) {
-        const message = getIftarReminderMessage(
-          prayerTimes.maghrib,
-          mosque.iftar_reminder_mins,
-          mosque.name
-        );
-
-        let sentCount = 0;
-        for (const sub of subscribers as Subscriber[]) {
-          const result = await sendWhatsAppMessage(sub.phone_number, message);
-          if (result.success) {
-            sentCount++;
-            incrementMessageCount(logger);
-
-            await supabaseAdmin
-              .from("subscribers")
-              .update({ last_message_at: new Date().toISOString() })
-              .eq("id", sub.id);
-          }
-        }
-
-        await supabaseAdmin.from("messages").insert({
-          mosque_id: mosque.id,
-          type: "ramadan",
-          content: message,
-          sent_to_count: sentCount,
-          status: "sent",
-          metadata: { reminder_type: "iftar" },
-        });
-      }
-
-      // Check Taraweeh reminder (if taraweeh_time is set)
-      if (mosque.taraweeh_time) {
-        // Send reminder 30 minutes before Taraweeh
-        const taraweehReminderMins = 30;
-        if (
-          isTimeWithinMinutesBefore(
-            mosque.taraweeh_time,
-            taraweehReminderMins,
-            mosque.timezone
-          )
-        ) {
-          const formattedTime = formatDbTime(mosque.taraweeh_time);
-          const message = getTaraweehReminderMessage(formattedTime, mosque.name);
+        // Check if already sent to prevent duplicates
+        const alreadySent = await wasRamadanReminderSent(mosque.id, "suhoor");
+        if (!alreadySent) {
+          const message = getSuhoorReminderMessage(
+            prayerTimes.fajr,
+            mosque.name
+          );
 
           let sentCount = 0;
           for (const sub of subscribers as Subscriber[]) {
@@ -183,8 +130,93 @@ export async function GET(request: NextRequest) {
             content: message,
             sent_to_count: sentCount,
             status: "sent",
-            metadata: { reminder_type: "taraweeh" },
+            metadata: { reminder_type: "suhoor" },
           });
+        }
+      }
+
+      // Check Iftar reminder (before Maghrib)
+      if (
+        isWithinMinutes(
+          prayerTimes.maghrib,
+          mosque.iftar_reminder_mins,
+          mosque.timezone
+        )
+      ) {
+        // Check if already sent to prevent duplicates
+        const alreadySent = await wasRamadanReminderSent(mosque.id, "iftar");
+        if (!alreadySent) {
+          const message = getIftarReminderMessage(
+            prayerTimes.maghrib,
+            mosque.iftar_reminder_mins,
+            mosque.name
+          );
+
+          let sentCount = 0;
+          for (const sub of subscribers as Subscriber[]) {
+            const result = await sendWhatsAppMessage(sub.phone_number, message);
+            if (result.success) {
+              sentCount++;
+              incrementMessageCount(logger);
+
+              await supabaseAdmin
+                .from("subscribers")
+                .update({ last_message_at: new Date().toISOString() })
+                .eq("id", sub.id);
+            }
+          }
+
+          await supabaseAdmin.from("messages").insert({
+            mosque_id: mosque.id,
+            type: "ramadan",
+            content: message,
+            sent_to_count: sentCount,
+            status: "sent",
+            metadata: { reminder_type: "iftar" },
+          });
+        }
+      }
+
+      // Check Taraweeh reminder (if taraweeh_time is set)
+      if (mosque.taraweeh_time) {
+        // Send reminder 30 minutes before Taraweeh
+        const taraweehReminderMins = 30;
+        if (
+          isTimeWithinMinutesBefore(
+            mosque.taraweeh_time,
+            taraweehReminderMins,
+            mosque.timezone
+          )
+        ) {
+          // Check if already sent to prevent duplicates
+          const alreadySent = await wasRamadanReminderSent(mosque.id, "taraweeh");
+          if (!alreadySent) {
+            const formattedTime = formatDbTime(mosque.taraweeh_time);
+            const message = getTaraweehReminderMessage(formattedTime, mosque.name);
+
+            let sentCount = 0;
+            for (const sub of subscribers as Subscriber[]) {
+              const result = await sendWhatsAppMessage(sub.phone_number, message);
+              if (result.success) {
+                sentCount++;
+                incrementMessageCount(logger);
+
+                await supabaseAdmin
+                  .from("subscribers")
+                  .update({ last_message_at: new Date().toISOString() })
+                  .eq("id", sub.id);
+              }
+            }
+
+            await supabaseAdmin.from("messages").insert({
+              mosque_id: mosque.id,
+              type: "ramadan",
+              content: message,
+              sent_to_count: sentCount,
+              status: "sent",
+              metadata: { reminder_type: "taraweeh" },
+            });
+          }
         }
       }
     }

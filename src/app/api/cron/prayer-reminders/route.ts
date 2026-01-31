@@ -12,6 +12,27 @@ import {
 } from "@/lib/logger";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
+// Check if a prayer reminder was already sent recently (within last 10 minutes)
+// This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
+async function wasRecentlySent(
+  mosqueId: string,
+  prayer: string,
+  offset: number
+): Promise<boolean> {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+  const { data } = await supabaseAdmin
+    .from("messages")
+    .select("id")
+    .eq("mosque_id", mosqueId)
+    .eq("type", "prayer")
+    .gte("sent_at", tenMinutesAgo)
+    .contains("metadata", { prayer, offset })
+    .limit(1);
+
+  return data !== null && data.length > 0;
+}
+
 // This endpoint should be called every 5 minutes by Vercel Cron
 export async function GET(request: NextRequest) {
   // Verify cron secret using constant-time comparison for security
@@ -97,6 +118,17 @@ export async function GET(request: NextRequest) {
 
         for (const [offset, subs] of offsetGroups) {
           if (isWithinMinutes(prayer.time, offset, mosque.timezone)) {
+            // Check if this reminder was already sent recently to prevent duplicates
+            // This is needed because the 5-minute window may overlap with consecutive cron runs
+            const alreadySent = await wasRecentlySent(
+              mosque.id,
+              prayer.key,
+              offset
+            );
+            if (alreadySent) {
+              continue; // Skip - already sent this reminder
+            }
+
             const message = getPrayerReminderMessage(
               prayer.name,
               prayer.time,
