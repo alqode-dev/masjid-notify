@@ -1,20 +1,131 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes, isWithinMinutes } from "@/lib/prayer-times";
-import { getPrayerReminderMessage } from "@/lib/whatsapp";
+import { getPrayerReminderMessage, getAnnouncementMessage } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
   logCronError,
   setCronMetadata,
   finalizeCronLog,
+  CronLogContext,
 } from "@/lib/logger";
 import {
   sendMessagesConcurrently,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
 } from "@/lib/message-sender";
-import type { Mosque, Subscriber } from "@/lib/supabase";
+import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
+
+// Process scheduled messages that are due for sending
+// Called from the main cron handler to check for any pending scheduled messages
+async function processScheduledMessages(logger: CronLogContext): Promise<{
+  processed: number;
+  successful: number;
+  failed: number;
+}> {
+  const now = new Date().toISOString();
+
+  // Query for due scheduled messages (scheduled_at <= now AND status = 'pending')
+  const { data: scheduledMessages, error } = await supabaseAdmin
+    .from("scheduled_messages")
+    .select("*")
+    .eq("status", "pending")
+    .lte("scheduled_at", now);
+
+  if (error) {
+    logCronError(logger, "Failed to fetch scheduled messages", { error });
+    return { processed: 0, successful: 0, failed: 0 };
+  }
+
+  if (!scheduledMessages || scheduledMessages.length === 0) {
+    return { processed: 0, successful: 0, failed: 0 };
+  }
+
+  let successful = 0;
+  let failed = 0;
+
+  for (const scheduled of scheduledMessages as ScheduledMessage[]) {
+    try {
+      // Get mosque details for the announcement message format
+      const { data: mosque } = await supabaseAdmin
+        .from("mosques")
+        .select("name")
+        .eq("id", scheduled.mosque_id)
+        .single();
+
+      const mosqueName = mosque?.name || "Mosque";
+
+      // Get active subscribers for this mosque
+      const { data: subscribers } = await supabaseAdmin
+        .from("subscribers")
+        .select("*")
+        .eq("mosque_id", scheduled.mosque_id)
+        .eq("status", "active");
+
+      if (!subscribers || subscribers.length === 0) {
+        // No subscribers - mark as sent anyway (nothing to send)
+        await supabaseAdmin
+          .from("scheduled_messages")
+          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .eq("id", scheduled.id);
+        successful++;
+        continue;
+      }
+
+      // Format the announcement message
+      const message = getAnnouncementMessage(scheduled.content, mosqueName);
+
+      // Send messages concurrently
+      const batchResult = await sendMessagesConcurrently(
+        subscribers as Subscriber[],
+        message,
+        logger
+      );
+
+      // Batch update last_message_at for successful sends
+      const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+      await batchUpdateLastMessageAt(successfulIds);
+
+      // Log the scheduled message as sent in messages table
+      await supabaseAdmin.from("messages").insert({
+        mosque_id: scheduled.mosque_id,
+        type: "announcement",
+        content: scheduled.content,
+        sent_to_count: batchResult.successful,
+        status: "sent",
+        metadata: {
+          scheduled: true,
+          scheduled_at: scheduled.scheduled_at,
+          scheduled_message_id: scheduled.id,
+        },
+      });
+
+      // Mark the scheduled message as sent
+      await supabaseAdmin
+        .from("scheduled_messages")
+        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .eq("id", scheduled.id);
+
+      successful++;
+    } catch (err) {
+      // Handle individual failure without stopping the batch
+      logCronError(logger, "Failed to process scheduled message", {
+        scheduledMessageId: scheduled.id,
+        mosqueId: scheduled.mosque_id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      failed++;
+      // Don't mark as sent - will be retried on next cron run
+    }
+  }
+
+  return {
+    processed: scheduledMessages.length,
+    successful,
+    failed,
+  };
+}
 
 // Check if a prayer reminder was already sent recently (within last 10 minutes)
 // This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
@@ -48,6 +159,18 @@ export async function GET(request: NextRequest) {
   const logger = createCronLogger("prayer-reminders");
 
   try {
+    // Process any due scheduled messages first
+    const scheduledResult = await processScheduledMessages(logger);
+    if (scheduledResult.processed > 0) {
+      setCronMetadata(logger, {
+        scheduledMessages: {
+          processed: scheduledResult.processed,
+          successful: scheduledResult.successful,
+          failed: scheduledResult.failed,
+        },
+      });
+    }
+
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
