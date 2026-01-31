@@ -145,10 +145,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEPLOY-09 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 37 total
-- Mapped to phases: 37
-- Unmapped: 0 ✓
+- v1 requirements: 38 total
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-31*
-*Last updated: 2026-01-31 after initial definition*
+*Last updated: 2026-01-31 after roadmap creation*
