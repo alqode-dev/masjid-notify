@@ -142,15 +142,6 @@ export function formatPrayerName(prayer: string): string {
   return prayerMap[prayer.toLowerCase()] || prayer;
 }
 
-// Check if it's Ramadan (approximate, based on typical dates)
-export function isRamadanSeason(): boolean {
-  const now = new Date();
-  const month = now.getMonth() + 1; // 1-12
-  // Ramadan 2025 is approximately Feb 28 - Mar 29
-  // This is a rough check - the actual ramadan_mode flag in the mosque settings should be used
-  return (month === 2 || month === 3) && now.getFullYear() === 2025;
-}
-
 // Check if it's Friday (for Jumu'ah)
 export function isFriday(timezone: string = "Africa/Johannesburg"): boolean {
   const now = new Date();
