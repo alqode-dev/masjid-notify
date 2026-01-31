@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
+import {
+  createCronLogger,
+  logCronError,
+  incrementMessageCount,
+  setCronMetadata,
+  finalizeCronLog,
+} from "@/lib/logger";
 import type { Mosque, Subscriber, Hadith } from "@/lib/supabase";
 
 // This should run once daily, after Fajr (e.g., 6:30 AM)
@@ -12,6 +19,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const logger = createCronLogger("daily-hadith");
+
   try {
     // Get a random hadith
     const { data: hadiths, error: hadithError } = await supabaseAdmin
@@ -20,6 +29,8 @@ export async function GET(request: NextRequest) {
       .eq("verified", true);
 
     if (hadithError || !hadiths || hadiths.length === 0) {
+      logCronError(logger, "No hadith available", { error: hadithError });
+      finalizeCronLog(logger);
       return NextResponse.json(
         { error: "No hadith available" },
         { status: 500 }
@@ -31,19 +42,26 @@ export async function GET(request: NextRequest) {
       Math.floor(Math.random() * hadiths.length)
     ] as Hadith;
 
+    setCronMetadata(logger, {
+      hadithId: hadith.id,
+      hadithSource: hadith.source,
+    });
+
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*");
 
     if (mosqueError || !mosques) {
+      logCronError(logger, "Failed to fetch mosques", { error: mosqueError });
+      finalizeCronLog(logger);
       return NextResponse.json(
         { error: "Failed to fetch mosques" },
         { status: 500 }
       );
     }
 
-    let totalSent = 0;
+    setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
       // Get subscribers who want daily hadith
@@ -63,7 +81,7 @@ export async function GET(request: NextRequest) {
         const result = await sendWhatsAppMessage(sub.phone_number, message);
         if (result.success) {
           sentCount++;
-          totalSent++;
+          incrementMessageCount(logger);
 
           await supabaseAdmin
             .from("subscribers")
@@ -87,12 +105,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const result = finalizeCronLog(logger);
+
     return NextResponse.json({
       success: true,
-      sent: totalSent,
+      sent: result.messagesSent,
+      durationMs: result.durationMs,
     });
   } catch (error) {
-    console.error("Daily hadith cron error:", error);
+    logCronError(logger, "Unexpected error during cron execution", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    finalizeCronLog(logger);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

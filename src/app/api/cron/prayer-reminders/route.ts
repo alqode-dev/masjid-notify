@@ -3,6 +3,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes, isWithinMinutes } from "@/lib/prayer-times";
 import { sendWhatsAppMessage, getPrayerReminderMessage } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
+import {
+  createCronLogger,
+  logCronError,
+  incrementMessageCount,
+  setCronMetadata,
+  finalizeCronLog,
+} from "@/lib/logger";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // This endpoint should be called every 5 minutes by Vercel Cron
@@ -13,6 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const logger = createCronLogger("prayer-reminders");
+
   try {
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
@@ -20,14 +29,15 @@ export async function GET(request: NextRequest) {
       .select("*");
 
     if (mosqueError || !mosques) {
-      console.error("Error fetching mosques:", mosqueError);
+      logCronError(logger, "Failed to fetch mosques", { error: mosqueError });
+      finalizeCronLog(logger);
       return NextResponse.json(
         { error: "Failed to fetch mosques" },
         { status: 500 }
       );
     }
 
-    let totalSent = 0;
+    setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
       // Get today's prayer times for this mosque
@@ -39,7 +49,10 @@ export async function GET(request: NextRequest) {
       );
 
       if (!prayerTimes) {
-        console.error(`Failed to get prayer times for ${mosque.name}`);
+        logCronError(logger, "Failed to get prayer times", {
+          mosqueId: mosque.id,
+          mosqueName: mosque.name,
+        });
         continue;
       }
 
@@ -90,6 +103,7 @@ export async function GET(request: NextRequest) {
               mosque.name
             );
 
+            let batchSent = 0;
             for (const sub of subs) {
               const result = await sendWhatsAppMessage(
                 sub.phone_number,
@@ -97,7 +111,8 @@ export async function GET(request: NextRequest) {
               );
 
               if (result.success) {
-                totalSent++;
+                batchSent++;
+                incrementMessageCount(logger);
 
                 // Update last_message_at
                 await supabaseAdmin
@@ -113,7 +128,7 @@ export async function GET(request: NextRequest) {
                 mosque_id: mosque.id,
                 type: "prayer",
                 content: message,
-                sent_to_count: totalSent,
+                sent_to_count: batchSent,
                 status: "sent",
                 metadata: {
                   prayer: prayer.key,
@@ -126,12 +141,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const result = finalizeCronLog(logger);
+
     return NextResponse.json({
       success: true,
-      sent: totalSent,
+      sent: result.messagesSent,
+      durationMs: result.durationMs,
     });
   } catch (error) {
-    console.error("Prayer reminder cron error:", error);
+    logCronError(logger, "Unexpected error during cron execution", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    finalizeCronLog(logger);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

@@ -3,6 +3,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsAppMessage, getJumuahReminderMessage } from "@/lib/whatsapp";
 import { isFriday, formatTime12h } from "@/lib/utils";
 import { verifyCronSecret } from "@/lib/auth";
+import {
+  createCronLogger,
+  logCronError,
+  incrementMessageCount,
+  setCronMetadata,
+  finalizeCronLog,
+} from "@/lib/logger";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // This should run every Friday morning (e.g., 10:00 AM)
@@ -13,6 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const logger = createCronLogger("jumuah-reminder");
+
   try {
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
@@ -20,13 +29,15 @@ export async function GET(request: NextRequest) {
       .select("*");
 
     if (mosqueError || !mosques) {
+      logCronError(logger, "Failed to fetch mosques", { error: mosqueError });
+      finalizeCronLog(logger);
       return NextResponse.json(
         { error: "Failed to fetch mosques" },
         { status: 500 }
       );
     }
 
-    let totalSent = 0;
+    setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
       // Check if it's Friday in the mosque's timezone
@@ -54,7 +65,7 @@ export async function GET(request: NextRequest) {
         const result = await sendWhatsAppMessage(sub.phone_number, message);
         if (result.success) {
           sentCount++;
-          totalSent++;
+          incrementMessageCount(logger);
 
           await supabaseAdmin
             .from("subscribers")
@@ -73,12 +84,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const result = finalizeCronLog(logger);
+
     return NextResponse.json({
       success: true,
-      sent: totalSent,
+      sent: result.messagesSent,
+      durationMs: result.durationMs,
     });
   } catch (error) {
-    console.error("Jumuah reminder cron error:", error);
+    logCronError(logger, "Unexpected error during cron execution", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    finalizeCronLog(logger);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }

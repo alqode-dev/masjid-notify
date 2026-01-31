@@ -8,6 +8,13 @@ import {
   getTaraweehReminderMessage,
 } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
+import {
+  createCronLogger,
+  logCronError,
+  incrementMessageCount,
+  setCronMetadata,
+  finalizeCronLog,
+} from "@/lib/logger";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // This should run every 5 minutes during Ramadan
@@ -18,6 +25,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const logger = createCronLogger("ramadan-reminders");
+
   try {
     // Get mosques with Ramadan mode enabled
     const { data: mosques, error: mosqueError } = await supabaseAdmin
@@ -26,14 +35,17 @@ export async function GET(request: NextRequest) {
       .eq("ramadan_mode", true);
 
     if (mosqueError || !mosques || mosques.length === 0) {
+      setCronMetadata(logger, { reason: "No mosques in Ramadan mode" });
+      const result = finalizeCronLog(logger);
       return NextResponse.json({
         success: true,
         message: "No mosques in Ramadan mode",
         sent: 0,
+        durationMs: result.durationMs,
       });
     }
 
-    let totalSent = 0;
+    setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
       // Get prayer times for Suhoor (Fajr) and Iftar (Maghrib)
@@ -45,7 +57,10 @@ export async function GET(request: NextRequest) {
       );
 
       if (!prayerTimes) {
-        console.error(`Failed to get prayer times for ${mosque.name}`);
+        logCronError(logger, "Failed to get prayer times", {
+          mosqueId: mosque.id,
+          mosqueName: mosque.name,
+        });
         continue;
       }
 
@@ -77,7 +92,7 @@ export async function GET(request: NextRequest) {
           const result = await sendWhatsAppMessage(sub.phone_number, message);
           if (result.success) {
             sentCount++;
-            totalSent++;
+            incrementMessageCount(logger);
 
             await supabaseAdmin
               .from("subscribers")
@@ -115,7 +130,7 @@ export async function GET(request: NextRequest) {
           const result = await sendWhatsAppMessage(sub.phone_number, message);
           if (result.success) {
             sentCount++;
-            totalSent++;
+            incrementMessageCount(logger);
 
             await supabaseAdmin
               .from("subscribers")
@@ -153,7 +168,7 @@ export async function GET(request: NextRequest) {
             const result = await sendWhatsAppMessage(sub.phone_number, message);
             if (result.success) {
               sentCount++;
-              totalSent++;
+              incrementMessageCount(logger);
 
               await supabaseAdmin
                 .from("subscribers")
@@ -174,12 +189,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const result = finalizeCronLog(logger);
+
     return NextResponse.json({
       success: true,
-      sent: totalSent,
+      sent: result.messagesSent,
+      durationMs: result.durationMs,
     });
   } catch (error) {
-    console.error("Ramadan reminder cron error:", error);
+    logCronError(logger, "Unexpected error during cron execution", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    finalizeCronLog(logger);
     return NextResponse.json(
       { error: "An unexpected error occurred" },
       { status: 500 }
