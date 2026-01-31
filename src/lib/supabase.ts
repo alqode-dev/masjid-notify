@@ -1,9 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createBrowserClient } from "@supabase/ssr";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Lazy initialization to avoid build-time errors
+function getEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`);
+  }
+  return value;
+}
 
 // Database types
 export type Mosque = {
@@ -117,14 +122,35 @@ export type ScheduledMessage = {
 
 // Client-side Supabase client (for use in React components)
 export function createClientSupabase() {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(
+    getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
+    getEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+  );
 }
 
-// Server-side Supabase client with service role (for API routes, bypasses RLS)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
+// Lazy-initialized server-side Supabase client with service role
+let _supabaseAdmin: SupabaseClient | null = null;
+
+export function getSupabaseAdmin(): SupabaseClient {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(
+      getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
+      getEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+  }
+  return _supabaseAdmin;
+}
+
+// Legacy export for backwards compatibility (lazy getter)
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    return getSupabaseAdmin()[prop as keyof SupabaseClient];
   },
 });
 

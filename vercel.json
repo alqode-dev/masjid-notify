@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/prayer-reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/cron/jumuah-reminder",
@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/ramadan-reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
