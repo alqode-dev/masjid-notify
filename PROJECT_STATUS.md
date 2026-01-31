@@ -70,7 +70,7 @@ All core features have been implemented. The production deployment sprint comple
 | 6. Structured Logging | ✅ Complete | JSON logging for all cron jobs with timing and metrics |
 | 7. Message Templates | ✅ Complete | WhatsApp templates defined for Meta approval |
 | 8. Create Admin User | ✅ Complete | Admin user: alqodez@gmail.com (owner role, linked to Test Masjid) |
-| 9. Deploy to Vercel | ⏳ In Progress | Use `npx vercel login` then `npx vercel --prod` |
+| 9. Deploy to Vercel | ✅ Complete | Production URL: https://masjid-notify.vercel.app |
 | 10. Set Environment Variables | ⬜ Pending | See Environment Variables section below |
 | 11. Configure WhatsApp Webhook | ⬜ Pending | Set URL in Meta Developer Console |
 | 12. Submit WhatsApp Templates | ⬜ Pending | Submit templates via Meta Business Manager |
@@ -872,28 +872,30 @@ After deployment, verify each feature works correctly:
 
 ### Vercel Deployment (In Progress)
 
+**Production URL:** https://masjid-notify.vercel.app
 **Account:** https://vercel.com/alqodes-projects
 **GitHub:** https://github.com/alqode-dev
 **Branch:** ralph/production-deployment
-**Commit:** 59 files, 6112 insertions (production-ready)
+**Status:** ✅ Deployed (January 31, 2026)
 
 ### Environment Variables Status
 
-| Variable | Status | Notes |
-|----------|--------|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Ready | `https://jlqtuynaxuooymbwrwth.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Ready | User has key |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Ready | User has key |
-| `WHATSAPP_ACCESS_TOKEN` | ✅ Ready | User has token |
-| `WHATSAPP_PHONE_NUMBER_ID` | ✅ Ready | User has ID |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | ✅ Ready | User has ID |
-| `ALADHAN_API_URL` | ✅ Ready | `https://api.aladhan.com/v1` |
-| `CRON_SECRET` | ⬜ Generate | Create secure random string |
-| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | ⬜ Generate | Create secure random string |
-| `WHATSAPP_APP_SECRET` | ⬜ Get from Meta | WhatsApp App > Settings > Basic > App Secret |
-| `UPSTASH_REDIS_REST_URL` | ⬜ Create | Create at console.upstash.com |
-| `UPSTASH_REDIS_REST_TOKEN` | ⬜ Create | From Upstash dashboard |
-| `SENTRY_DSN` | ⬜ Create | Create project at sentry.io |
+| Variable | Vercel Status | Notes |
+|----------|---------------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Set | `https://jlqtuynaxuooymbwrwth.supabase.co` |
+| `NEXT_PUBLIC_APP_URL` | ✅ Set | `https://masjid-notify.vercel.app` |
+| `ALADHAN_API_URL` | ✅ Set | `https://api.aladhan.com/v1` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ⬜ Add in Vercel | Get from Supabase dashboard |
+| `SUPABASE_SERVICE_ROLE_KEY` | ⬜ Add in Vercel | Get from Supabase dashboard |
+| `WHATSAPP_ACCESS_TOKEN` | ⬜ Add in Vercel | From Meta Developer Console |
+| `WHATSAPP_PHONE_NUMBER_ID` | ⬜ Add in Vercel | From Meta Developer Console |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | ⬜ Add in Vercel | From Meta Developer Console |
+| `CRON_SECRET` | ⬜ Generate & Add | `openssl rand -hex 32` |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | ⬜ Generate & Add | `openssl rand -hex 16` |
+| `WHATSAPP_APP_SECRET` | ⬜ Get from Meta | App > Settings > Basic > App Secret |
+| `UPSTASH_REDIS_REST_URL` | ⬜ Create & Add | Create at console.upstash.com |
+| `UPSTASH_REDIS_REST_TOKEN` | ⬜ Create & Add | From Upstash dashboard |
+| `SENTRY_DSN` | ⬜ Create & Add | Create project at sentry.io |
 
 ### Next Steps to Complete Deployment
 
