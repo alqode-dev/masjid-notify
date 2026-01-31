@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWhatsAppMessage, getAnnouncementMessage } from "@/lib/whatsapp";
+import { sendTemplateMessage, ANNOUNCEMENT_TEMPLATE } from "@/lib/whatsapp";
 import { verifyAdminAuth } from "@/lib/auth";
+import { previewTemplate } from "@/lib/whatsapp-templates";
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,13 +70,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const message = getAnnouncementMessage(content, mosque.name);
+    // Template variables: mosque_name, announcement_content
+    const templateVars = [mosque.name, content];
     let successCount = 0;
     let failCount = 0;
 
-    // Send to all subscribers
+    // Send to all subscribers using template
     for (const subscriber of subscribers) {
-      const result = await sendWhatsAppMessage(subscriber.phone_number, message);
+      const result = await sendTemplateMessage(
+        subscriber.phone_number,
+        ANNOUNCEMENT_TEMPLATE,
+        templateVars
+      );
       if (result.success) {
         successCount++;
       } else {
@@ -86,6 +92,9 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    // Generate message content for logging (preview with actual values)
+    const message = previewTemplate(ANNOUNCEMENT_TEMPLATE, templateVars);
 
     // Log the message
     await supabaseAdmin.from("messages").insert({

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes, isWithinMinutes } from "@/lib/prayer-times";
-import { getPrayerReminderMessage, getAnnouncementMessage } from "@/lib/whatsapp";
+import {
+  PRAYER_REMINDER_TEMPLATE,
+  ANNOUNCEMENT_TEMPLATE,
+} from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
@@ -11,10 +14,11 @@ import {
   CronLogContext,
 } from "@/lib/logger";
 import {
-  sendMessagesConcurrently,
+  sendTemplatesConcurrently,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
 } from "@/lib/message-sender";
+import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
@@ -76,15 +80,19 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
         continue;
       }
 
-      // Format the announcement message
-      const message = getAnnouncementMessage(scheduled.content, mosqueName);
+      // Template variables: mosque_name, announcement_content
+      const templateVars = [mosqueName, scheduled.content];
 
-      // Send messages concurrently
-      const batchResult = await sendMessagesConcurrently(
+      // Send messages concurrently using template
+      const batchResult = await sendTemplatesConcurrently(
         subscribers as Subscriber[],
-        message,
+        ANNOUNCEMENT_TEMPLATE,
+        templateVars,
         logger
       );
+
+      // Generate message content for logging (preview with actual values)
+      const message = previewTemplate(ANNOUNCEMENT_TEMPLATE, templateVars);
 
       // Batch update last_message_at for successful sends
       const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
@@ -261,18 +269,19 @@ export async function GET(request: NextRequest) {
               continue; // Skip - already sent this reminder
             }
 
-            const message = getPrayerReminderMessage(
-              prayer.name,
-              prayer.time,
-              mosque.name
-            );
+            // Template variables: prayer_name, prayer_time, mosque_name
+            const templateVars = [prayer.name, prayer.time, mosque.name];
 
-            // Send messages concurrently with p-limit (max 10 concurrent)
-            const batchResult = await sendMessagesConcurrently(
+            // Send messages concurrently with p-limit (max 10 concurrent) using template
+            const batchResult = await sendTemplatesConcurrently(
               subs,
-              message,
+              PRAYER_REMINDER_TEMPLATE,
+              templateVars,
               logger
             );
+
+            // Generate message content for logging (preview with actual values)
+            const message = previewTemplate(PRAYER_REMINDER_TEMPLATE, templateVars);
 
             // Batch update last_message_at for successful sends
             const successfulIds = getSuccessfulSubscriberIds(batchResult.results);

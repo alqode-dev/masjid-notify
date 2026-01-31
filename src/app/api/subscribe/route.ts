@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWhatsAppMessage, getWelcomeMessage } from '@/lib/whatsapp'
+import { sendTemplateMessage, WELCOME_TEMPLATE } from '@/lib/whatsapp'
 import { normalizePhoneNumber, isValidSAPhoneNumber } from '@/lib/utils'
 import { getSubscribeRateLimiter, getClientIP } from '@/lib/ratelimit'
+import { previewTemplate } from '@/lib/whatsapp-templates'
 
 export async function POST(request: NextRequest) {
   try {
@@ -137,14 +138,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send welcome message via WhatsApp
-    const welcomeMessage = getWelcomeMessage(mosque.name)
-    const whatsappResult = await sendWhatsAppMessage(formattedPhone, welcomeMessage)
+    // Send welcome message via WhatsApp using template
+    // Template variables: mosque_name
+    const templateVars = [mosque.name]
+    const whatsappResult = await sendTemplateMessage(
+      formattedPhone,
+      WELCOME_TEMPLATE,
+      templateVars
+    )
 
     if (!whatsappResult.success) {
       console.error('Failed to send WhatsApp message:', whatsappResult.error)
       // Don't fail the subscription, just log the error
     }
+
+    // Generate message content for logging (preview with actual values)
+    const welcomeMessage = previewTemplate(WELCOME_TEMPLATE, templateVars)
 
     // Log the welcome message
     await supabaseAdmin

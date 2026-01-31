@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { DAILY_HADITH_TEMPLATE } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
@@ -8,10 +9,11 @@ import {
   finalizeCronLog,
 } from "@/lib/logger";
 import {
-  sendMessagesConcurrently,
+  sendTemplatesConcurrently,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
 } from "@/lib/message-sender";
+import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber, Hadith } from "@/lib/supabase";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
@@ -80,14 +82,24 @@ export async function GET(request: NextRequest) {
 
       if (!subscribers || subscribers.length === 0) continue;
 
-      const message = formatHadithMessage(hadith, mosque.name);
+      // Template variables: hadith_text, source, reference, mosque_name
+      const templateVars = [
+        hadith.text_english,
+        hadith.source,
+        hadith.reference,
+        mosque.name,
+      ];
 
-      // Send messages concurrently with p-limit (max 10 concurrent)
-      const batchResult = await sendMessagesConcurrently(
+      // Send messages concurrently with p-limit (max 10 concurrent) using template
+      const batchResult = await sendTemplatesConcurrently(
         subscribers as Subscriber[],
-        message,
+        DAILY_HADITH_TEMPLATE,
+        templateVars,
         logger
       );
+
+      // Generate message content for logging (preview with actual values)
+      const message = previewTemplate(DAILY_HADITH_TEMPLATE, templateVars);
 
       // Batch update last_message_at for successful sends
       const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
@@ -127,14 +139,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function formatHadithMessage(hadith: Hadith, mosqueName: string): string {
-  return `📖 Daily Hadith
-
-${hadith.text_english}
-
-— ${hadith.source} (${hadith.reference})
-
-${mosqueName}`;
 }

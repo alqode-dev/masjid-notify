@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes, isWithinMinutes, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
 import {
-  getSuhoorReminderMessage,
-  getIftarReminderMessage,
-  getTaraweehReminderMessage,
+  SUHOOR_REMINDER_TEMPLATE,
+  IFTAR_REMINDER_TEMPLATE,
+  TARAWEEH_REMINDER_TEMPLATE,
 } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
@@ -14,10 +14,11 @@ import {
   finalizeCronLog,
 } from "@/lib/logger";
 import {
-  sendMessagesConcurrently,
+  sendTemplatesConcurrently,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
 } from "@/lib/message-sender";
+import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
@@ -113,17 +114,19 @@ export async function GET(request: NextRequest) {
         // Check if already sent to prevent duplicates
         const alreadySent = await wasRamadanReminderSent(mosque.id, "suhoor");
         if (!alreadySent) {
-          const message = getSuhoorReminderMessage(
-            prayerTimes.fajr,
-            mosque.name
-          );
+          // Template variables: fajr_time, mosque_name
+          const templateVars = [prayerTimes.fajr, mosque.name];
 
-          // Send messages concurrently with p-limit (max 10 concurrent)
-          const batchResult = await sendMessagesConcurrently(
+          // Send messages concurrently with p-limit (max 10 concurrent) using template
+          const batchResult = await sendTemplatesConcurrently(
             subscribers as Subscriber[],
-            message,
+            SUHOOR_REMINDER_TEMPLATE,
+            templateVars,
             logger
           );
+
+          // Generate message content for logging (preview with actual values)
+          const message = previewTemplate(SUHOOR_REMINDER_TEMPLATE, templateVars);
 
           // Batch update last_message_at for successful sends
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
@@ -151,18 +154,23 @@ export async function GET(request: NextRequest) {
         // Check if already sent to prevent duplicates
         const alreadySent = await wasRamadanReminderSent(mosque.id, "iftar");
         if (!alreadySent) {
-          const message = getIftarReminderMessage(
+          // Template variables: minutes_until, maghrib_time, mosque_name
+          const templateVars = [
+            String(mosque.iftar_reminder_mins),
             prayerTimes.maghrib,
-            mosque.iftar_reminder_mins,
-            mosque.name
-          );
+            mosque.name,
+          ];
 
-          // Send messages concurrently with p-limit (max 10 concurrent)
-          const batchResult = await sendMessagesConcurrently(
+          // Send messages concurrently with p-limit (max 10 concurrent) using template
+          const batchResult = await sendTemplatesConcurrently(
             subscribers as Subscriber[],
-            message,
+            IFTAR_REMINDER_TEMPLATE,
+            templateVars,
             logger
           );
+
+          // Generate message content for logging (preview with actual values)
+          const message = previewTemplate(IFTAR_REMINDER_TEMPLATE, templateVars);
 
           // Batch update last_message_at for successful sends
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
@@ -194,14 +202,20 @@ export async function GET(request: NextRequest) {
           const alreadySent = await wasRamadanReminderSent(mosque.id, "taraweeh");
           if (!alreadySent) {
             const formattedTime = formatDbTime(mosque.taraweeh_time);
-            const message = getTaraweehReminderMessage(formattedTime, mosque.name);
 
-            // Send messages concurrently with p-limit (max 10 concurrent)
-            const batchResult = await sendMessagesConcurrently(
+            // Template variables: taraweeh_time, mosque_name
+            const templateVars = [formattedTime, mosque.name];
+
+            // Send messages concurrently with p-limit (max 10 concurrent) using template
+            const batchResult = await sendTemplatesConcurrently(
               subscribers as Subscriber[],
-              message,
+              TARAWEEH_REMINDER_TEMPLATE,
+              templateVars,
               logger
             );
+
+            // Generate message content for logging (preview with actual values)
+            const message = previewTemplate(TARAWEEH_REMINDER_TEMPLATE, templateVars);
 
             // Batch update last_message_at for successful sends
             const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
