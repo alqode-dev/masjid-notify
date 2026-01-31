@@ -1,14 +1,23 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createBrowserClient } from "@supabase/ssr";
 
-// Lazy initialization to avoid build-time errors
+// Get environment variable with fallback for client-side
 function getEnvVar(name: string): string {
   const value = process.env[name];
   if (!value) {
+    // On client-side, NEXT_PUBLIC_ vars should be inlined at build time
+    // If missing, provide helpful error
+    if (typeof window !== "undefined") {
+      console.error(`Missing environment variable: ${name}. This should be set as a NEXT_PUBLIC_ variable.`);
+    }
     throw new Error(`Missing environment variable: ${name}`);
   }
   return value;
 }
+
+// Hardcoded fallbacks for client-side (these get replaced at build time)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 // Database types
 export type Mosque = {
@@ -122,10 +131,11 @@ export type ScheduledMessage = {
 
 // Client-side Supabase client (for use in React components)
 export function createClientSupabase() {
-  return createBrowserClient(
-    getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-    getEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-  );
+  // Use the constants that are inlined at build time
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error("Supabase environment variables not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // Lazy-initialized server-side Supabase client with service role
