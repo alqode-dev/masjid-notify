@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { supabaseAdmin, type Admin } from "./supabase";
+import crypto from "crypto";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -106,4 +107,37 @@ export function withAdminAuth<T>(
       admin: authResult.admin,
     });
   };
+}
+
+/**
+ * Verifies cron secret using constant-time comparison to prevent timing attacks
+ * Returns true if the authorization header matches the expected cron secret
+ */
+export function verifyCronSecret(authHeader: string | null): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret || !authHeader) {
+    return false;
+  }
+
+  const expectedValue = `Bearer ${cronSecret}`;
+
+  // Ensure both strings have the same length for timingSafeEqual
+  // If lengths differ, we still need constant-time comparison
+  // by padding the shorter one (but always returning false)
+  if (authHeader.length !== expectedValue.length) {
+    // Still perform a comparison to maintain constant time
+    const paddedAuth = authHeader.padEnd(expectedValue.length, '\0');
+    const paddedExpected = expectedValue.padEnd(authHeader.length, '\0');
+    crypto.timingSafeEqual(
+      Buffer.from(paddedAuth),
+      Buffer.from(paddedExpected)
+    );
+    return false;
+  }
+
+  return crypto.timingSafeEqual(
+    Buffer.from(authHeader),
+    Buffer.from(expectedValue)
+  );
 }
