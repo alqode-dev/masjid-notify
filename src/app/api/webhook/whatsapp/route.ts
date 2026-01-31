@@ -1,8 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { generateToken } from "@/lib/utils";
 import { getWebhookRateLimiter, getClientIP } from "@/lib/ratelimit";
+
+/**
+ * Verify WhatsApp webhook signature using HMAC-SHA256
+ * @param rawBody - The raw request body as a string
+ * @param signature - The X-Hub-Signature-256 header value
+ * @returns true if signature is valid, false otherwise
+ */
+function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
+  if (!signature) {
+    return false;
+  }
+
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret) {
+    console.error("WHATSAPP_APP_SECRET is not configured");
+    return false;
+  }
+
+  // Signature format: "sha256=<hex_digest>"
+  const expectedPrefix = "sha256=";
+  if (!signature.startsWith(expectedPrefix)) {
+    return false;
+  }
+
+  const receivedSignature = signature.slice(expectedPrefix.length);
+  const expectedSignature = createHmac("sha256", appSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  // Use constant-time comparison to prevent timing attacks
+  try {
+    const receivedBuffer = Buffer.from(receivedSignature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+
+    if (receivedBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return timingSafeEqual(receivedBuffer, expectedBuffer);
+  } catch {
+    return false;
+  }
+}
 
 // Webhook verification (GET)
 export async function GET(request: NextRequest) {
@@ -40,7 +84,20 @@ export async function GET(request: NextRequest) {
 // Handle incoming messages (POST)
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting check
+    // Get raw body for signature verification BEFORE parsing JSON
+    const rawBody = await request.text();
+
+    // Verify webhook signature
+    const signature = request.headers.get("x-hub-signature-256");
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      console.error("Invalid webhook signature");
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting check (after signature verification to avoid resource exhaustion)
     const ip = getClientIP(request);
     const rateLimiter = getWebhookRateLimiter();
     const { success, limit, remaining, reset } = await rateLimiter.limit(ip);
@@ -59,7 +116,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    // Parse the raw body as JSON
+    const body = JSON.parse(rawBody);
 
     // Extract message data
     const entry = body.entry?.[0];
