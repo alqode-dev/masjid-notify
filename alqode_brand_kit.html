@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alqode Brand Kit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 60px 40px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    h1 .bracket { color: #10b981; }
+
+    .tagline {
+      color: #666;
+      font-size: 1.1rem;
+      margin-bottom: 60px;
+    }
+
+    section {
+      margin-bottom: 60px;
+      padding-bottom: 60px;
+      border-bottom: 1px solid #222;
+    }
+
+    section:last-child {
+      border-bottom: none;
+    }
+
+    h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #555;
+      margin-bottom: 24px;
+    }
+
+    .logo-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .logo-box {
+      padding: 50px 40px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-box.dark {
+      background: #0a0a0a;
+      border: 1px solid #222;
+    }
+
+    .logo-box.light {
+      background: #fafafa;
+    }
+
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2rem;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text .bracket { color: #10b981; }
+    .logo-text.dark { color: #fff; }
+    .logo-text.dark .bracket { color: #10b981; }
+    .logo-text.light { color: #0a0a0a; }
+    .logo-text.light .bracket { color: #10b981; }
+    .logo-text.mono-white { color: #fff; }
+    .logo-text.mono-black { color: #0a0a0a; }
+
+    .colors-grid {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .color-item {
+      text-align: center;
+    }
+
+    .color-swatch {
+      width: 100px;
+      height: 100px;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      border: 1px solid #333;
+    }
+
+    .color-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+
+    .color-hex {
+      font-family: 'Space Grotesk', monospace;
+      color: #666;
+      font-size: 0.8rem;
+    }
+
+    .typography-sample {
+      background: #111;
+      border-radius: 16px;
+      padding: 40px;
+      border: 1px solid #222;
+    }
+
+    .font-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .font-link {
+      color: #10b981;
+      font-size: 0.85rem;
+      text-decoration: none;
+    }
+
+    .font-link:hover {
+      text-decoration: underline;
+    }
+
+    .font-preview {
+      margin-top: 24px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem;
+      color: #888;
+    }
+
+    .icon-showcase {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .icon-box {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 1.8rem;
+    }
+
+    .icon-box.primary {
+      background: #0a0a0a;
+      border: 1px solid #222;
+      color: #fff;
+    }
+
+    .icon-box.primary .bracket { color: #10b981; }
+
+    .icon-box.small {
+      width: 48px;
+      height: 48px;
+      font-size: 1.1rem;
+      border-radius: 10px;
+    }
+
+    .icon-box.tiny {
+      width: 32px;
+      height: 32px;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+
+    .usage-note {
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 16px;
+    }
+
+    .files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: #111;
+      border-radius: 10px;
+      border: 1px solid #222;
+    }
+
+    .file-icon {
+      width: 40px;
+      height: 40px;
+      background: #10b981;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .file-desc {
+      color: #666;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <h1><span class="bracket">{</span>alqode<span class="bracket">}</span></h1>
+    <p class="tagline">Brand Kit & Guidelines</p>
+
+    <section>
+      <h2>Primary Logo</h2>
+      <div class="logo-showcase">
+        <div class="logo-box dark">
+          <span class="logo-text dark"><span class="bracket">{</span>alqode<span class="bracket">}</span></span>
+        </div>
+        <div class="logo-box light">
+          <span class="logo-text light"><span class="bracket">{</span>alqode<span class="bracket">}</span></span>
+        </div>
+      </div>
+      <p class="usage-note">Use the colored version whenever possible. Green brackets are the brand signature.</p>
+    </section>
+
+    <section>
+      <h2>Single Color Versions</h2>
+      <div class="logo-showcase">
+        <div class="logo-box dark">
+          <span class="logo-text mono-white">{alqode}</span>
+        </div>
+        <div class="logo-box light">
+          <span class="logo-text mono-black">{alqode}</span>
+        </div>
+      </div>
+      <p class="usage-note">Use when color printing isn't available or for subtle applications.</p>
+    </section>
+
+    <section>
+      <h2>Favicon / App Icon</h2>
+      <div class="icon-showcase">
+        <div class="icon-box primary">
+          <span class="bracket">{</span>A<span class="bracket">}</span>
+        </div>
+        <div class="icon-box primary small">
+          <span class="bracket">{</span>A<span class="bracket">}</span>
+        </div>
+        <div class="icon-box primary tiny">
+          <span class="bracket">{</span>A<span class="bracket">}</span>
+        </div>
+      </div>
+      <p class="usage-note">Simplified mark for small sizes. Uses {A} to maintain bracket identity.</p>
+    </section>
+
+    <section>
+      <h2>Brand Colors</h2>
+      <div class="colors-grid">
+        <div class="color-item">
+          <div class="color-swatch" style="background: #0a0a0a;"></div>
+          <div class="color-name">Void</div>
+          <div class="color-hex">#0a0a0a</div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background: #ffffff; border-color: #ddd;"></div>
+          <div class="color-name">White</div>
+          <div class="color-hex">#ffffff</div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background: #10b981;"></div>
+          <div class="color-name">Terminal</div>
+          <div class="color-hex">#10b981</div>
+        </div>
+        <div class="color-item">
+          <div class="color-swatch" style="background: #666666;"></div>
+          <div class="color-name">Muted</div>
+          <div class="color-hex">#666666</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Typography</h2>
+      <div class="typography-sample">
+        <div class="font-name">Space Grotesk</div>
+        <a class="font-link" href="https://fonts.google.com/specimen/Space+Grotesk" target="_blank">fonts.google.com/specimen/Space+Grotesk</a>
+        <div class="font-preview">
+          ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>
+          abcdefghijklmnopqrstuvwxyz<br>
+          0123456789 {[]}&lt;&gt;
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Logo Files Included</h2>
+      <div class="files-list">
+        <div class="file-item">
+          <div class="file-icon">SVG</div>
+          <div class="file-info">
+            <div class="file-name">alqode_logo_dark.svg</div>
+            <div class="file-desc">Colored logo for dark backgrounds</div>
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="file-icon">SVG</div>
+          <div class="file-info">
+            <div class="file-name">alqode_logo_light.svg</div>
+            <div class="file-desc">Colored logo for light backgrounds</div>
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="file-icon">SVG</div>
+          <div class="file-info">
+            <div class="file-name">alqode_logo_white.svg</div>
+            <div class="file-desc">Single color white version</div>
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="file-icon">SVG</div>
+          <div class="file-info">
+            <div class="file-name">alqode_logo_black.svg</div>
+            <div class="file-desc">Single color black version</div>
+          </div>
+        </div>
+        <div class="file-item">
+          <div class="file-icon">SVG</div>
+          <div class="file-info">
+            <div class="file-name">alqode_icon.svg</div>
+            <div class="file-desc">Favicon / App icon (512x512)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

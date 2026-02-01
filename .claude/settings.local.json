@@ -25,7 +25,31 @@
       "Bash(gh auth:*)",
       "Bash(npx vercel:*)",
       "Bash(echo:*)",
-      "Bash(printf:*)"
+      "Bash(printf:*)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx supabase:*)",
+      "Bash(where npm:*)",
+      "Bash(where:*)",
+      "Bash(cmd /c \"npm --version\")",
+      "Bash(powershell -Command:*)",
+      "WebFetch(domain:masjid-notify.vercel.app)",
+      "WebFetch(domain:api.vercel.com)",
+      "Bash(cmd.exe /c \"npm run build\")",
+      "Bash(gh run:*)",
+      "WebFetch(domain:masjid-notify-aq6srjplt-alqodes-projects.vercel.app)",
+      "Bash(/c/Program Files/nodejs/npm.cmd run build)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\hamda\\\\OneDrive\\\\Desktop\\\\masjid-notify && npm run build\")",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash($env:TEST_ADMIN_EMAIL=\"alqodez@gmail.com\")",
+      "Bash($env:TEST_ADMIN_PASSWORD=\"fIkM2xfLmClwBXGY\")",
+      "Bash(npx playwright test:*)",
+      "Bash(TEST_ADMIN_EMAIL=alqodez@gmail.com TEST_ADMIN_PASSWORD=fIkM2xfLmClwBXGY npx playwright test:*)",
+      "Bash(export PATH=\"$PATH:/c/Users/hamda/AppData/Roaming/npm:/c/Program Files/nodejs\")"
     ]
   }
 }

@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
         // Get mosque info
         const { data: mosque } = await supabase
           .from("mosques")
-          .select("name")
+          .select("id, name")
           .eq("slug", DEFAULT_MOSQUE_SLUG)
           .single();
 
@@ -37,20 +37,29 @@ export default function AdminDashboardPage() {
           setMosqueName(mosque.name);
         }
 
-        // Get subscriber counts
+        if (!mosque) {
+          console.error("Mosque not found for slug:", DEFAULT_MOSQUE_SLUG);
+          setLoading(false);
+          return;
+        }
+
+        // Get subscriber counts - filtered by mosque_id
         const { count: totalSubscribers } = await supabase
           .from("subscribers")
-          .select("*", { count: "exact", head: true });
+          .select("*", { count: "exact", head: true })
+          .eq("mosque_id", mosque.id);
 
         const { count: activeSubscribers } = await supabase
           .from("subscribers")
           .select("*", { count: "exact", head: true })
+          .eq("mosque_id", mosque.id)
           .eq("status", "active");
 
-        // Get message counts - sum sent_to_count for actual messages sent
+        // Get message counts - filtered by mosque_id
         const { data: totalMessagesData } = await supabase
           .from("messages")
-          .select("sent_to_count");
+          .select("sent_to_count")
+          .eq("mosque_id", mosque.id);
 
         const totalMessages = totalMessagesData?.reduce(
           (sum, msg) => sum + (msg.sent_to_count || 0),
@@ -63,6 +72,7 @@ export default function AdminDashboardPage() {
         const { data: todayMessagesData } = await supabase
           .from("messages")
           .select("sent_to_count")
+          .eq("mosque_id", mosque.id)
           .gte("sent_at", today.toISOString());
 
         const todayMessages = todayMessagesData?.reduce(

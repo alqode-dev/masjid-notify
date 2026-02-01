@@ -30,7 +30,8 @@ export default function SubscribersPage() {
     const supabase = createClientSupabase();
 
     // Get mosque first
-    if (!mosque) {
+    let currentMosque = mosque;
+    if (!currentMosque) {
       const { data: mosqueData } = await supabase
         .from("mosques")
         .select("*")
@@ -38,13 +39,22 @@ export default function SubscribersPage() {
         .single();
 
       if (mosqueData) {
-        setMosque(mosqueData as Mosque);
+        currentMosque = mosqueData as Mosque;
+        setMosque(currentMosque);
       }
     }
 
+    if (!currentMosque) {
+      console.error("Mosque not found for slug:", DEFAULT_MOSQUE_SLUG);
+      setLoading(false);
+      return;
+    }
+
+    // Filter subscribers by mosque_id
     let query = supabase
       .from("subscribers")
       .select("*")
+      .eq("mosque_id", currentMosque.id)
       .order("subscribed_at", { ascending: false });
 
     if (statusFilter !== "all") {
