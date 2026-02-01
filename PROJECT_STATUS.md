@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 1, 2026 @ 10:00 UTC
-> **Status:** ✅ **LIVE IN PRODUCTION - FULLY OPERATIONAL**
+> **Last Updated:** February 1, 2026 @ 17:00 UTC
+> **Status:** ✅ **LIVE IN PRODUCTION - READY FOR META APP APPROVAL**
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -13,6 +13,9 @@
 | **Landing Page** | https://masjid-notify.vercel.app |
 | **Admin Login** | https://masjid-notify.vercel.app/admin/login |
 | **Admin Dashboard** | https://masjid-notify.vercel.app/admin |
+| **Privacy Policy** | https://masjid-notify.vercel.app/privacy |
+| **Terms of Service** | https://masjid-notify.vercel.app/terms |
+| **Data Deletion** | https://masjid-notify.vercel.app/data-deletion |
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
 
@@ -610,6 +613,60 @@ masjid-notify/
 
 ## Changelog
 
+### Version 1.2.0 - February 1, 2026
+
+#### Meta App Submission Ready
+
+| Item | Value |
+|------|-------|
+| **Display Name** | Alqode Masjid Notify |
+| **Privacy Policy URL** | https://masjid-notify.vercel.app/privacy |
+| **Terms of Service URL** | https://masjid-notify.vercel.app/terms |
+| **Data Deletion URL** | https://masjid-notify.vercel.app/data-deletion |
+| **Category** | Business |
+| **Contact Email** | alqodez@gmail.com |
+| **App Icon** | `/public/app-icon.svg` (convert to 1024x1024 PNG for Meta) |
+
+#### New Features
+
+| Change | Description |
+|--------|-------------|
+| **Privacy Policy Page** | `/privacy` - Data collection, usage, and user rights |
+| **Terms of Service Page** | `/terms` - Service terms and conditions |
+| **Data Deletion Page** | `/data-deletion` - Instructions for data removal requests |
+| **Footer Legal Links** | Added links to Privacy, Terms, Data Deletion in footer |
+| **App Icon** | Created `/public/app-icon.svg` based on Alqode brand kit |
+
+#### Bug Fixes
+
+| Fix | Description |
+|-----|-------------|
+| **Settings Page Loading** | Fixed infinite loading on /admin/settings page |
+| **WhatsApp Template Name** | Updated to use `masjid_notify_welcome` template |
+| **Hardcoded Mosque Slug** | Removed all hardcoded slugs, now uses env var |
+| **Database Schema** | Added missing `reminder_offset` column |
+
+#### Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/app/privacy/page.tsx` | Privacy policy page |
+| `src/app/terms/page.tsx` | Terms of service page |
+| `src/app/data-deletion/page.tsx` | Data deletion instructions |
+| `src/lib/constants.ts` | Centralized mosque slug constant |
+| `public/app-icon.svg` | App icon for Meta submission |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/components/footer.tsx` | Added legal page links |
+| `src/app/admin/settings/page.tsx` | Fixed loading state with error handling |
+| `src/lib/whatsapp-templates.ts` | Updated welcome template name |
+| All admin pages | Use DEFAULT_MOSQUE_SLUG from constants |
+
+---
+
 ### Version 1.1.0 - February 1, 2026
 
 #### New Features
@@ -680,7 +737,7 @@ For issues or questions, create an issue in the GitHub repository.
 
 ---
 
-**Document Version:** 1.1.0
-**Last Updated:** February 1, 2026 @ 10:00 UTC
+**Document Version:** 1.2.0
+**Last Updated:** February 1, 2026 @ 17:00 UTC
 **Author:** Claude Code + Ralph Autonomous Agent
-**Status:** Production Ready
+**Status:** Production Ready - Meta App Submission Ready

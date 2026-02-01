@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="180" fill="#0a0a0a"/>
+
+  <!-- Green opening bracket -->
+  <text x="230" y="640" font-family="Space Grotesk, -apple-system, sans-serif" font-size="420" font-weight="600" fill="#10b981">{</text>
+
+  <!-- White A -->
+  <text x="400" y="640" font-family="Space Grotesk, -apple-system, sans-serif" font-size="420" font-weight="600" fill="#ffffff">A</text>
+
+  <!-- Green closing bracket -->
+  <text x="570" y="640" font-family="Space Grotesk, -apple-system, sans-serif" font-size="420" font-weight="600" fill="#10b981">}</text>
+</svg>

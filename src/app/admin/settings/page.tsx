@@ -44,26 +44,37 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const fetchMosque = async () => {
-      const supabase = createClientSupabase();
-      const { data } = await supabase
-        .from("mosques")
-        .select("*")
-        .eq("slug", DEFAULT_MOSQUE_SLUG)
-        .single();
+      try {
+        const supabase = createClientSupabase();
+        const { data, error } = await supabase
+          .from("mosques")
+          .select("*")
+          .eq("slug", DEFAULT_MOSQUE_SLUG)
+          .single();
 
-      if (data) {
-        const mosqueData = data as Mosque;
-        setMosque(mosqueData);
-        setRamadanMode(mosqueData.ramadan_mode);
-        setSuhoorMins(mosqueData.suhoor_reminder_mins.toString());
-        setIftarMins(mosqueData.iftar_reminder_mins.toString());
-        setTaraweehTime(mosqueData.taraweeh_time ? mosqueData.taraweeh_time.slice(0, 5) : "");
-        setJumuahAdhaan(mosqueData.jumuah_adhaan_time.slice(0, 5));
-        setJumuahKhutbah(mosqueData.jumuah_khutbah_time.slice(0, 5));
-        setCalculationMethod(mosqueData.calculation_method.toString());
-        setMadhab(mosqueData.madhab);
+        if (error) {
+          console.error("Error fetching mosque:", error);
+          setLoading(false);
+          return;
+        }
+
+        if (data) {
+          const mosqueData = data as Mosque;
+          setMosque(mosqueData);
+          setRamadanMode(mosqueData.ramadan_mode ?? false);
+          setSuhoorMins((mosqueData.suhoor_reminder_mins ?? 30).toString());
+          setIftarMins((mosqueData.iftar_reminder_mins ?? 15).toString());
+          setTaraweehTime(mosqueData.taraweeh_time ? mosqueData.taraweeh_time.slice(0, 5) : "");
+          setJumuahAdhaan(mosqueData.jumuah_adhaan_time ? mosqueData.jumuah_adhaan_time.slice(0, 5) : "12:45");
+          setJumuahKhutbah(mosqueData.jumuah_khutbah_time ? mosqueData.jumuah_khutbah_time.slice(0, 5) : "13:00");
+          setCalculationMethod((mosqueData.calculation_method ?? 3).toString());
+          setMadhab(mosqueData.madhab ?? "hanafi");
+        }
+      } catch (error) {
+        console.error("Error in fetchMosque:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchMosque();
