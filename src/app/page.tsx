@@ -8,18 +8,33 @@ export const revalidate = 300; // Revalidate every 5 minutes
 
 async function getMosqueData() {
   // Single mosque instance - Anwaarul Islam Rondebosch East
-  const { data: mosque, error } = await getSupabaseAdmin()
-    .from("mosques")
-    .select("*")
-    .eq("slug", "anwaarul-islam-rondebosch-east")
-    .single();
+  try {
+    console.log("Attempting to fetch mosque...");
+    console.log("SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "SET" : "NOT SET");
+    console.log("SERVICE_ROLE_KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "SET" : "NOT SET");
 
-  if (error || !mosque) {
-    console.error("Error fetching mosque:", error);
+    const { data: mosque, error } = await getSupabaseAdmin()
+      .from("mosques")
+      .select("*")
+      .eq("slug", "anwaarul-islam-rondebosch-east")
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", JSON.stringify(error));
+      return null;
+    }
+
+    if (!mosque) {
+      console.error("No mosque found");
+      return null;
+    }
+
+    console.log("Mosque found:", mosque.name);
+    return mosque;
+  } catch (e) {
+    console.error("Exception in getMosqueData:", e);
     return null;
   }
-
-  return mosque;
 }
 
 async function getPrayerTimesData(mosque: {
