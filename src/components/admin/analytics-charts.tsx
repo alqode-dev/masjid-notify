@@ -65,7 +65,7 @@ export function AnalyticsCharts() {
         const { data: mosque } = await supabase
           .from("mosques")
           .select("id")
-          .eq("slug", "test-masjid")
+          .eq("slug", "anwaarul-islam-rondebosch-east")
           .single();
 
         if (!mosque) return;

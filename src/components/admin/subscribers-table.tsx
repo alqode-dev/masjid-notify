@@ -101,14 +101,9 @@ export function SubscribersTable({
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   <div className="flex gap-1 flex-wrap">
-                    {subscriber.pref_fajr && (
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                        Fajr
-                      </span>
-                    )}
-                    {subscriber.pref_all_prayers && (
+                    {subscriber.pref_daily_prayers && (
                       <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
-                        All Prayers
+                        Daily Prayers
                       </span>
                     )}
                     {subscriber.pref_jumuah && (
@@ -119,6 +114,11 @@ export function SubscribersTable({
                     {subscriber.pref_hadith && (
                       <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">
                         Hadith
+                      </span>
+                    )}
+                    {subscriber.pref_announcements && (
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                        Announcements
                       </span>
                     )}
                   </div>

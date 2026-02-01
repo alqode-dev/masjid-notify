@@ -24,7 +24,7 @@ export default function QRCodePage() {
       const { data } = await supabase
         .from("mosques")
         .select("name")
-        .eq("slug", "test-masjid")
+        .eq("slug", "anwaarul-islam-rondebosch-east")
         .single();
 
       if (data) {

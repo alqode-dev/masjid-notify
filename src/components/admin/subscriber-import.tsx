@@ -103,12 +103,11 @@ export function SubscriberImport({ mosqueId, onImportComplete }: SubscriberImpor
           phone_number: subscriber.formattedPhone,
           mosque_id: mosqueId,
           status: "active",
-          pref_fajr: true,
-          pref_all_prayers: false,
+          pref_daily_prayers: true,
           pref_jumuah: true,
-          pref_programs: true,
-          pref_hadith: false,
           pref_ramadan: true,
+          pref_hadith: true,
+          pref_announcements: true,
           reminder_offset: 15,
         });
 

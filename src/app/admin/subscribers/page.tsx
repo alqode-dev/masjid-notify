@@ -33,7 +33,7 @@ export default function SubscribersPage() {
       const { data: mosqueData } = await supabase
         .from("mosques")
         .select("*")
-        .eq("slug", "test-masjid")
+        .eq("slug", "anwaarul-islam-rondebosch-east")
         .single();
 
       if (mosqueData) {
@@ -96,17 +96,16 @@ export default function SubscribersPage() {
 
   const handleExport = () => {
     const csv = [
-      ["Phone Number", "Status", "Subscribed At", "Fajr", "All Prayers", "Jumuah", "Programs", "Hadith", "Ramadan"],
+      ["Phone Number", "Status", "Subscribed At", "Daily Prayers", "Jumuah", "Ramadan", "Hadith", "Announcements"],
       ...subscribers.map((s) => [
         s.phone_number,
         s.status,
         new Date(s.subscribed_at).toLocaleDateString(),
-        s.pref_fajr ? "Yes" : "No",
-        s.pref_all_prayers ? "Yes" : "No",
+        s.pref_daily_prayers ? "Yes" : "No",
         s.pref_jumuah ? "Yes" : "No",
-        s.pref_programs ? "Yes" : "No",
-        s.pref_hadith ? "Yes" : "No",
         s.pref_ramadan ? "Yes" : "No",
+        s.pref_hadith ? "Yes" : "No",
+        s.pref_announcements ? "Yes" : "No",
       ]),
     ]
       .map((row) => row.join(","))

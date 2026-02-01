@@ -47,7 +47,7 @@ export default function SettingsPage() {
       const { data } = await supabase
         .from("mosques")
         .select("*")
-        .eq("slug", "test-masjid")
+        .eq("slug", "anwaarul-islam-rondebosch-east")
         .single();
 
       if (data) {

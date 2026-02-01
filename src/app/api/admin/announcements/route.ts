@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get active subscribers with programs preference
+    // Get active subscribers with announcements preference
     const { data: subscribers, error: subscribersError } = await supabaseAdmin
       .from("subscribers")
       .select("phone_number")
       .eq("mosque_id", mosque_id)
       .eq("status", "active")
-      .eq("pref_programs", true);
+      .eq("pref_announcements", true);
 
     if (subscribersError) {
       console.error("Error fetching subscribers:", subscribersError);
