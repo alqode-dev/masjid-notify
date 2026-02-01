@@ -138,12 +138,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Send welcome message via WhatsApp using template
-    // Template variables: mosque_name
-    const templateVars = [mosque.name]
+    // Note: Current test template has no variables
     const whatsappResult = await sendTemplateMessage(
       formattedPhone,
       WELCOME_TEMPLATE,
-      templateVars
+      [] // No variables for current test template
     )
 
     if (!whatsappResult.success) {
@@ -151,8 +150,8 @@ export async function POST(request: NextRequest) {
       // Don't fail the subscription, just log the error
     }
 
-    // Generate message content for logging (preview with actual values)
-    const welcomeMessage = previewTemplate(WELCOME_TEMPLATE, templateVars)
+    // Generate message content for logging
+    const welcomeMessage = previewTemplate(WELCOME_TEMPLATE, [])
 
     // Log the welcome message
     await supabaseAdmin
