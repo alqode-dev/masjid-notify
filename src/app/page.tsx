@@ -1,17 +1,17 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getPrayerTimes } from "@/lib/prayer-times";
 import { LandingPage } from "./landing-page";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // Revalidate every 5 minutes
 
 async function getMosqueData() {
-  // Single mosque instance - Anwaarul Islam Rondebosch East
   const { data: mosque, error } = await getSupabaseAdmin()
     .from("mosques")
     .select("*")
-    .eq("slug", "anwaarul-islam-rondebosch-east")
+    .eq("slug", DEFAULT_MOSQUE_SLUG)
     .single();
 
   if (error || !mosque) {

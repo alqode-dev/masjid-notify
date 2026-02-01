@@ -11,6 +11,7 @@ import type { Message, Mosque, ScheduledMessage } from "@/lib/supabase";
 import { getRelativeTime } from "@/lib/utils";
 import { Calendar, Clock, X } from "lucide-react";
 import { toast } from "sonner";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 export default function AnnouncementsPage() {
   const [mosque, setMosque] = useState<Mosque | null>(null);
@@ -27,7 +28,7 @@ export default function AnnouncementsPage() {
     const { data: mosqueData } = await supabase
       .from("mosques")
       .select("*")
-      .eq("slug", "anwaarul-islam-rondebosch-east")
+      .eq("slug", DEFAULT_MOSQUE_SLUG)
       .single();
 
     if (mosqueData) {

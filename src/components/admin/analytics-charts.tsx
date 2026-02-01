@@ -17,6 +17,7 @@ import {
   Legend,
 } from "recharts";
 import { TrendingUp, PieChartIcon, Users } from "lucide-react";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 interface SubscriberGrowthData {
   date: string;
@@ -65,7 +66,7 @@ export function AnalyticsCharts() {
         const { data: mosque } = await supabase
           .from("mosques")
           .select("id")
-          .eq("slug", "anwaarul-islam-rondebosch-east")
+          .eq("slug", DEFAULT_MOSQUE_SLUG)
           .single();
 
         if (!mosque) return;

@@ -7,6 +7,7 @@ import { AnalyticsCharts } from "@/components/admin/analytics-charts";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, MessageCircle, Bell, TrendingUp } from "lucide-react";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 interface DashboardStats {
   totalSubscribers: number;
@@ -29,7 +30,7 @@ export default function AdminDashboardPage() {
         const { data: mosque } = await supabase
           .from("mosques")
           .select("name")
-          .eq("slug", "anwaarul-islam-rondebosch-east")
+          .eq("slug", DEFAULT_MOSQUE_SLUG)
           .single();
 
         if (mosque) {

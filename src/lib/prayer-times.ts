@@ -354,9 +354,3 @@ export function formatDbTime(time: string): string {
   const displayHours = hours % 12 || 12
   return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
 }
-
-// Get Cape Town coordinates (default for pilot)
-export const CAPE_TOWN_COORDS = {
-  latitude: -33.9249,
-  longitude: 18.4241,
-}

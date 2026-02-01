@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 export default function QRCodePage() {
   const [mosqueName, setMosqueName] = useState("");
@@ -24,7 +25,7 @@ export default function QRCodePage() {
       const { data } = await supabase
         .from("mosques")
         .select("name")
-        .eq("slug", "anwaarul-islam-rondebosch-east")
+        .eq("slug", DEFAULT_MOSQUE_SLUG)
         .single();
 
       if (data) {

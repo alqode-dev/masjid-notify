@@ -10,6 +10,7 @@ import type { Subscriber, Mosque } from "@/lib/supabase";
 import { Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -33,7 +34,7 @@ export default function SubscribersPage() {
       const { data: mosqueData } = await supabase
         .from("mosques")
         .select("*")
-        .eq("slug", "anwaarul-islam-rondebosch-east")
+        .eq("slug", DEFAULT_MOSQUE_SLUG)
         .single();
 
       if (mosqueData) {

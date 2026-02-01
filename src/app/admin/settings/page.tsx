@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import type { Mosque } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Save, Moon, Clock } from "lucide-react";
+import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 const CALCULATION_METHODS = [
   { value: "1", label: "University of Islamic Sciences, Karachi" },
@@ -47,7 +48,7 @@ export default function SettingsPage() {
       const { data } = await supabase
         .from("mosques")
         .select("*")
-        .eq("slug", "anwaarul-islam-rondebosch-east")
+        .eq("slug", DEFAULT_MOSQUE_SLUG)
         .single();
 
       if (data) {

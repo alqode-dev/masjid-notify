@@ -48,12 +48,17 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
             {mosque.name}
           </h1>
 
-          <div className="flex items-center justify-center gap-1 text-muted-foreground">
+          <a
+            href={`https://www.google.com/maps?q=${mosque.latitude},${mosque.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+          >
             <MapPin className="w-4 h-4" />
-            <span className="text-sm">
+            <span className="text-sm underline-offset-2 hover:underline">
               {mosque.city}, {mosque.country}
             </span>
-          </div>
+          </a>
 
           {mosque.ramadan_mode && (
             <motion.div
