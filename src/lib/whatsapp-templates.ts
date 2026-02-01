@@ -83,24 +83,13 @@ May Allah accept your prayers.
  * Variables: mosque_name
  */
 export const WELCOME_TEMPLATE: TemplateDefinition = {
-  name: "welcome_subscriber",
+  name: "masjid_notify_welcome",
   description: "Welcome message for new subscribers",
   category: "UTILITY",
   languages: ["en"],
-  body: `Assalamu Alaikum! Welcome to {{1}} notifications.
-
-You will receive:
-- Prayer time reminders
-- Jumu'ah notifications
-- Important announcements
-
-Reply STOP to unsubscribe
-Reply SETTINGS to manage preferences
-Reply HELP for assistance
-
-JazakAllah Khair for connecting with us!`,
-  variables: ["mosque_name"],
-  sampleValues: ["Green Point Masjid"],
+  body: `Hello! Welcome to Masjid Notify. You'll receive prayer time reminders and announcements here.`,
+  variables: [],
+  sampleValues: [],
 };
 
 /**
