@@ -9,27 +9,32 @@ export const revalidate = 300; // Revalidate every 5 minutes
 async function getMosqueData() {
   // Single mosque instance - Anwaarul Islam Rondebosch East
   try {
-    console.log("Attempting to fetch mosque...");
-    console.log("SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "SET" : "NOT SET");
-    console.log("SERVICE_ROLE_KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "SET" : "NOT SET");
+    const targetSlug = "anwaarul-islam-rondebosch-east";
+    console.log("Querying for slug:", targetSlug);
+    console.log("SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+    // First, try to get ALL mosques to see what's in the table
+    const { data: allMosques, error: listError } = await getSupabaseAdmin()
+      .from("mosques")
+      .select("id, slug, name");
+
+    console.log("All mosques in DB:", JSON.stringify(allMosques));
+    if (listError) {
+      console.error("Error listing mosques:", JSON.stringify(listError));
+    }
 
     const { data: mosque, error } = await getSupabaseAdmin()
       .from("mosques")
       .select("*")
-      .eq("slug", "anwaarul-islam-rondebosch-east")
+      .eq("slug", targetSlug)
       .single();
 
     if (error) {
-      console.error("Supabase error:", JSON.stringify(error));
+      console.error("Error fetching mosque:", JSON.stringify(error));
       return null;
     }
 
-    if (!mosque) {
-      console.error("No mosque found");
-      return null;
-    }
-
-    console.log("Mosque found:", mosque.name);
+    console.log("Mosque found:", mosque?.name);
     return mosque;
   } catch (e) {
     console.error("Exception in getMosqueData:", e);
