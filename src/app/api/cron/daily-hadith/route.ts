@@ -14,7 +14,8 @@ import {
   batchUpdateLastMessageAt,
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
-import type { Mosque, Subscriber, Hadith } from "@/lib/supabase";
+import { getTodaysHadith } from "@/lib/hadith-api";
+import type { Mosque, Subscriber } from "@/lib/supabase";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -30,29 +31,22 @@ export async function GET(request: NextRequest) {
   const logger = createCronLogger("daily-hadith");
 
   try {
-    // Get a random hadith
-    const { data: hadiths, error: hadithError } = await supabaseAdmin
-      .from("hadith")
-      .select("*")
-      .eq("verified", true);
+    // Get today's hadith from the external API (cached for the day)
+    const hadith = await getTodaysHadith();
 
-    if (hadithError || !hadiths || hadiths.length === 0) {
-      logCronError(logger, "No hadith available", { error: hadithError });
+    if (!hadith) {
+      logCronError(logger, "Failed to fetch hadith from external API", {});
       finalizeCronLog(logger);
       return NextResponse.json(
-        { error: "No hadith available" },
+        { error: "Failed to fetch hadith" },
         { status: 500 }
       );
     }
 
-    // Select random hadith
-    const hadith = hadiths[
-      Math.floor(Math.random() * hadiths.length)
-    ] as Hadith;
-
     setCronMetadata(logger, {
-      hadithId: hadith.id,
+      hadithCollection: hadith.collection,
       hadithSource: hadith.source,
+      hadithReference: hadith.reference,
     });
 
     // Get all mosques
@@ -84,7 +78,7 @@ export async function GET(request: NextRequest) {
 
       // Template variables: hadith_text, source, reference, mosque_name
       const templateVars = [
-        hadith.text_english,
+        hadith.textEnglish,
         hadith.source,
         hadith.reference,
         mosque.name,
@@ -115,7 +109,8 @@ export async function GET(request: NextRequest) {
         sent_to_count: sentCount,
         status: "sent",
         metadata: {
-          hadith_id: hadith.id,
+          hadith_collection: hadith.collection,
+          hadith_number: hadith.hadithNumber,
           hadith_source: hadith.source,
           hadith_reference: hadith.reference,
         },
@@ -126,6 +121,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      hadith: {
+        collection: hadith.collection,
+        source: hadith.source,
+        reference: hadith.reference,
+      },
       sent: result.messagesSent,
       durationMs: result.durationMs,
     });

@@ -236,12 +236,9 @@ export async function GET(request: NextRequest) {
 
       for (const prayer of prayers) {
         // Get subscribers who want this prayer reminder
+        // With simplified preferences, pref_daily_prayers covers all 5 prayers
         const eligibleSubscribers = (subscribers as Subscriber[]).filter((s) => {
-          // Check if they want all prayers or specifically Fajr
-          if (prayer.key === "fajr") {
-            return s.pref_fajr || s.pref_all_prayers;
-          }
-          return s.pref_all_prayers;
+          return s.pref_daily_prayers;
         });
 
         if (eligibleSubscribers.length === 0) continue;

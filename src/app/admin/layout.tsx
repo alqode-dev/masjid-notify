@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClientSupabase } from "@/lib/supabase";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Footer } from "@/components/footer";
 
 export default function AdminLayout({
   children,
@@ -78,9 +79,12 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar />
-      <main className="flex-1 p-6 md:p-8 overflow-auto">{children}</main>
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex flex-1">
+        <Sidebar />
+        <main className="flex-1 p-6 md:p-8 overflow-auto">{children}</main>
+      </div>
+      <Footer />
     </div>
   );
 }

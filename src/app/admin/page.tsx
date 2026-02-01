@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
         const { data: mosque } = await supabase
           .from("mosques")
           .select("name")
-          .eq("slug", "test-masjid")
+          .eq("slug", "anwaarul-islam-rondebosch-east")
           .single();
 
         if (mosque) {

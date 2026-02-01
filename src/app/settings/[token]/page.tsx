@@ -31,14 +31,13 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  // Preferences
+  // Preferences (5 simplified options)
   const [reminderOffset, setReminderOffset] = useState("15");
-  const [prefFajr, setPrefFajr] = useState(true);
-  const [prefAllPrayers, setPrefAllPrayers] = useState(false);
+  const [prefDailyPrayers, setPrefDailyPrayers] = useState(true);
   const [prefJumuah, setPrefJumuah] = useState(true);
-  const [prefPrograms, setPrefPrograms] = useState(true);
-  const [prefHadith, setPrefHadith] = useState(false);
   const [prefRamadan, setPrefRamadan] = useState(true);
+  const [prefHadith, setPrefHadith] = useState(true);
+  const [prefAnnouncements, setPrefAnnouncements] = useState(true);
 
   useEffect(() => {
     // Simulate loading subscriber data
@@ -49,12 +48,11 @@ export default function SettingsPage() {
         if (response.ok) {
           const data = await response.json();
           setReminderOffset(data.reminder_offset?.toString() || "15");
-          setPrefFajr(data.pref_fajr ?? true);
-          setPrefAllPrayers(data.pref_all_prayers ?? false);
+          setPrefDailyPrayers(data.pref_daily_prayers ?? true);
           setPrefJumuah(data.pref_jumuah ?? true);
-          setPrefPrograms(data.pref_programs ?? true);
-          setPrefHadith(data.pref_hadith ?? false);
           setPrefRamadan(data.pref_ramadan ?? true);
+          setPrefHadith(data.pref_hadith ?? true);
+          setPrefAnnouncements(data.pref_announcements ?? true);
         } else {
           setError("Invalid or expired link");
         }
@@ -77,12 +75,11 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reminder_offset: parseInt(reminderOffset),
-          pref_fajr: prefFajr,
-          pref_all_prayers: prefAllPrayers,
+          pref_daily_prayers: prefDailyPrayers,
           pref_jumuah: prefJumuah,
-          pref_programs: prefPrograms,
-          pref_hadith: prefHadith,
           pref_ramadan: prefRamadan,
+          pref_hadith: prefHadith,
+          pref_announcements: prefAnnouncements,
         }),
       });
 
@@ -206,45 +203,38 @@ export default function SettingsPage() {
                 </p>
 
                 <Checkbox
-                  label="Fajr reminders"
-                  description="Wake up for Fajr on time"
-                  checked={prefFajr}
-                  onChange={(e) => setPrefFajr(e.target.checked)}
+                  label="All 5 Daily Prayers"
+                  description="Fajr, Dhuhr, Asr, Maghrib, Isha reminders"
+                  checked={prefDailyPrayers}
+                  onChange={(e) => setPrefDailyPrayers(e.target.checked)}
                 />
 
                 <Checkbox
-                  label="All 5 daily prayers"
-                  description="Reminders for every Salah"
-                  checked={prefAllPrayers}
-                  onChange={(e) => setPrefAllPrayers(e.target.checked)}
-                />
-
-                <Checkbox
-                  label="Jumu'ah reminder"
-                  description="Friday prayer notifications"
+                  label="Jumu'ah Khutbah Reminder"
+                  description="Friday prayer notification with Khutbah time"
                   checked={prefJumuah}
                   onChange={(e) => setPrefJumuah(e.target.checked)}
                 />
 
                 <Checkbox
-                  label="Program announcements"
-                  description="Classes, events, and special programs"
-                  checked={prefPrograms}
-                  onChange={(e) => setPrefPrograms(e.target.checked)}
+                  label="Ramadan Mode"
+                  description="Suhoor, Iftar, Taraweeh reminders during Ramadan"
+                  checked={prefRamadan}
+                  onChange={(e) => setPrefRamadan(e.target.checked)}
                 />
 
                 <Checkbox
-                  label="Daily hadith"
-                  description="Authentic hadith after Fajr"
+                  label="Daily Hadith"
+                  description="One authentic hadith every day"
                   checked={prefHadith}
                   onChange={(e) => setPrefHadith(e.target.checked)}
                 />
 
                 <Checkbox
-                  label="Ramadan reminders"
-                  description="Suhoor, Iftar, and Taraweeh notifications"
-                  checked={prefRamadan}
-                  onChange={(e) => setPrefRamadan(e.target.checked)}
+                  label="Announcements & Events"
+                  description="Programs, Eid, special events from mosque"
+                  checked={prefAnnouncements}
+                  onChange={(e) => setPrefAnnouncements(e.target.checked)}
                 />
               </div>
 

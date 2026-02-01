@@ -30,13 +30,12 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
   const [phoneError, setPhoneError] = useState("");
   const [reminderOffset, setReminderOffset] = useState("15");
 
-  // Preferences
-  const [prefFajr, setPrefFajr] = useState(true);
-  const [prefAllPrayers, setPrefAllPrayers] = useState(false);
+  // Preferences (5 simplified options)
+  const [prefDailyPrayers, setPrefDailyPrayers] = useState(true);
   const [prefJumuah, setPrefJumuah] = useState(true);
-  const [prefPrograms, setPrefPrograms] = useState(true);
-  const [prefHadith, setPrefHadith] = useState(false);
   const [prefRamadan, setPrefRamadan] = useState(true);
+  const [prefHadith, setPrefHadith] = useState(true);
+  const [prefAnnouncements, setPrefAnnouncements] = useState(true);
 
   const validatePhone = () => {
     if (!phone.trim()) {
@@ -67,12 +66,11 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
           phone_number: phone,
           mosque_id: mosqueId,
           reminder_offset: parseInt(reminderOffset),
-          pref_fajr: prefFajr,
-          pref_all_prayers: prefAllPrayers,
+          pref_daily_prayers: prefDailyPrayers,
           pref_jumuah: prefJumuah,
-          pref_programs: prefPrograms,
-          pref_hadith: prefHadith,
           pref_ramadan: prefRamadan,
+          pref_hadith: prefHadith,
+          pref_announcements: prefAnnouncements,
         }),
       });
 
@@ -87,14 +85,6 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
       setError(err instanceof Error ? err.message : "Failed to subscribe");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle "All prayers" toggle
-  const handleAllPrayersChange = (checked: boolean) => {
-    setPrefAllPrayers(checked);
-    if (checked) {
-      setPrefFajr(true);
     }
   };
 
@@ -138,45 +128,38 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
 
             <div className="space-y-3">
               <Checkbox
-                label="Fajr reminders"
-                description="Wake up for Fajr on time"
-                checked={prefFajr}
-                onChange={(e) => setPrefFajr(e.target.checked)}
+                label="All 5 Daily Prayers"
+                description="Fajr, Dhuhr, Asr, Maghrib, Isha reminders"
+                checked={prefDailyPrayers}
+                onChange={(e) => setPrefDailyPrayers(e.target.checked)}
               />
 
               <Checkbox
-                label="All 5 daily prayers"
-                description="Reminders for every Salah"
-                checked={prefAllPrayers}
-                onChange={(e) => handleAllPrayersChange(e.target.checked)}
-              />
-
-              <Checkbox
-                label="Jumu'ah reminder"
-                description="Friday prayer notifications"
+                label="Jumu'ah Khutbah Reminder"
+                description="Friday prayer notification with Khutbah time"
                 checked={prefJumuah}
                 onChange={(e) => setPrefJumuah(e.target.checked)}
               />
 
               <Checkbox
-                label="Program announcements"
-                description="Classes, events, and special programs"
-                checked={prefPrograms}
-                onChange={(e) => setPrefPrograms(e.target.checked)}
+                label="Ramadan Mode"
+                description="Suhoor, Iftar, Taraweeh reminders during Ramadan"
+                checked={prefRamadan}
+                onChange={(e) => setPrefRamadan(e.target.checked)}
               />
 
               <Checkbox
-                label="Daily hadith"
-                description="Authentic hadith after Fajr"
+                label="Daily Hadith"
+                description="One authentic hadith every day"
                 checked={prefHadith}
                 onChange={(e) => setPrefHadith(e.target.checked)}
               />
 
               <Checkbox
-                label="Ramadan reminders"
-                description="Suhoor, Iftar, and Taraweeh notifications"
-                checked={prefRamadan}
-                onChange={(e) => setPrefRamadan(e.target.checked)}
+                label="Announcements & Events"
+                description="Programs, Eid, special events from mosque"
+                checked={prefAnnouncements}
+                onChange={(e) => setPrefAnnouncements(e.target.checked)}
               />
             </div>
           </div>

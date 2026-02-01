@@ -7,11 +7,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 300; // Revalidate every 5 minutes
 
 async function getMosqueData() {
-  // For MVP, we're using a single mosque - Test Masjid
+  // Single mosque instance - Anwaarul Islam Rondebosch East
   const { data: mosque, error } = await getSupabaseAdmin()
     .from("mosques")
     .select("*")
-    .eq("slug", "test-masjid")
+    .eq("slug", "anwaarul-islam-rondebosch-east")
     .single();
 
   if (error || !mosque) {

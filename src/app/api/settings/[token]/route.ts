@@ -27,12 +27,11 @@ export async function GET(
         `
         id,
         reminder_offset,
-        pref_fajr,
-        pref_all_prayers,
+        pref_daily_prayers,
         pref_jumuah,
-        pref_programs,
-        pref_hadith,
         pref_ramadan,
+        pref_hadith,
+        pref_announcements,
         settings_token_expires
       `
       )
@@ -58,12 +57,11 @@ export async function GET(
     // Return preferences (without sensitive data)
     return NextResponse.json({
       reminder_offset: subscriber.reminder_offset,
-      pref_fajr: subscriber.pref_fajr,
-      pref_all_prayers: subscriber.pref_all_prayers,
+      pref_daily_prayers: subscriber.pref_daily_prayers,
       pref_jumuah: subscriber.pref_jumuah,
-      pref_programs: subscriber.pref_programs,
-      pref_hadith: subscriber.pref_hadith,
       pref_ramadan: subscriber.pref_ramadan,
+      pref_hadith: subscriber.pref_hadith,
+      pref_announcements: subscriber.pref_announcements,
     });
   } catch (error) {
     console.error("Settings GET error:", error);
@@ -93,12 +91,11 @@ export async function PUT(
     const body = await request.json();
     const {
       reminder_offset,
-      pref_fajr,
-      pref_all_prayers,
+      pref_daily_prayers,
       pref_jumuah,
-      pref_programs,
-      pref_hadith,
       pref_ramadan,
+      pref_hadith,
+      pref_announcements,
     } = body;
 
     // Look up subscriber by settings token
@@ -138,12 +135,11 @@ export async function PUT(
       .from("subscribers")
       .update({
         reminder_offset: reminder_offset ?? 15,
-        pref_fajr: pref_fajr ?? true,
-        pref_all_prayers: pref_all_prayers ?? false,
+        pref_daily_prayers: pref_daily_prayers ?? true,
         pref_jumuah: pref_jumuah ?? true,
-        pref_programs: pref_programs ?? true,
-        pref_hadith: pref_hadith ?? false,
         pref_ramadan: pref_ramadan ?? true,
+        pref_hadith: pref_hadith ?? true,
+        pref_announcements: pref_announcements ?? true,
       })
       .eq("id", subscriber.id);
 

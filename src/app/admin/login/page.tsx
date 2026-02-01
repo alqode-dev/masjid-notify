@@ -7,6 +7,7 @@ import { createClientSupabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Footer } from "@/components/footer";
 import { Lock, Mail } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -43,73 +44,76 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-accent/20 p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <Card className="p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">Admin Login</h1>
-            <p className="text-muted-foreground mt-2">
-              Sign in to manage your mosque
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-accent/20">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
+        >
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Admin Login</h1>
+              <p className="text-muted-foreground mt-2">
+                Sign in to manage your mosque
+              </p>
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm"
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm"
+                >
+                  {error}
+                </motion.div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                loading={loading}
               >
-                {error}
-              </motion.div>
-            )}
+                Sign In
+              </Button>
+            </form>
 
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              loading={loading}
-            >
-              Sign In
-            </Button>
-          </form>
-
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            Contact your administrator if you need access.
-          </p>
-        </Card>
-      </motion.div>
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              Contact your administrator if you need access.
+            </p>
+          </Card>
+        </motion.div>
+      </div>
+      <Footer />
     </div>
   );
 }

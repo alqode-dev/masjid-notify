@@ -34,12 +34,11 @@ export async function POST(request: NextRequest) {
       phone_number,
       mosque_id,
       reminder_offset = 15,
-      pref_fajr = true,
-      pref_all_prayers = false,
+      pref_daily_prayers = true,
       pref_jumuah = true,
-      pref_programs = true,
-      pref_hadith = false,
       pref_ramadan = true,
+      pref_hadith = false,
+      pref_announcements = true,
     } = body
 
     // Validate required fields
@@ -90,12 +89,11 @@ export async function POST(request: NextRequest) {
           .from('subscribers')
           .update({
             status: 'active',
-            pref_fajr,
-            pref_all_prayers,
+            pref_daily_prayers,
             pref_jumuah,
-            pref_programs,
-            pref_hadith,
             pref_ramadan,
+            pref_hadith,
+            pref_announcements,
             reminder_offset,
             subscribed_at: new Date().toISOString(),
           })
@@ -121,12 +119,11 @@ export async function POST(request: NextRequest) {
         .insert({
           phone_number: formattedPhone,
           mosque_id,
-          pref_fajr,
-          pref_all_prayers,
+          pref_daily_prayers,
           pref_jumuah,
-          pref_programs,
-          pref_hadith,
           pref_ramadan,
+          pref_hadith,
+          pref_announcements,
           reminder_offset,
           status: 'active',
         })

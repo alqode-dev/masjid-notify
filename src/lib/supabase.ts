@@ -54,12 +54,11 @@ export type Subscriber = {
   subscribed_at: string;
   status: "active" | "paused" | "unsubscribed";
   pause_until: string | null;
-  pref_fajr: boolean;
-  pref_all_prayers: boolean;
+  pref_daily_prayers: boolean;
   pref_jumuah: boolean;
-  pref_programs: boolean;
-  pref_hadith: boolean;
   pref_ramadan: boolean;
+  pref_hadith: boolean;
+  pref_announcements: boolean;
   reminder_offset: number;
   last_message_at: string | null;
   created_at: string;
@@ -115,6 +114,18 @@ export type PrayerTimesCache = {
     hijriDate: string;
     hijriMonth: string;
   };
+  created_at: string;
+};
+
+export type DailyHadithLog = {
+  id: string;
+  date: string;
+  collection: string;
+  hadith_number: number;
+  hadith_text: string;
+  hadith_arabic: string | null;
+  source: string;
+  reference: string;
   created_at: string;
 };
 
