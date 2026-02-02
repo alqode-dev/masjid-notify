@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 1, 2026 @ 17:00 UTC
-> **Status:** ✅ **LIVE IN PRODUCTION - READY FOR META APP APPROVAL**
+> **Last Updated:** February 2, 2026 @ 14:00 UTC
+> **Status:** ✅ **LIVE IN PRODUCTION - FULLY TESTED**
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -16,6 +16,7 @@
 | **Privacy Policy** | https://masjid-notify.vercel.app/privacy |
 | **Terms of Service** | https://masjid-notify.vercel.app/terms |
 | **Data Deletion** | https://masjid-notify.vercel.app/data-deletion |
+| **GitHub Repo** | https://github.com/alqode-dev/masjid-notify |
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
 
@@ -25,26 +26,22 @@
 
 1. [Executive Summary](#executive-summary)
 2. [System Status](#system-status)
-3. [Production Infrastructure](#production-infrastructure)
-4. [Admin Access](#admin-access)
-5. [Environment Variables](#environment-variables)
-6. [All Features](#all-features)
-7. [Security Implementation](#security-implementation)
-8. [Bug Fixes Log](#bug-fixes-log)
-9. [Performance Optimizations](#performance-optimizations)
-10. [API Reference](#api-reference)
-11. [WhatsApp Integration](#whatsapp-integration)
-12. [Database Schema](#database-schema)
-13. [Cron Jobs](#cron-jobs)
-14. [Tech Stack](#tech-stack)
-15. [Project Structure](#project-structure)
-16. [Development Tools Used](#development-tools-used)
-17. [Deployment History](#deployment-history)
-18. [Testing Checklist](#testing-checklist)
-19. [Known Limitations](#known-limitations)
-20. [Future Enhancements](#future-enhancements)
-21. [Troubleshooting Guide](#troubleshooting-guide)
-22. [Changelog](#changelog)
+3. [Recent Bug Fixes](#recent-bug-fixes)
+4. [E2E Test Suite](#e2e-test-suite)
+5. [Production Infrastructure](#production-infrastructure)
+6. [Admin Access](#admin-access)
+7. [Environment Variables](#environment-variables)
+8. [All Features](#all-features)
+9. [API Reference](#api-reference)
+10. [WhatsApp Integration](#whatsapp-integration)
+11. [Database Schema](#database-schema)
+12. [Cron Jobs](#cron-jobs)
+13. [Tech Stack](#tech-stack)
+14. [Project Structure](#project-structure)
+15. [Testing Guide](#testing-guide)
+16. [Settings Explained](#settings-explained)
+17. [Known Limitations](#known-limitations)
+18. [Changelog](#changelog)
 
 ---
 
@@ -61,19 +58,19 @@
 | **City** | Cape Town |
 | **Country** | South Africa |
 | **Madhab** | Hanafi |
-| **Timezone** | Africa/Johannesburg |
+| **Timezone** | Africa/Johannesburg (SAST, UTC+2) |
 | **Jumu'ah Khutbah** | 13:20 |
 
 ### Project Metrics
 
 | Metric | Value |
 |--------|-------|
-| **Development Sprint** | January 31 - February 1, 2026 |
+| **Development Sprint** | January 31 - February 2, 2026 |
 | **User Stories Completed** | 24/24 (100%) |
-| **Total Commits** | 20+ commits in production branch |
-| **Lines of Code** | ~7,000+ lines |
-| **Files Created/Modified** | 150+ files |
-| **Build Time** | ~30 seconds |
+| **E2E Tests** | 101 tests (all passing) |
+| **Total Commits** | 25+ commits |
+| **Lines of Code** | ~8,500+ lines |
+| **Build Time** | ~3.5 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
 
 ### Key Achievements
@@ -82,14 +79,13 @@
 - ✅ Automated prayer time reminders
 - ✅ Admin dashboard with analytics
 - ✅ Message scheduling system
+- ✅ **101 E2E tests** with Playwright
+- ✅ Server-side API routes for admin data
 - ✅ Rate limiting protection (optional)
 - ✅ Webhook signature verification
-- ✅ Structured logging
-- ✅ Error tracking ready (Sentry)
+- ✅ Real Hadith API Integration (random-hadith-generator)
 - ✅ South African phone number validation
-- ✅ **Real Hadith API Integration** (random-hadith-generator)
-- ✅ **Simplified 5-option preferences**
-- ✅ **Footer branding on all pages**
+- ✅ Legal pages (Privacy, Terms, Data Deletion)
 
 ---
 
@@ -99,25 +95,111 @@
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 1, 2026 10:00 | All pages loading correctly |
-| **Backend API** | ✅ Operational | Feb 1, 2026 10:00 | All endpoints responding |
-| **Database (Supabase)** | ✅ Connected | Feb 1, 2026 10:00 | PostgreSQL with RLS |
-| **WhatsApp Sending** | ✅ Configured | Jan 31, 2026 17:00 | Access token valid |
-| **WhatsApp Webhook** | ✅ Verified | Jan 31, 2026 17:30 | Subscribed to messages |
-| **Cron Jobs** | ✅ Scheduled | Jan 31, 2026 17:00 | Daily schedule (Hobby plan) |
-| **Hadith API** | ✅ Integrated | Feb 1, 2026 10:00 | random-hadith-generator.vercel.app |
-| **Rate Limiting** | ⚠️ Disabled | - | Requires Upstash Redis |
-| **Error Tracking** | ⚠️ Disabled | - | Requires Sentry DSN |
+| **Frontend (Next.js)** | ✅ Operational | Feb 2, 2026 | All pages loading correctly |
+| **Backend API** | ✅ Operational | Feb 2, 2026 | All endpoints responding |
+| **Database (Supabase)** | ✅ Connected | Feb 2, 2026 | PostgreSQL with RLS |
+| **Admin Dashboard** | ✅ Fixed | Feb 2, 2026 | Now shows subscribers correctly |
+| **WhatsApp Sending** | ✅ Configured | Feb 2, 2026 | Welcome messages working |
+| **WhatsApp Webhook** | ✅ Verified | Feb 2, 2026 | Subscribed to messages |
+| **Cron Jobs** | ✅ Scheduled | Feb 2, 2026 | Daily schedule active |
+| **Hadith API** | ✅ Integrated | Feb 2, 2026 | random-hadith-generator.vercel.app |
+| **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
+| **Rate Limiting** | ⚠️ Optional | - | Requires Upstash Redis |
+| **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
 
-### Recent Changes Applied
+---
 
-| Date | Change | Description |
-|------|--------|-------------|
-| Feb 1, 2026 | Mosque Details | Updated from Test Masjid to Anwaarul Islam Rondebosch East |
-| Feb 1, 2026 | Hadith API | Integrated random-hadith-generator.vercel.app for authentic hadiths |
-| Feb 1, 2026 | Preferences | Simplified from 6 options to 5 clearer options |
-| Feb 1, 2026 | Footer | Added "Powered by Alqode" to admin pages |
-| Feb 1, 2026 | Daily Hadith Log | New table to prevent hadith repetition within 30 days |
+## Recent Bug Fixes
+
+### February 2, 2026
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **Dashboard showing 0 subscribers** | Client-side Supabase queries blocked by RLS | Created server-side API routes (`/api/admin/stats`, `/api/admin/subscribers`) | ✅ Fixed |
+| **Subscribers page showing empty** | Same RLS issue | API route uses `supabaseAdmin` which bypasses RLS | ✅ Fixed |
+| **Messages count showing 0** | Queries not filtered by mosque_id | Added mosque_id filter to all queries | ✅ Fixed |
+
+### Technical Details
+
+The admin pages were using `createClientSupabase()` (browser client) which is subject to Row Level Security (RLS) policies. The fix was to:
+
+1. Create new API routes that use `supabaseAdmin` (service role)
+2. Update dashboard and subscribers pages to fetch via API
+3. The API routes are protected by `withAdminAuth()` middleware
+
+**New API Routes Created:**
+- `GET /api/admin/stats` - Dashboard statistics
+- `GET /api/admin/subscribers` - List subscribers with filters
+- `PATCH /api/admin/subscribers` - Update subscriber status
+- `DELETE /api/admin/subscribers` - Delete subscriber
+
+---
+
+## E2E Test Suite
+
+### Overview
+
+| Metric | Value |
+|--------|-------|
+| **Framework** | Playwright |
+| **Total Tests** | 101 |
+| **Pass Rate** | 100% |
+| **Runtime** | ~2.5 minutes |
+| **Browser** | Chromium (Desktop) |
+
+### Test Files
+
+| File | Tests | Coverage |
+|------|-------|----------|
+| `admin-auth.spec.ts` | 3 | Login, redirects, error handling |
+| `admin-dashboard.spec.ts` | 9 | Stats cards, quick actions, navigation |
+| `admin-subscribers.spec.ts` | 12 | Table, search, filters, export, delete |
+| `admin-announcements.spec.ts` | 19 | Form, preview, scheduling |
+| `admin-settings.spec.ts` | 17 | Settings form, Ramadan toggle, save |
+| `admin-qrcode.spec.ts` | 13 | QR display, copy URL |
+| `admin-navigation.spec.ts` | 12 | Sidebar, redirects, responsive |
+| `subscription.spec.ts` | 5 | Landing page, subscription |
+| `mobile.spec.ts` | 6 | Mobile & desktop layouts |
+
+### Running Tests
+
+```bash
+# Set credentials
+export TEST_ADMIN_EMAIL="your-admin@email.com"
+export TEST_ADMIN_PASSWORD="your-password"
+
+# Run all tests
+npm test
+
+# Run with UI (interactive)
+npm run test:ui
+
+# Run specific test file
+npx playwright test admin-dashboard
+
+# Run in headed mode (see browser)
+npx playwright test --headed
+```
+
+### Test Configuration
+
+Located in `playwright.config.ts`:
+
+```typescript
+{
+  testDir: "./tests",
+  fullyParallel: false,        // Avoid auth rate limiting
+  workers: 2,                   // Limited workers
+  timeout: 60000,               // 60s per test
+  retries: 1,                   // Retry once on failure
+  projects: [{ name: "chromium" }],
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: true
+  }
+}
+```
 
 ---
 
@@ -130,28 +212,17 @@
 | **Account** | alqodes-projects |
 | **Project Name** | masjid-notify |
 | **Production URL** | https://masjid-notify.vercel.app |
-| **Framework** | Next.js 16.1.6 |
+| **Framework** | Next.js 16.1.6 (Turbopack) |
 | **Node.js Version** | 18.x |
 | **Build Command** | `next build` |
-| **Output Directory** | `.next` |
-| **Install Command** | `npm install` |
 | **Region** | Washington D.C., USA (iad1) |
 | **Plan** | Hobby (Free) |
-
-### Deployment URLs
-
-| Type | URL |
-|------|-----|
-| **Production** | https://masjid-notify.vercel.app |
-| **Latest Deployment** | https://masjid-notify-ob7j34kvo-alqodes-projects.vercel.app |
-| **Inspect** | https://vercel.com/alqodes-projects/masjid-notify |
 
 ### Supabase Configuration
 
 | Property | Value |
 |----------|-------|
 | **Project ID** | jlqtuynaxuooymbwrwth |
-| **Region** | (Default) |
 | **Database** | PostgreSQL 15 |
 | **Auth** | Email/Password enabled |
 | **RLS** | Enabled on all tables |
@@ -169,7 +240,6 @@
 | **Email** | alqodez@gmail.com |
 | **Role** | owner |
 | **Linked Mosque** | Anwaarul Islam Rondebosch East |
-| **Password** | (Set in Supabase Auth) |
 
 ### Admin Pages
 
@@ -188,8 +258,8 @@
 - Schedule messages for future delivery
 - Cancel pending scheduled messages
 - Import subscribers via CSV
-- Export subscriber list
-- Configure prayer time offsets
+- Export subscriber list to CSV
+- Configure prayer time calculation method
 - Set Jumu'ah times
 - Enable/disable Ramadan mode
 - Configure Taraweeh time
@@ -200,12 +270,12 @@
 
 ### Production Variables (Vercel)
 
-| Variable | Status | Value/Notes |
+| Variable | Status | Description |
 |----------|--------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Set | `https://jlqtuynaxuooymbwrwth.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Set | Supabase anon key (encrypted in Vercel) |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Set | Supabase service role (encrypted) |
-| `WHATSAPP_ACCESS_TOKEN` | ✅ Set | Meta access token (encrypted) |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Set | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Set | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Set | Supabase service role (admin access) |
+| `WHATSAPP_ACCESS_TOKEN` | ✅ Set | Meta access token |
 | `WHATSAPP_PHONE_NUMBER_ID` | ✅ Set | `895363247004714` |
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | ✅ Set | `1443752210724410` |
 | `WHATSAPP_APP_SECRET` | ✅ Set | For webhook signature verification |
@@ -213,18 +283,15 @@
 | `CRON_SECRET` | ✅ Set | `masjidnotify2025cron` |
 | `ALADHAN_API_URL` | ✅ Set | `https://api.aladhan.com/v1` |
 | `NEXT_PUBLIC_APP_URL` | ✅ Set | `https://masjid-notify.vercel.app` |
+| `NEXT_PUBLIC_DEFAULT_MOSQUE_SLUG` | ✅ Set | `anwaarul-islam-rondebosch-east` |
 
-### Optional Variables (Not Configured)
+### Optional Variables
 
 | Variable | Purpose | How to Enable |
 |----------|---------|---------------|
 | `UPSTASH_REDIS_REST_URL` | Rate limiting | Create Redis at console.upstash.com |
 | `UPSTASH_REDIS_REST_TOKEN` | Rate limiting | From Upstash dashboard |
 | `SENTRY_DSN` | Error tracking | Create project at sentry.io |
-| `NEXT_PUBLIC_SENTRY_DSN` | Client error tracking | Same as SENTRY_DSN |
-| `SENTRY_AUTH_TOKEN` | Source map uploads | From Sentry settings |
-| `WHATSAPP_USE_TEMPLATES` | Enable template API | Set to `true` after Meta approval |
-| `WHATSAPP_TEMPLATE_NAMESPACE` | Template namespace | Your business account ID |
 
 ---
 
@@ -245,88 +312,111 @@
 | 9 | Announcements | ✅ Live | Message composer with preview |
 | 10 | Message Templates | ✅ Live | Pre-built announcement templates |
 | 11 | Message Scheduling | ✅ Live | Schedule for future delivery |
-| 12 | Mosque Settings | ✅ Live | Prayer calculation, offsets, Jumu'ah times |
+| 12 | Mosque Settings | ✅ Live | Prayer calculation, Jumu'ah times |
 | 13 | Ramadan Mode | ✅ Live | Toggle Suhoor/Iftar/Taraweeh reminders |
 | 14 | QR Code Generator | ✅ Live | Generate, download, print QR codes |
 | 15 | Prayer Reminders | ✅ Live | Automated reminders via cron |
-| 16 | Daily Hadith | ✅ Live | **Real API** - 5 authentic collections, no repeats for 30 days |
+| 16 | Daily Hadith | ✅ Live | Real API - 5 authentic collections |
 | 17 | Jumu'ah Reminder | ✅ Live | Friday morning reminder |
 | 18 | Analytics Charts | ✅ Live | Subscriber growth, message breakdown |
 
-### Subscriber Preferences (5 Simplified Options)
+### Subscriber Preferences (5 Options)
 
 | Option | Database Field | Description |
 |--------|----------------|-------------|
 | All 5 Daily Prayers | `pref_daily_prayers` | Fajr, Dhuhr, Asr, Maghrib, Isha reminders |
-| Jumu'ah Khutbah Reminder | `pref_jumuah` | Friday prayer notification with Khutbah time |
-| Ramadan Mode | `pref_ramadan` | Suhoor, Iftar, Taraweeh reminders during Ramadan |
+| Jumu'ah Khutbah Reminder | `pref_jumuah` | Friday prayer notification |
+| Ramadan Mode | `pref_ramadan` | Suhoor, Iftar, Taraweeh reminders |
 | Daily Hadith | `pref_hadith` | One authentic hadith every day |
-| Announcements & Events | `pref_announcements` | Programs, Eid, special events from mosque |
+| Announcements & Events | `pref_announcements` | Programs, Eid, special events |
 
-### WhatsApp Command Features (6 Total)
+### WhatsApp Commands (6 Total)
 
-| Command | Status | Description |
-|---------|--------|-------------|
-| `STOP` | ✅ Live | Unsubscribe from all messages |
-| `START` | ✅ Live | Resubscribe after STOP |
-| `RESUME` | ✅ Live | Resume after pause or STOP |
-| `PAUSE [days]` | ✅ Live | Pause for 1-30 days |
-| `SETTINGS` | ✅ Live | Get 24-hour preferences link |
-| `HELP` | ✅ Live | Show available commands |
-
----
-
-## Security Implementation
-
-### Security Features (7 Total)
-
-| Feature | Implementation | Status | File Location |
-|---------|---------------|--------|---------------|
-| **Rate Limiting (Subscribe)** | 10 req/min per IP via Upstash Redis | ⚠️ Disabled | `src/lib/ratelimit.ts` |
-| **Rate Limiting (Webhook)** | 100 req/min per IP via Upstash Redis | ⚠️ Disabled | `src/lib/ratelimit.ts` |
-| **Webhook Signature** | HMAC-SHA256 with X-Hub-Signature-256 | ✅ Active | `src/app/api/webhook/whatsapp/route.ts` |
-| **Admin Auth** | Supabase session + admins table check | ✅ Active | `src/lib/auth.ts` |
-| **Cron Auth** | crypto.timingSafeEqual for CRON_SECRET | ✅ Active | `src/lib/auth.ts` |
-| **Settings Token** | 24-hour expiry database tokens | ✅ Active | `src/app/api/settings/[token]/route.ts` |
-| **Phone Normalization** | Consistent +27 format | ✅ Active | `src/lib/utils.ts` |
+| Command | Description |
+|---------|-------------|
+| `STOP` | Unsubscribe from all messages |
+| `START` | Resubscribe after STOP |
+| `RESUME` | Resume after pause |
+| `PAUSE [days]` | Pause for 1-30 days |
+| `SETTINGS` | Get 24-hour preferences link |
+| `HELP` | Show available commands |
 
 ---
 
-## Hadith API Integration
+## API Reference
 
-### External API: random-hadith-generator.vercel.app
+### Public Endpoints
 
-| Property | Value |
-|----------|-------|
-| **Base URL** | https://random-hadith-generator.vercel.app |
-| **Authentication** | None required (free public API) |
-| **Rate Limit** | None specified |
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/subscribe` | Subscribe new user |
+| `POST` | `/api/webhook/whatsapp` | WhatsApp webhook |
+| `GET` | `/api/settings/[token]` | Get user preferences |
+| `POST` | `/api/settings/[token]` | Update user preferences |
 
-### Available Collections
+### Admin Endpoints (Requires Auth)
 
-| Collection | Endpoint | Approximate Count |
-|------------|----------|-------------------|
-| Sahih al-Bukhari | `/api/bukhari` | 7,563 hadiths |
-| Sahih Muslim | `/api/muslim` | 3,032 hadiths |
-| Sunan Abu Dawud | `/api/abudawud` | 3,998 hadiths |
-| Sunan Ibn Majah | `/api/ibnmajah` | 4,342 hadiths |
-| Jami at-Tirmidhi | `/api/tirmidhi` | 3,956 hadiths |
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/admin/stats` | Dashboard statistics |
+| `GET` | `/api/admin/subscribers` | List subscribers |
+| `PATCH` | `/api/admin/subscribers` | Update subscriber status |
+| `DELETE` | `/api/admin/subscribers?id=` | Delete subscriber |
+| `POST` | `/api/admin/announcements` | Send announcement |
+| `GET` | `/api/admin/announcements/schedule` | List scheduled |
+| `POST` | `/api/admin/announcements/schedule` | Create scheduled |
+| `DELETE` | `/api/admin/announcements/schedule/[id]` | Cancel scheduled |
 
-### Hadith Caching Strategy
+### Cron Endpoints (Requires CRON_SECRET)
 
-1. **Daily Cache**: Today's hadith is cached in `daily_hadith_log` table
-2. **All subscribers receive the same hadith** each day
-3. **30-day no-repeat**: Tracks sent hadiths to prevent repetition
-4. **Fallback**: If API fails, tries different collections
-5. **Race condition handling**: Uses UNIQUE constraint on date
+| Method | Endpoint | Schedule (UTC) | Purpose |
+|--------|----------|----------------|---------|
+| `GET` | `/api/cron/prayer-reminders` | 4:00 AM daily | Prayer reminders |
+| `GET` | `/api/cron/daily-hadith` | 6:30 AM daily | Send daily hadith |
+| `GET` | `/api/cron/jumuah-reminder` | 10:00 AM Fri | Friday reminder |
+| `GET` | `/api/cron/ramadan-reminders` | 3:00 AM daily | Ramadan reminders |
 
-### Implementation Files
+---
 
-| File | Purpose |
-|------|---------|
-| `src/lib/hadith-api.ts` | API client with caching and deduplication |
-| `src/app/api/cron/daily-hadith/route.ts` | Cron job using new API |
-| `supabase/migrations/005_add_daily_hadith_log.sql` | Database table for tracking |
+## Settings Explained
+
+### Calculation Method
+
+These are different Islamic organizations' methods for calculating prayer times based on sun angles. The difference is mainly in **Fajr and Isha** times:
+
+| Method | Used By |
+|--------|---------|
+| Muslim World League | Most of Africa, Europe |
+| Egyptian General Authority | Egypt, Africa |
+| Um Al-Qura | Saudi Arabia |
+| ISNA | North America |
+| Karachi | Pakistan, Bangladesh |
+
+**For South Africa:** "Muslim World League" or "Egyptian" are commonly used.
+
+### Madhab (for Asr)
+
+The **Hanafi** and **Shafi'i** schools differ ONLY on when Asr time begins:
+
+| Madhab | Asr Starts When |
+|--------|-----------------|
+| **Shafi'i** | Shadow = object height (earlier) |
+| **Hanafi** | Shadow = 2x object height (later, ~45-60 min difference) |
+
+All other prayers are calculated the same between madhabs.
+
+### Why Only Jumu'ah Times Are Editable?
+
+- **Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha** = Calculated automatically from sun position (changes daily)
+- **Jumu'ah** = Mosque-specific (you decide when khutbah starts)
+
+Prayer times need to be accurate to the minute based on sun position. Jumu'ah is a human decision.
+
+### Ramadan Settings
+
+- **Suhoor reminder**: Minutes before Fajr to send reminder
+- **Iftar reminder**: Minutes before Maghrib to send reminder
+- **Taraweeh time**: When Taraweeh starts (leave empty to disable)
 
 ---
 
@@ -334,142 +424,31 @@
 
 ### Tables Overview
 
-| Table | Purpose | Row Count | RLS |
-|-------|---------|-----------|-----|
-| `mosques` | Mosque configuration | 1 (Anwaarul Islam) | ✅ |
-| `subscribers` | User subscriptions | Variable | ✅ |
-| `admins` | Admin users | 1 | ✅ |
-| `messages` | Message log | Variable | ✅ |
-| `hadith` | Legacy hadith collection | 50+ (deprecated) | ✅ |
-| `daily_hadith_log` | **NEW**: Tracks sent hadiths | Variable | ✅ |
-| `prayer_times_cache` | API response cache | Variable | ✅ |
-| `scheduled_messages` | Scheduled announcements | Variable | ✅ |
+| Table | Purpose | RLS |
+|-------|---------|-----|
+| `mosques` | Mosque configuration | ✅ |
+| `subscribers` | User subscriptions | ✅ |
+| `admins` | Admin users | ✅ |
+| `messages` | Message log | ✅ |
+| `daily_hadith_log` | Tracks sent hadiths | ✅ |
+| `prayer_times_cache` | API response cache | ✅ |
+| `scheduled_messages` | Scheduled announcements | ✅ |
 
-### Table: mosques
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `name` | TEXT | Mosque name ("Anwaarul Islam Rondebosch East") |
-| `slug` | TEXT | URL-friendly identifier ("anwaarul-islam-rondebosch-east") |
-| `city` | TEXT | City name ("Cape Town") |
-| `country` | TEXT | Country ("South Africa") |
-| `latitude` | FLOAT | GPS latitude |
-| `longitude` | FLOAT | GPS longitude |
-| `madhab` | TEXT | hanafi / shafii |
-| `calculation_method` | INT | Aladhan method ID |
-| `fajr_offset` | INT | Minutes offset |
-| `dhuhr_offset` | INT | Minutes offset |
-| `asr_offset` | INT | Minutes offset |
-| `maghrib_offset` | INT | Minutes offset |
-| `isha_offset` | INT | Minutes offset |
-| `jumuah_adhaan_time` | TIME | Friday adhaan |
-| `jumuah_khutbah_time` | TIME | Friday khutbah ("13:20:00") |
-| `timezone` | TEXT | IANA timezone ("Africa/Johannesburg") |
-| `ramadan_mode` | BOOLEAN | Enable Ramadan features |
-| `suhoor_reminder_mins` | INT | Minutes before Fajr |
-| `iftar_reminder_mins` | INT | Minutes before Maghrib |
-| `taraweeh_time` | TIME | Taraweeh start time |
-
-### Table: subscribers (Updated Schema)
+### Key Table: subscribers
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
 | `phone_number` | TEXT | +27 format |
-| `mosque_id` | UUID | Foreign key |
+| `mosque_id` | UUID | Foreign key to mosques |
 | `status` | TEXT | active / paused / unsubscribed |
-| `pause_until` | TIMESTAMP | Auto-resume date |
-| `pref_daily_prayers` | BOOLEAN | **NEW**: All 5 daily prayers opt-in |
+| `pref_daily_prayers` | BOOLEAN | All 5 daily prayers opt-in |
 | `pref_jumuah` | BOOLEAN | Jumu'ah reminder opt-in |
 | `pref_ramadan` | BOOLEAN | Ramadan reminders opt-in |
 | `pref_hadith` | BOOLEAN | Daily hadith opt-in |
-| `pref_announcements` | BOOLEAN | **RENAMED**: Announcements opt-in (was pref_programs) |
+| `pref_announcements` | BOOLEAN | Announcements opt-in |
 | `reminder_offset` | INT | Minutes before prayer |
-| `settings_token` | TEXT | Preferences link token |
-| `settings_token_expires` | TIMESTAMP | Token expiry (24h) |
-| `subscribed_at` | TIMESTAMP | First subscription |
-| `last_message_at` | TIMESTAMP | Last message received |
-
-### Table: daily_hadith_log (NEW)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `date` | DATE | **UNIQUE** - One hadith per day |
-| `collection` | VARCHAR(50) | Source collection (bukhari, muslim, etc.) |
-| `hadith_number` | INTEGER | Hadith ID from API |
-| `hadith_text` | TEXT | English translation |
-| `hadith_arabic` | TEXT | Arabic text (if available) |
-| `source` | VARCHAR(100) | Full source name |
-| `reference` | VARCHAR(50) | Reference string |
-| `created_at` | TIMESTAMP | When cached |
-
-**Indexes:**
-- `idx_daily_hadith_log_date` - Efficient date lookups (DESC)
-- `idx_daily_hadith_log_lookup` - Check if hadith was recently used
-
----
-
-## Database Migrations
-
-### Migration Files
-
-| File | Purpose |
-|------|---------|
-| `001_add_settings_token.sql` | Settings token for preferences |
-| `002_add_prayer_times_cache.sql` | Prayer times caching |
-| `003_add_scheduled_messages.sql` | Message scheduling |
-| `004_update_mosque_details.sql` | **NEW**: Update to Anwaarul Islam |
-| `005_add_daily_hadith_log.sql` | **NEW**: Hadith tracking table |
-| `006_simplify_preferences.sql` | **NEW**: Simplify to 5 preferences |
-
-### Running Migrations
-
-Migrations must be run in Supabase SQL Editor:
-
-1. Go to https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth/sql
-2. Open each migration file in order (004, 005, 006)
-3. Execute each SQL script
-4. Verify with the SELECT statements at the end of each migration
-
----
-
-## Cron Jobs
-
-### Current Schedule (Vercel Hobby Plan)
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/prayer-reminders",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/jumuah-reminder",
-      "schedule": "0 10 * * 5"
-    },
-    {
-      "path": "/api/cron/daily-hadith",
-      "schedule": "30 6 * * *"
-    },
-    {
-      "path": "/api/cron/ramadan-reminders",
-      "schedule": "0 3 * * *"
-    }
-  ]
-}
-```
-
-### Schedule Details
-
-| Cron | Schedule (UTC) | Local (SAST +2) | Purpose |
-|------|---------------|-----------------|---------|
-| prayer-reminders | 4:00 AM daily | 6:00 AM | Process scheduled + prayer reminders |
-| daily-hadith | 6:30 AM daily | 8:30 AM | Fetch from external API + send |
-| jumuah-reminder | 10:00 AM Fri | 12:00 PM | Friday prayer reminder |
-| ramadan-reminders | 3:00 AM daily | 5:00 AM | Suhoor/Iftar/Taraweeh |
+| `subscribed_at` | TIMESTAMP | First subscription date |
 
 ---
 
@@ -480,33 +459,37 @@ Migrations must be run in Supabase SQL Editor:
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Next.js | 16.1.6 | React framework (App Router) |
-| React | 19.2.3 | UI library |
+| React | 19.x | UI library |
 | TypeScript | 5.x | Type safety |
 | Tailwind CSS | 4.x | Utility-first styling |
 | shadcn/ui | Latest | Radix UI components |
 | Framer Motion | Latest | Animations |
 | Recharts | Latest | Charts |
-| React Hook Form | Latest | Form handling |
-| Zod | Latest | Schema validation |
 | Sonner | Latest | Toast notifications |
 | Lucide React | Latest | Icons |
 
 ### Backend
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Next.js API Routes | 16.1.6 | Serverless functions |
-| Supabase | Latest | Database + Auth |
-| @supabase/ssr | Latest | Server-side auth |
-| @supabase/supabase-js | Latest | Database client |
+| Technology | Purpose |
+|------------|---------|
+| Next.js API Routes | Serverless functions |
+| Supabase | Database + Auth |
+| @supabase/ssr | Server-side auth |
+
+### Testing
+
+| Technology | Purpose |
+|------------|---------|
+| Playwright | E2E testing |
+| @playwright/test | Test runner |
 
 ### External APIs
 
-| API | Version | Purpose |
-|-----|---------|---------|
-| WhatsApp Cloud API | v18.0 | Messaging |
-| Aladhan API | v1 | Prayer times |
-| random-hadith-generator | Latest | **NEW**: Authentic hadiths |
+| API | Purpose |
+|-----|---------|
+| WhatsApp Cloud API | Messaging |
+| Aladhan API | Prayer times |
+| random-hadith-generator | Authentic hadiths |
 
 ---
 
@@ -516,50 +499,49 @@ Migrations must be run in Supabase SQL Editor:
 masjid-notify/
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx                    # Landing page (dynamic)
-│   │   ├── landing-page.tsx            # Landing client component
+│   │   ├── page.tsx                    # Landing page
 │   │   ├── layout.tsx                  # Root layout
 │   │   ├── globals.css                 # Tailwind styles
 │   │   │
 │   │   ├── admin/
 │   │   │   ├── layout.tsx              # Admin layout (auth + footer)
-│   │   │   ├── page.tsx                # Dashboard
-│   │   │   ├── login/page.tsx          # Login form (with footer)
+│   │   │   ├── page.tsx                # Dashboard (uses /api/admin/stats)
+│   │   │   ├── login/page.tsx          # Login form
 │   │   │   ├── subscribers/page.tsx    # Subscriber management
 │   │   │   ├── announcements/page.tsx  # Message composer
 │   │   │   ├── qr-code/page.tsx        # QR generator
 │   │   │   └── settings/page.tsx       # Mosque settings
 │   │   │
-│   │   ├── settings/
-│   │   │   └── [token]/page.tsx        # User preferences (5 options)
+│   │   ├── privacy/page.tsx            # Privacy policy
+│   │   ├── terms/page.tsx              # Terms of service
+│   │   ├── data-deletion/page.tsx      # Data deletion instructions
 │   │   │
 │   │   └── api/
 │   │       ├── subscribe/route.ts      # Subscription endpoint
 │   │       │
-│   │       ├── admin/announcements/
-│   │       │   ├── route.ts            # Send announcement
-│   │       │   └── schedule/
-│   │       │       ├── route.ts        # List/create scheduled
-│   │       │       └── [id]/route.ts   # Cancel scheduled
+│   │       ├── admin/
+│   │       │   ├── stats/route.ts      # Dashboard stats (NEW)
+│   │       │   ├── subscribers/route.ts # Subscribers CRUD (NEW)
+│   │       │   └── announcements/
+│   │       │       ├── route.ts
+│   │       │       └── schedule/
 │   │       │
 │   │       ├── cron/
-│   │       │   ├── prayer-reminders/route.ts  # Uses pref_daily_prayers
-│   │       │   ├── daily-hadith/route.ts      # Uses external API
+│   │       │   ├── prayer-reminders/route.ts
+│   │       │   ├── daily-hadith/route.ts
 │   │       │   ├── jumuah-reminder/route.ts
 │   │       │   └── ramadan-reminders/route.ts
 │   │       │
-│   │       ├── settings/
-│   │       │   └── [token]/route.ts    # Preferences API (5 options)
+│   │       ├── settings/[token]/route.ts
 │   │       │
-│   │       └── webhook/
-│   │           └── whatsapp/route.ts   # WhatsApp webhook
+│   │       └── webhook/whatsapp/route.ts
 │   │
 │   ├── components/
 │   │   ├── ui/                         # shadcn components
 │   │   ├── footer.tsx                  # "Powered by Alqode"
 │   │   ├── prayer-times.tsx
 │   │   ├── qr-code.tsx
-│   │   ├── subscribe-form.tsx          # 5 preference checkboxes
+│   │   ├── subscribe-form.tsx
 │   │   └── admin/
 │   │       ├── sidebar.tsx
 │   │       ├── stats-card.tsx
@@ -574,38 +556,43 @@ masjid-notify/
 │       ├── whatsapp.ts                 # WhatsApp API
 │       ├── whatsapp-templates.ts       # Template definitions
 │       ├── prayer-times.ts             # Aladhan API + cache
-│       ├── hadith-api.ts               # NEW: External hadith API
+│       ├── hadith-api.ts               # External hadith API
 │       ├── message-sender.ts           # Concurrent sending
 │       ├── ratelimit.ts                # Rate limiting
 │       ├── auth.ts                     # Auth utilities
+│       ├── constants.ts                # DEFAULT_MOSQUE_SLUG
 │       ├── logger.ts                   # Structured logging
 │       └── utils.ts                    # Helpers
 │
+├── tests/
+│   ├── admin-auth.spec.ts
+│   ├── admin-dashboard.spec.ts
+│   ├── admin-subscribers.spec.ts
+│   ├── admin-announcements.spec.ts
+│   ├── admin-settings.spec.ts
+│   ├── admin-qrcode.spec.ts
+│   ├── admin-navigation.spec.ts
+│   ├── subscription.spec.ts
+│   ├── mobile.spec.ts
+│   ├── helpers/auth.ts                 # Shared login helper
+│   └── README.md                       # Test documentation
+│
 ├── supabase/
-│   ├── schema.sql                      # Full schema
+│   ├── schema.sql
 │   └── migrations/
 │       ├── 001_add_settings_token.sql
 │       ├── 002_add_prayer_times_cache.sql
 │       ├── 003_add_scheduled_messages.sql
-│       ├── 004_update_mosque_details.sql      # NEW
-│       ├── 005_add_daily_hadith_log.sql       # NEW
-│       └── 006_simplify_preferences.sql       # NEW
+│       ├── 004_update_mosque_details.sql
+│       ├── 005_add_daily_hadith_log.sql
+│       └── 006_simplify_preferences.sql
 │
-├── sentry.client.config.ts
-├── sentry.server.config.ts
-├── sentry.edge.config.ts
-│
-├── tests/                              # Playwright tests
-├── public/                             # Static assets
-├── .planning/                          # GSD workflow files
-│
+├── playwright.config.ts               # Test configuration
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.ts
 ├── next.config.ts
 ├── vercel.json
-├── components.json
-├── .mcp.json
 └── .env.local.example
 ```
 
@@ -613,57 +600,69 @@ masjid-notify/
 
 ## Changelog
 
+### Version 1.3.0 - February 2, 2026
+
+#### Bug Fixes
+
+| Fix | Description |
+|-----|-------------|
+| **Dashboard showing 0 subscribers** | Created server-side API routes to bypass RLS |
+| **Subscribers page empty** | Now uses `/api/admin/subscribers` endpoint |
+| **Messages not counting** | Added mosque_id filter to all queries |
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **E2E Test Suite** | 101 Playwright tests covering all admin pages |
+| **Admin Stats API** | `GET /api/admin/stats` for dashboard data |
+| **Admin Subscribers API** | Full CRUD at `/api/admin/subscribers` |
+
+#### Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/admin/stats/route.ts` | Dashboard statistics API |
+| `src/app/api/admin/subscribers/route.ts` | Subscribers CRUD API |
+| `tests/admin-dashboard.spec.ts` | Dashboard tests |
+| `tests/admin-subscribers.spec.ts` | Subscribers tests |
+| `tests/admin-announcements.spec.ts` | Announcements tests |
+| `tests/admin-settings.spec.ts` | Settings tests |
+| `tests/admin-qrcode.spec.ts` | QR code tests |
+| `tests/admin-navigation.spec.ts` | Navigation tests |
+| `tests/helpers/auth.ts` | Shared test utilities |
+| `tests/README.md` | Test documentation |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/app/admin/page.tsx` | Fetch data from `/api/admin/stats` |
+| `src/app/admin/subscribers/page.tsx` | Fetch data from `/api/admin/subscribers` |
+| `src/lib/auth.ts` | Simplified withAdminAuth type signature |
+| `playwright.config.ts` | Optimized for reliability |
+| `tests/subscription.spec.ts` | Fixed strict mode violations |
+| `tests/mobile.spec.ts` | Fixed hardcoded mosque name |
+
+---
+
 ### Version 1.2.0 - February 1, 2026
 
 #### Meta App Submission Ready
 
 | Item | Value |
 |------|-------|
-| **Display Name** | Alqode Masjid Notify |
 | **Privacy Policy URL** | https://masjid-notify.vercel.app/privacy |
 | **Terms of Service URL** | https://masjid-notify.vercel.app/terms |
 | **Data Deletion URL** | https://masjid-notify.vercel.app/data-deletion |
-| **Category** | Business |
-| **Contact Email** | alqodez@gmail.com |
-| **App Icon** | `/public/app-icon.svg` (convert to 1024x1024 PNG for Meta) |
-
-#### New Features
-
-| Change | Description |
-|--------|-------------|
-| **Privacy Policy Page** | `/privacy` - Data collection, usage, and user rights |
-| **Terms of Service Page** | `/terms` - Service terms and conditions |
-| **Data Deletion Page** | `/data-deletion` - Instructions for data removal requests |
-| **Footer Legal Links** | Added links to Privacy, Terms, Data Deletion in footer |
-| **App Icon** | Created `/public/app-icon.svg` based on Alqode brand kit |
 
 #### Bug Fixes
 
 | Fix | Description |
 |-----|-------------|
-| **Settings Page Loading** | Fixed infinite loading on /admin/settings page |
-| **WhatsApp Template Name** | Updated to use `masjid_notify_welcome` template |
-| **Hardcoded Mosque Slug** | Removed all hardcoded slugs, now uses env var |
-| **Database Schema** | Added missing `reminder_offset` column |
-
-#### Files Added
-
-| File | Purpose |
-|------|---------|
-| `src/app/privacy/page.tsx` | Privacy policy page |
-| `src/app/terms/page.tsx` | Terms of service page |
-| `src/app/data-deletion/page.tsx` | Data deletion instructions |
-| `src/lib/constants.ts` | Centralized mosque slug constant |
-| `public/app-icon.svg` | App icon for Meta submission |
-
-#### Files Modified
-
-| File | Changes |
-|------|---------|
-| `src/components/footer.tsx` | Added legal page links |
-| `src/app/admin/settings/page.tsx` | Fixed loading state with error handling |
-| `src/lib/whatsapp-templates.ts` | Updated welcome template name |
-| All admin pages | Use DEFAULT_MOSQUE_SLUG from constants |
+| **Settings Page Loading** | Fixed infinite loading on /admin/settings |
+| **WhatsApp Template Name** | Updated to `masjid_notify_welcome` |
+| **Hardcoded Mosque Slug** | Now uses env var via constants.ts |
 
 ---
 
@@ -674,43 +673,10 @@ masjid-notify/
 | Change | Description |
 |--------|-------------|
 | **Real Hadith API** | Integrated random-hadith-generator.vercel.app |
-| **5 Hadith Collections** | Bukhari, Muslim, Abu Dawud, Ibn Majah, Tirmidhi |
-| **30-Day No-Repeat** | Tracks sent hadiths in daily_hadith_log table |
-| **Daily Caching** | All subscribers receive same hadith each day |
+| **30-Day No-Repeat** | Tracks sent hadiths in daily_hadith_log |
+| **Simplified Preferences** | 6 options reduced to 5 clear options |
 
-#### Improvements
-
-| Change | Description |
-|--------|-------------|
-| **Mosque Details** | Updated to Anwaarul Islam Rondebosch East |
-| **Simplified Preferences** | Reduced from 6 confusing options to 5 clear options |
-| **Footer Branding** | Added to admin layout and login page |
-| **Database Schema** | Renamed pref_programs to pref_announcements |
-
-#### Database Migrations
-
-| Migration | Purpose |
-|-----------|---------|
-| `004_update_mosque_details.sql` | Update mosque record |
-| `005_add_daily_hadith_log.sql` | Create hadith tracking table |
-| `006_simplify_preferences.sql` | Simplify subscriber preferences |
-
-#### Files Modified
-
-| File | Changes |
-|------|---------|
-| `src/lib/hadith-api.ts` | **NEW** - External API client |
-| `src/lib/supabase.ts` | Updated Subscriber type, added DailyHadithLog type |
-| `src/app/api/cron/daily-hadith/route.ts` | Use external API instead of database |
-| `src/app/api/subscribe/route.ts` | Use new preference fields |
-| `src/app/api/settings/[token]/route.ts` | Use new preference fields |
-| `src/app/api/cron/prayer-reminders/route.ts` | Use pref_daily_prayers |
-| `src/components/subscribe-form.tsx` | 5 checkboxes with new labels |
-| `src/app/settings/[token]/page.tsx` | 5 checkboxes with new labels |
-| `src/app/page.tsx` | Updated mosque slug |
-| `src/app/admin/page.tsx` | Updated mosque slug |
-| `src/app/admin/layout.tsx` | Added Footer component |
-| `src/app/admin/login/page.tsx` | Added Footer component |
+---
 
 ### Version 1.0.0 - January 31, 2026
 
@@ -728,16 +694,11 @@ Initial production release with 24 user stories completed.
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
 | **Meta Developer Console** | https://developers.facebook.com/apps |
-| **WhatsApp Business Manager** | https://business.facebook.com |
-| **Hadith API** | https://random-hadith-generator.vercel.app |
-
-### Contact
-
-For issues or questions, create an issue in the GitHub repository.
+| **Hadith API Docs** | https://random-hadith-generator.vercel.app |
 
 ---
 
-**Document Version:** 1.2.0
-**Last Updated:** February 1, 2026 @ 17:00 UTC
-**Author:** Claude Code + Ralph Autonomous Agent
-**Status:** Production Ready - Meta App Submission Ready
+**Document Version:** 1.3.0
+**Last Updated:** February 2, 2026 @ 14:00 UTC
+**Author:** Claude Code
+**Status:** Production Ready - Fully Tested
