@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientSupabase } from "@/lib/supabase";
 import { StatsCard } from "@/components/admin/stats-card";
 import { AnalyticsCharts } from "@/components/admin/analytics-charts";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, MessageCircle, Bell, TrendingUp } from "lucide-react";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 interface DashboardStats {
+  mosqueName: string;
   totalSubscribers: number;
   activeSubscribers: number;
   totalMessages: number;
@@ -19,75 +18,23 @@ interface DashboardStats {
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mosqueName, setMosqueName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const supabase = createClientSupabase();
-
       try {
-        // Get mosque info
-        const { data: mosque } = await supabase
-          .from("mosques")
-          .select("id, name")
-          .eq("slug", DEFAULT_MOSQUE_SLUG)
-          .single();
+        const response = await fetch("/api/admin/stats");
 
-        if (mosque) {
-          setMosqueName(mosque.name);
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to fetch stats");
         }
 
-        if (!mosque) {
-          console.error("Mosque not found for slug:", DEFAULT_MOSQUE_SLUG);
-          setLoading(false);
-          return;
-        }
-
-        // Get subscriber counts - filtered by mosque_id
-        const { count: totalSubscribers } = await supabase
-          .from("subscribers")
-          .select("*", { count: "exact", head: true })
-          .eq("mosque_id", mosque.id);
-
-        const { count: activeSubscribers } = await supabase
-          .from("subscribers")
-          .select("*", { count: "exact", head: true })
-          .eq("mosque_id", mosque.id)
-          .eq("status", "active");
-
-        // Get message counts - filtered by mosque_id
-        const { data: totalMessagesData } = await supabase
-          .from("messages")
-          .select("sent_to_count")
-          .eq("mosque_id", mosque.id);
-
-        const totalMessages = totalMessagesData?.reduce(
-          (sum, msg) => sum + (msg.sent_to_count || 0),
-          0
-        ) || 0;
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const { data: todayMessagesData } = await supabase
-          .from("messages")
-          .select("sent_to_count")
-          .eq("mosque_id", mosque.id)
-          .gte("sent_at", today.toISOString());
-
-        const todayMessages = todayMessagesData?.reduce(
-          (sum, msg) => sum + (msg.sent_to_count || 0),
-          0
-        ) || 0;
-
-        setStats({
-          totalSubscribers: totalSubscribers || 0,
-          activeSubscribers: activeSubscribers || 0,
-          totalMessages: totalMessages || 0,
-          todayMessages: todayMessages || 0,
-        });
-      } catch (error) {
-        console.error("Error fetching stats:", error);
+        const data = await response.json();
+        setStats(data);
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+        setError(err instanceof Error ? err.message : "Failed to load dashboard");
       } finally {
         setLoading(false);
       }
@@ -110,10 +57,18 @@ export default function AdminDashboardPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{mosqueName}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{stats?.mosqueName}</h1>
         <p className="text-muted-foreground">Dashboard Overview</p>
       </div>
 
@@ -126,7 +81,7 @@ export default function AdminDashboardPage() {
         <StatsCard
           title="Active Subscribers"
           value={stats?.activeSubscribers || 0}
-          subtitle={`${stats?.totalSubscribers ? Math.round((stats.activeSubscribers / stats.totalSubscribers) * 100) : 0}% of total`}
+          subtitle={`${stats?.totalSubscribers ? Math.round(((stats?.activeSubscribers || 0) / stats.totalSubscribers) * 100) : 0}% of total`}
           icon={TrendingUp}
         />
         <StatsCard

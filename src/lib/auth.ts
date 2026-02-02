@@ -86,20 +86,20 @@ export async function verifyAdminAuth(): Promise<AuthResult> {
  * Higher-order function to wrap API handlers with admin authentication
  * Use this to protect admin routes
  */
-export function withAdminAuth<T>(
+export function withAdminAuth(
   handler: (
     request: Request,
     context: { user: { id: string; email: string }; admin: Admin }
-  ) => Promise<NextResponse<T>>
+  ) => Promise<NextResponse>
 ) {
-  return async (request: Request): Promise<NextResponse<T | { error: string }>> => {
+  return async (request: Request): Promise<NextResponse> => {
     const authResult = await verifyAdminAuth();
 
     if (!authResult.authenticated) {
       return NextResponse.json(
         { error: authResult.error },
         { status: authResult.status }
-      ) as NextResponse<{ error: string }>;
+      );
     }
 
     return handler(request, {

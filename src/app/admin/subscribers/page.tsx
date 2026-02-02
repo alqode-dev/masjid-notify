@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientSupabase } from "@/lib/supabase";
 import { SubscribersTable } from "@/components/admin/subscribers-table";
 import { SubscriberImport } from "@/components/admin/subscriber-import";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,6 @@ import type { Subscriber, Mosque } from "@/lib/supabase";
 import { Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -27,49 +25,25 @@ export default function SubscribersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchSubscribers = async () => {
-    const supabase = createClientSupabase();
+    try {
+      const response = await fetch(`/api/admin/subscribers?status=${statusFilter}`);
 
-    // Get mosque first
-    let currentMosque = mosque;
-    if (!currentMosque) {
-      const { data: mosqueData } = await supabase
-        .from("mosques")
-        .select("*")
-        .eq("slug", DEFAULT_MOSQUE_SLUG)
-        .single();
-
-      if (mosqueData) {
-        currentMosque = mosqueData as Mosque;
-        setMosque(currentMosque);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to fetch subscribers");
       }
-    }
 
-    if (!currentMosque) {
-      console.error("Mosque not found for slug:", DEFAULT_MOSQUE_SLUG);
-      setLoading(false);
-      return;
-    }
-
-    // Filter subscribers by mosque_id
-    let query = supabase
-      .from("subscribers")
-      .select("*")
-      .eq("mosque_id", currentMosque.id)
-      .order("subscribed_at", { ascending: false });
-
-    if (statusFilter !== "all") {
-      query = query.eq("status", statusFilter);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
+      const data = await response.json();
+      setSubscribers(data.subscribers || []);
+      if (data.mosque) {
+        setMosque(data.mosque);
+      }
+    } catch (error) {
       console.error("Error fetching subscribers:", error);
       toast.error("Failed to load subscribers");
-    } else {
-      setSubscribers(data || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -77,31 +51,42 @@ export default function SubscribersPage() {
   }, [statusFilter]);
 
   const handleStatusChange = async (id: string, status: Subscriber["status"]) => {
-    const supabase = createClientSupabase();
-    const { error } = await supabase
-      .from("subscribers")
-      .update({ status })
-      .eq("id", id);
+    try {
+      const response = await fetch("/api/admin/subscribers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
 
-    if (error) {
-      toast.error("Failed to update status");
-    } else {
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update status");
+      }
+
       toast.success(`Status updated to ${status}`);
       fetchSubscribers();
+    } catch (error) {
+      toast.error("Failed to update status");
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this subscriber?")) return;
 
-    const supabase = createClientSupabase();
-    const { error } = await supabase.from("subscribers").delete().eq("id", id);
+    try {
+      const response = await fetch(`/api/admin/subscribers?id=${id}`, {
+        method: "DELETE",
+      });
 
-    if (error) {
-      toast.error("Failed to delete subscriber");
-    } else {
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete subscriber");
+      }
+
       toast.success("Subscriber deleted");
       fetchSubscribers();
+    } catch (error) {
+      toast.error("Failed to delete subscriber");
     }
   };
 
