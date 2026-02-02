@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 2, 2026 @ 22:00 UTC
-> **Status:** ✅ **LIVE IN PRODUCTION - FULLY TESTED**
+> **Last Updated:** February 3, 2026 @ 00:30 UTC
+> **Status:** ⚠️ **WHATSAPP ACCOUNT UNDER REVIEW** - App code ready, awaiting Meta appeal
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -103,13 +103,126 @@
 | **Backend API** | ✅ Operational | Feb 2, 2026 | All endpoints responding |
 | **Database (Supabase)** | ✅ Connected | Feb 2, 2026 | PostgreSQL with RLS |
 | **Admin Dashboard** | ✅ Fixed | Feb 2, 2026 | Now shows subscribers correctly |
-| **WhatsApp Sending** | ✅ Configured | Feb 2, 2026 | Welcome messages working |
-| **WhatsApp Webhook** | ✅ Verified | Feb 2, 2026 | Subscribed to messages |
+| **WhatsApp Sending** | ⚠️ Suspended | Feb 2, 2026 | Account under Meta review (appeal submitted) |
+| **WhatsApp Webhook** | ⚠️ Suspended | Feb 2, 2026 | Awaiting account restoration |
 | **Cron Jobs** | ✅ Scheduled | Feb 2, 2026 | Daily schedule active |
 | **Hadith API** | ✅ Integrated | Feb 2, 2026 | random-hadith-generator.vercel.app |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
 | **Rate Limiting** | ⚠️ Optional | - | Requires Upstash Redis |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
+
+---
+
+## WhatsApp Account Status & Compliance
+
+### Current Status: ⚠️ UNDER REVIEW
+
+| Item | Status | Details |
+|------|--------|---------|
+| **Account Status** | 🔴 Suspended | "Activity that does not comply with WhatsApp Business terms of service" |
+| **Appeal Submitted** | ✅ Yes | February 2, 2026 |
+| **Expected Response** | 24-48 hours | Meta review in progress |
+| **Business Name** | Bochi / Masjid Notify | Mosque prayer reminder service |
+
+### Why the Ban Likely Occurred
+
+| Cause | Explanation | Prevention |
+|-------|-------------|------------|
+| **New unverified account** | Meta is suspicious of new WhatsApp Business accounts | Get Meta Business Verified |
+| **No approved templates** | Messages sent without Meta-approved templates | Submit templates for approval FIRST |
+| **Testing pattern** | Repeatedly deleting/re-adding numbers looks like spam testing | Use dedicated test numbers |
+| **Rapid messaging** | Sending multiple messages quickly on new account | Warm up account gradually |
+
+### WhatsApp Business Terms Compliance
+
+Our service **fully complies** with WhatsApp's terms:
+
+| Requirement | Our Status | Evidence |
+|-------------|------------|----------|
+| **Explicit opt-in** | ✅ Compliant | Users subscribe via web form voluntarily |
+| **No spam** | ✅ Compliant | Only send to opted-in users |
+| **Valuable content** | ✅ Compliant | Prayer times, religious reminders |
+| **Easy opt-out** | ✅ Compliant | STOP command instantly unsubscribes |
+| **No prohibited products** | ✅ Compliant | Religious/community service only |
+| **No cold outreach** | ✅ Compliant | Never message non-subscribers |
+| **User control** | ✅ Compliant | SETTINGS, PAUSE, preferences |
+
+---
+
+## WhatsApp Ban Prevention Guide
+
+### What Respond.io & BSPs Do (Best Practices)
+
+| Practice | What They Do | Our Implementation |
+|----------|--------------|-------------------|
+| **Business Verification** | Get Meta Business verified (blue checkmark) | ❌ TODO: Apply for verification |
+| **Template Approval** | ONLY send pre-approved templates, never plain text for first contact | ⚠️ Templates created, need approval |
+| **Double Opt-in** | Send "Reply YES to confirm" after signup | ❌ TODO: Implement |
+| **Number Warmup** | Start 50 msgs/day, increase 20% weekly | ❌ TODO: Implement rate scaling |
+| **Quality Monitoring** | Track blocks/reports, auto-pause if quality drops | ❌ TODO: Implement |
+| **Dedicated Test Numbers** | Use separate numbers for testing | ❌ TODO: Get test number |
+| **Message Spacing** | Min 1 second between messages | ✅ Implemented (p-limit) |
+| **Opt-out Compliance** | Process STOP within 24 hours | ✅ Implemented (instant) |
+
+### Implementation Priority (After Account Restored)
+
+#### Phase 1: Immediate (Before ANY messaging)
+1. **Get ALL templates approved by Meta** before sending any messages
+2. **Set up a test phone number** - never test with production number
+3. **Verify Meta Business** - apply for business verification
+
+#### Phase 2: Number Warmup Strategy
+```
+Week 1: Max 50 messages/day
+Week 2: Max 100 messages/day
+Week 3: Max 250 messages/day
+Week 4: Max 500 messages/day
+Week 5+: Gradual increase to 1000/day
+```
+
+#### Phase 3: Quality Protection (Future Implementation)
+- Track message delivery rates
+- Monitor for user blocks/reports
+- Auto-pause sending if quality drops below 90%
+- Implement "message quality score" dashboard
+
+### WhatsApp Message Templates Status
+
+| Template | Purpose | Meta Status | Action Needed |
+|----------|---------|-------------|---------------|
+| `masjid_notify_welcome` | Welcome message | ⚠️ Unknown | Verify in Meta dashboard |
+| `prayer_reminder` | Prayer time alerts | ❌ Not submitted | Submit for approval |
+| `jumuah_reminder` | Friday reminder | ❌ Not submitted | Submit for approval |
+| `daily_hadith` | Hadith messages | ❌ Not submitted | Submit for approval |
+| `ramadan_suhoor` | Suhoor reminder | ❌ Not submitted | Submit for approval |
+| `ramadan_iftar` | Iftar reminder | ❌ Not submitted | Submit for approval |
+| `ramadan_taraweeh` | Taraweeh reminder | ❌ Not submitted | Submit for approval |
+| `tahajjud_reminder` | Tahajjud alert | ❌ Not submitted | Submit for approval |
+| `ishraq_reminder` | Ishraq alert | ❌ Not submitted | Submit for approval |
+| `awwabin_reminder` | Awwabin alert | ❌ Not submitted | Submit for approval |
+| `suhoor_planning` | Night-before suhoor | ❌ Not submitted | Submit for approval |
+| `mosque_announcement` | Announcements | ❌ Not submitted | Submit for approval |
+
+### How to Submit Templates to Meta
+
+1. Go to **Meta Business Manager**: https://business.facebook.com/
+2. Navigate to: **WhatsApp Manager > Account Tools > Message Templates**
+3. Click **"Create Template"**
+4. Select Category: **UTILITY** (for reminders) or **MARKETING** (for announcements)
+5. Enter template name (use underscore format, e.g., `prayer_reminder`)
+6. Select language: **English (en)**
+7. Enter the template body text exactly as specified in `src/lib/whatsapp-templates.ts`
+8. Submit for review (typically 24-48 hours)
+
+### After Account is Restored: Action Checklist
+
+- [ ] Submit ALL templates to Meta for approval (wait for approval before using)
+- [ ] Apply for Meta Business Verification
+- [ ] Get a dedicated test phone number
+- [ ] Implement number warmup strategy (code change)
+- [ ] Add quality monitoring dashboard (future feature)
+- [ ] Implement double opt-in flow (future feature)
+- [ ] Document testing procedures to avoid test-pattern bans
 
 ---
 
@@ -773,6 +886,35 @@ ALTER TABLE daily_hadith_log ADD CONSTRAINT daily_hadith_log_date_time_key UNIQU
 
 ## Changelog
 
+### Version 1.4.1 - February 3, 2026
+
+#### WhatsApp Account Issue
+
+| Event | Details |
+|-------|---------|
+| **Account Suspended** | Meta suspended WhatsApp Business Account |
+| **Reason Given** | "Activity that does not comply with WhatsApp Business terms of service" |
+| **Appeal Submitted** | Yes - detailed explanation of legitimate mosque notification service |
+| **Expected Resolution** | 24-48 hours |
+
+#### Documentation Added
+
+- Comprehensive WhatsApp compliance guide
+- Ban prevention best practices
+- Template submission checklist
+- Number warmup strategy
+- Quality monitoring recommendations
+
+#### Database Fixes
+
+Fixed missing tables and columns:
+- Created `prayer_times_cache` table
+- Created `scheduled_messages` table
+- Added `settings_token` columns to subscribers
+- Updated `messages` type constraint for new message types
+
+---
+
 ### Version 1.4.0 - February 2, 2026
 
 #### New Features
@@ -925,7 +1067,7 @@ Initial production release with 24 user stories completed.
 
 ---
 
-**Document Version:** 1.4.0
-**Last Updated:** February 2, 2026 @ 22:00 UTC
+**Document Version:** 1.4.1
+**Last Updated:** February 3, 2026 @ 00:30 UTC
 **Author:** Claude Code
-**Status:** Production Ready - Fully Tested
+**Status:** App Ready - WhatsApp Account Under Meta Review
