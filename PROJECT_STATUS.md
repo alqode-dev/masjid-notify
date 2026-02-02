@@ -1,6 +1,6 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 3, 2026 @ 00:30 UTC
+> **Last Updated:** February 3, 2026 @ 01:00 UTC
 > **Status:** ⚠️ **WHATSAPP ACCOUNT UNDER REVIEW** - App code ready, awaiting Meta appeal
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -24,30 +24,252 @@
 
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [System Status](#system-status)
-3. [Recent Bug Fixes](#recent-bug-fixes)
-4. [E2E Test Suite](#e2e-test-suite)
-5. [Production Infrastructure](#production-infrastructure)
-6. [Admin Access](#admin-access)
-7. [Environment Variables](#environment-variables)
-8. [All Features](#all-features)
-9. [API Reference](#api-reference)
-10. [WhatsApp Integration](#whatsapp-integration)
-11. [Database Schema](#database-schema)
-12. [Cron Jobs](#cron-jobs)
-13. [Tech Stack](#tech-stack)
-14. [Project Structure](#project-structure)
-15. [Testing Guide](#testing-guide)
-16. [Settings Explained](#settings-explained)
-17. [Known Limitations](#known-limitations)
-18. [Changelog](#changelog)
+### Getting Started (Read First!)
+1. [What Is This Project?](#what-is-this-project)
+2. [How Everything Works Together](#how-everything-works-together)
+3. [Quick Start for Developers](#quick-start-for-developers)
+
+### Current Status
+4. [System Status](#system-status)
+5. [WhatsApp Account Status](#whatsapp-account-status--compliance)
+6. [What's Working vs Not Working](#whats-working-vs-not-working)
+
+### How To Do Things
+7. [Common Tasks & How-To Guides](#common-tasks--how-to-guides)
+8. [Testing the App](#testing-the-app)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+
+### Technical Reference
+10. [All Features](#all-features)
+11. [API Reference](#api-reference)
+12. [Database Schema](#database-schema)
+13. [Cron Jobs Explained](#cron-jobs-explained)
+14. [Environment Variables](#environment-variables)
+15. [Project Structure](#project-structure)
+
+### Infrastructure & Accounts
+16. [Production Infrastructure](#production-infrastructure)
+17. [Admin Access & Credentials](#admin-access)
+18. [External Services & Accounts](#external-services--accounts)
+
+### History
+19. [Changelog](#changelog)
 
 ---
 
-## Executive Summary
+# PART 1: GETTING STARTED (READ THIS FIRST!)
 
-**Masjid Notify** is a WhatsApp notification system for mosques. Users scan a QR code, subscribe via a web form, and receive automated prayer reminders, announcements, daily hadith, and Ramadan notifications via WhatsApp.
+---
+
+## What Is This Project?
+
+### The Simple Explanation
+
+**Masjid Notify** is a WhatsApp notification app for mosques. Here's how it works:
+
+1. **Mosque puts up a QR code** (or shares a link)
+2. **People scan it** and land on a website
+3. **They enter their phone number** and choose what notifications they want
+4. **They automatically receive WhatsApp messages** for:
+   - Prayer time reminders (5 daily prayers)
+   - Friday (Jumu'ah) reminders
+   - Daily hadith (Islamic teachings)
+   - Ramadan reminders (Suhoor, Iftar, Taraweeh)
+   - Voluntary prayer reminders (Tahajjud, Ishraq, Awwabin)
+   - Mosque announcements
+
+### Who Is This For?
+
+- **Mosques** who want to send automated reminders to their community
+- **Muslims** who want prayer time notifications on WhatsApp (not another app)
+
+### Why WhatsApp?
+
+In South Africa (and many countries), **everyone uses WhatsApp**. People don't want to download another app just for prayer times. This sends reminders directly to WhatsApp.
+
+---
+
+## How Everything Works Together
+
+### The Big Picture (System Architecture)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           USER JOURNEY                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   1. User scans QR code          2. Lands on website                    │
+│        📱 ──────────────────────> 🌐 masjid-notify.vercel.app           │
+│                                                                          │
+│   3. Fills subscribe form        4. Saved to database                   │
+│        📝 ──────────────────────> 🗄️ Supabase (PostgreSQL)              │
+│                                                                          │
+│   5. Welcome message sent        6. User receives on WhatsApp           │
+│        📤 ──────────────────────> 💬 WhatsApp                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        AUTOMATED REMINDERS                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   Every 5 minutes, cron-job.org pings our server:                       │
+│                                                                          │
+│   ⏰ cron-job.org ──────> 🖥️ Vercel API ──────> 🗄️ Get subscribers     │
+│                                    │                                     │
+│                                    ▼                                     │
+│                           🕐 Check prayer times                          │
+│                           (from Aladhan API)                             │
+│                                    │                                     │
+│                                    ▼                                     │
+│                           ❓ Is it time to send?                         │
+│                           (current time near prayer time?)               │
+│                                    │                                     │
+│                              YES   │   NO                                │
+│                                ▼       ▼                                 │
+│                           📤 Send    🔄 Wait for                         │
+│                           WhatsApp   next check                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### The Key Components
+
+| Component | What It Does | Where It Lives |
+|-----------|--------------|----------------|
+| **Frontend** | The website users see (subscribe form, admin dashboard) | Vercel (Next.js) |
+| **Backend API** | Handles subscriptions, sends messages, processes webhooks | Vercel (Next.js API routes) |
+| **Database** | Stores subscribers, mosques, messages, settings | Supabase (PostgreSQL) |
+| **WhatsApp API** | Actually sends the WhatsApp messages | Meta Cloud API |
+| **Prayer Times API** | Calculates accurate prayer times by location | Aladhan API |
+| **Hadith API** | Provides authentic daily hadith | random-hadith-generator |
+| **Cron Scheduler** | Triggers reminder checks every 5 minutes | cron-job.org |
+
+### Data Flow Example: Prayer Reminder
+
+1. **cron-job.org** calls `https://masjid-notify.vercel.app/api/cron/prayer-reminders` every 5 minutes
+2. **Our API** authenticates the request (checks the secret key)
+3. **Our API** fetches all mosques from **Supabase**
+4. For each mosque, it calls **Aladhan API** to get today's prayer times
+5. It checks: "Is current time within 5 minutes of [prayer time minus user's offset]?"
+6. If YES, it fetches subscribers who want that prayer reminder from **Supabase**
+7. For each subscriber, it calls **WhatsApp Cloud API** to send the message
+8. It logs the sent message to **Supabase** (messages table)
+
+---
+
+## Quick Start for Developers
+
+### If You Want to Run This Locally
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/alqode-dev/masjid-notify.git
+cd masjid-notify
+
+# 2. Install dependencies
+npm install
+
+# 3. Copy environment variables
+cp .env.local.example .env.local
+# Then edit .env.local with your credentials (see Environment Variables section)
+
+# 4. Run development server
+npm run dev
+
+# 5. Open http://localhost:3000
+```
+
+### If You Want to Deploy Changes
+
+```bash
+# 1. Make your changes
+# 2. Test locally
+npm run dev
+
+# 3. Commit
+git add .
+git commit -m "description of changes"
+
+# 4. Push to GitHub (auto-deploys to Vercel)
+git push origin master
+
+# 5. Check Vercel dashboard for deployment status
+# https://vercel.com/alqodes-projects/masjid-notify
+```
+
+### If You Want to Check Database
+
+1. Go to https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth
+2. Click "Table Editor" in sidebar
+3. Browse tables: `subscribers`, `mosques`, `messages`, etc.
+
+### If You Want to Check Logs
+
+1. Go to https://vercel.com/alqodes-projects/masjid-notify
+2. Click "Logs" tab
+3. Filter by function name (e.g., `api/cron/prayer-reminders`)
+
+---
+
+## What's Working vs Not Working
+
+### ✅ Currently Working
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Landing page | ✅ Works | Shows prayer times, subscribe form |
+| Subscribe form | ✅ Works | Saves to database correctly |
+| Admin login | ✅ Works | Email: alqodez@gmail.com |
+| Admin dashboard | ✅ Works | Shows stats, subscribers |
+| Database | ✅ Works | All tables created and functional |
+| Cron jobs | ✅ Works | All 5 jobs running on cron-job.org |
+| Prayer times API | ✅ Works | Aladhan API responding |
+| Hadith API | ✅ Works | Returns authentic hadith |
+
+### ⚠️ Currently Broken / Pending
+
+| Feature | Status | Why | Fix |
+|---------|--------|-----|-----|
+| WhatsApp sending | 🔴 Broken | Meta suspended account | Waiting for appeal (24-48h) |
+| Welcome messages | 🔴 Broken | Can't send without WhatsApp | Wait for appeal |
+| All notifications | 🔴 Broken | Can't send without WhatsApp | Wait for appeal |
+| Message templates | ⚠️ Not approved | Never submitted to Meta | Submit after account restored |
+
+### 📋 TODO After WhatsApp Restored
+
+1. [ ] Submit ALL message templates to Meta for approval
+2. [ ] Wait for template approval (24-48h each)
+3. [ ] Apply for Meta Business Verification
+4. [ ] Get a test phone number for testing
+5. [ ] Implement number warmup (start slow)
+6. [ ] Test welcome message flow
+7. [ ] Test prayer reminder flow
+8. [ ] Go live with real users
+
+---
+
+# PART 2: CURRENT STATUS
+
+---
+
+## System Status
+
+### Component Health Check
+
+| Component | Status | Last Verified | Notes |
+|-----------|--------|---------------|-------|
+| **Frontend (Next.js)** | ✅ Operational | Feb 2, 2026 | All pages loading correctly |
+| **Backend API** | ✅ Operational | Feb 2, 2026 | All endpoints responding |
+| **Database (Supabase)** | ✅ Connected | Feb 2, 2026 | PostgreSQL with RLS |
+| **Admin Dashboard** | ✅ Fixed | Feb 2, 2026 | Now shows subscribers correctly |
+| **WhatsApp Sending** | 🔴 Suspended | Feb 2, 2026 | Account under Meta review |
+| **WhatsApp Webhook** | 🔴 Suspended | Feb 2, 2026 | Awaiting account restoration |
+| **Cron Jobs** | ✅ Running | Feb 2, 2026 | 5 jobs on cron-job.org |
+| **Hadith API** | ✅ Integrated | Feb 2, 2026 | random-hadith-generator.vercel.app |
+| **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
+| **Rate Limiting** | ⚠️ Optional | - | Requires Upstash Redis |
+| **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
 
 ### Active Mosque
 
@@ -90,26 +312,6 @@
 - ✅ **Twice-Daily Hadith** (morning and evening)
 - ✅ **Enhanced Suhoor Reminders** (planning + morning)
 - ✅ **Security Fixes** (mosque-scoped admin operations)
-
----
-
-## System Status
-
-### Component Health Check
-
-| Component | Status | Last Verified | Notes |
-|-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 2, 2026 | All pages loading correctly |
-| **Backend API** | ✅ Operational | Feb 2, 2026 | All endpoints responding |
-| **Database (Supabase)** | ✅ Connected | Feb 2, 2026 | PostgreSQL with RLS |
-| **Admin Dashboard** | ✅ Fixed | Feb 2, 2026 | Now shows subscribers correctly |
-| **WhatsApp Sending** | ⚠️ Suspended | Feb 2, 2026 | Account under Meta review (appeal submitted) |
-| **WhatsApp Webhook** | ⚠️ Suspended | Feb 2, 2026 | Awaiting account restoration |
-| **Cron Jobs** | ✅ Scheduled | Feb 2, 2026 | Daily schedule active |
-| **Hadith API** | ✅ Integrated | Feb 2, 2026 | random-hadith-generator.vercel.app |
-| **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
-| **Rate Limiting** | ⚠️ Optional | - | Requires Upstash Redis |
-| **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
 
 ---
 
@@ -223,6 +425,223 @@ Week 5+: Gradual increase to 1000/day
 - [ ] Add quality monitoring dashboard (future feature)
 - [ ] Implement double opt-in flow (future feature)
 - [ ] Document testing procedures to avoid test-pattern bans
+
+---
+
+# PART 3: HOW TO DO THINGS
+
+---
+
+## Common Tasks & How-To Guides
+
+### How to Test If Subscriptions Work
+
+1. Go to https://masjid-notify.vercel.app
+2. Enter a phone number and click Subscribe
+3. Check Supabase > Table Editor > `subscribers` table
+4. Your number should appear with `status: active`
+
+**Note:** The WhatsApp welcome message won't send until the Meta account is restored.
+
+### How to Check If Cron Jobs Are Running
+
+1. Go to https://cron-job.org and login
+2. Click on each job to see execution history
+3. Green = success, Red = failed
+4. Or check Vercel logs: https://vercel.com/alqodes-projects/masjid-notify/logs
+
+### How to Manually Trigger a Cron Job (for testing)
+
+```bash
+# Prayer reminders
+curl -H "Authorization: Bearer masjidnotify2025cron" \
+  https://masjid-notify.vercel.app/api/cron/prayer-reminders
+
+# Nafl reminders
+curl -H "Authorization: Bearer masjidnotify2025cron" \
+  https://masjid-notify.vercel.app/api/cron/nafl-reminders
+
+# Morning hadith
+curl -H "Authorization: Bearer masjidnotify2025cron" \
+  "https://masjid-notify.vercel.app/api/cron/daily-hadith?time=fajr"
+
+# Evening hadith
+curl -H "Authorization: Bearer masjidnotify2025cron" \
+  "https://masjid-notify.vercel.app/api/cron/daily-hadith?time=maghrib"
+```
+
+### How to Add a New Subscriber Manually (via Database)
+
+1. Go to Supabase > Table Editor > `subscribers`
+2. Click "Insert row"
+3. Fill in:
+   - `phone_number`: `+27XXXXXXXXX` (must include country code)
+   - `mosque_id`: Copy from `mosques` table
+   - `status`: `active`
+   - `pref_daily_prayers`: `true` (or false)
+   - Other preferences as needed
+4. Click "Save"
+
+### How to Delete a Subscriber
+
+**Option 1: Via Admin Dashboard**
+1. Login at https://masjid-notify.vercel.app/admin/login
+2. Go to Subscribers
+3. Find the subscriber and click Delete
+
+**Option 2: Via Database**
+1. Go to Supabase > Table Editor > `subscribers`
+2. Find the row and delete it
+
+### How to Change Mosque Settings
+
+1. Login to admin dashboard
+2. Go to Settings
+3. Change calculation method, Jumu'ah times, Ramadan mode, etc.
+4. Click Save
+
+**Or via database:**
+1. Go to Supabase > Table Editor > `mosques`
+2. Edit the row directly
+
+### How to Enable/Disable Ramadan Mode
+
+1. Login to admin dashboard > Settings
+2. Toggle "Ramadan Mode" on/off
+3. Set Suhoor reminder minutes (e.g., 30 = 30 mins before Fajr)
+4. Set Iftar reminder minutes (e.g., 15 = 15 mins before Maghrib)
+5. Set Taraweeh time (e.g., 20:30)
+6. Save
+
+### How to Send an Announcement
+
+1. Login to admin dashboard
+2. Go to Announcements
+3. Type your message
+4. Click "Send Now" or schedule for later
+
+**Note:** Won't work until WhatsApp is restored.
+
+### How to Check Vercel Deployment Status
+
+1. Go to https://vercel.com/alqodes-projects/masjid-notify
+2. Click "Deployments" tab
+3. Latest deployment shows build status
+4. Click on a deployment to see build logs
+
+### How to View Error Logs
+
+1. Go to https://vercel.com/alqodes-projects/masjid-notify
+2. Click "Logs" tab
+3. Look for red entries (errors)
+4. Click on an entry to see full details
+
+---
+
+## Testing the App
+
+### Test Subscription Flow
+
+1. Delete your number from Supabase `subscribers` table (if exists)
+2. Go to landing page and subscribe
+3. Check database - subscriber should be created
+4. Check Vercel logs for any errors
+5. (When WhatsApp works) Check if you receive welcome message
+
+### Test Prayer Reminder Flow
+
+1. Subscribe with `pref_daily_prayers: true`
+2. Wait until near a prayer time (within your offset, e.g., 15 mins before)
+3. Manually trigger prayer reminders cron (see above)
+4. Check Vercel logs for "messages sent" count
+5. (When WhatsApp works) Check if you receive the reminder
+
+### Test Admin Dashboard
+
+1. Login at /admin/login
+2. Check dashboard shows correct subscriber count
+3. Go to Subscribers - should show all subscribers
+4. Go to Settings - should load mosque settings
+5. All navigation should work
+
+### Run Automated E2E Tests
+
+```bash
+# Set test credentials
+export TEST_ADMIN_EMAIL="alqodez@gmail.com"
+export TEST_ADMIN_PASSWORD="your-password"
+
+# Run all tests
+npm test
+
+# Run specific test file
+npx playwright test admin-dashboard
+
+# Run with visible browser
+npx playwright test --headed
+```
+
+---
+
+## Troubleshooting Guide
+
+### Problem: Subscribers page shows 0 subscribers
+
+**Cause:** Usually a database query issue or RLS policy problem.
+
+**Fix:**
+1. Check Supabase > `subscribers` table has data
+2. Check the `mosque_id` matches the admin's mosque
+3. Check Vercel logs for errors on `/api/admin/subscribers`
+
+### Problem: Prayer reminders not sending
+
+**Cause:** Could be many things.
+
+**Checklist:**
+1. Is WhatsApp account active? (Currently NO - under review)
+2. Is it actually near prayer time?
+3. Does subscriber have `pref_daily_prayers: true`?
+4. Is subscriber `status: active`?
+5. Check Vercel logs for the cron job
+6. Check cron-job.org - is the job running?
+
+### Problem: Cron job returning errors
+
+**Common errors and fixes:**
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Unauthorized` | Wrong or missing auth header | Check cron-job.org has correct `Authorization: Bearer masjidnotify2025cron` |
+| `Could not find table X` | Database table missing | Run the SQL migrations (see Database Schema section) |
+| `column X does not exist` | Database column missing | Run ALTER TABLE to add column |
+| WhatsApp API error | Account suspended or token expired | Check Meta Business Manager |
+
+### Problem: WhatsApp messages not sending
+
+**Current Status:** Account suspended - wait for Meta appeal.
+
+**General checklist (for future):**
+1. Is the access token valid? (Check Meta Business Manager)
+2. Is the phone number ID correct?
+3. Are message templates approved?
+4. Is the recipient's number in correct format (+27...)?
+5. Check Vercel logs for WhatsApp API error messages
+
+### Problem: Admin can't login
+
+**Checklist:**
+1. Is the email correct? (`alqodez@gmail.com`)
+2. Is the password correct?
+3. Does the user exist in Supabase Auth?
+4. Does an `admins` table entry exist linking user to mosque?
+
+### Problem: Database connection errors
+
+**Checklist:**
+1. Check Supabase dashboard - is project running?
+2. Check environment variables are set correctly in Vercel
+3. Try redeploying on Vercel
 
 ---
 
@@ -667,7 +1086,8 @@ masjid-notify/
 │   │       │   ├── prayer-reminders/route.ts
 │   │       │   ├── daily-hadith/route.ts
 │   │       │   ├── jumuah-reminder/route.ts
-│   │       │   └── ramadan-reminders/route.ts
+│   │       │   ├── ramadan-reminders/route.ts
+│   │       │   └── nafl-reminders/route.ts    # NEW: Tahajjud, Ishraq, Awwabin
 │   │       │
 │   │       ├── settings/[token]/route.ts
 │   │       │
@@ -1050,6 +1470,139 @@ Fixed missing tables and columns:
 ### Version 1.0.0 - January 31, 2026
 
 Initial production release with 24 user stories completed.
+
+---
+
+# PART 4: EXTERNAL SERVICES & ACCOUNTS
+
+---
+
+## External Services & Accounts
+
+### All The Services We Use
+
+| Service | What It Does | Dashboard URL | Account |
+|---------|--------------|---------------|---------|
+| **Vercel** | Hosts the website and API | https://vercel.com/alqodes-projects/masjid-notify | alqodez@gmail.com |
+| **Supabase** | Database + Authentication | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth | alqodez@gmail.com |
+| **Meta Business** | WhatsApp API access | https://business.facebook.com | alqodez@gmail.com |
+| **cron-job.org** | Runs scheduled jobs every 5 mins | https://cron-job.org | alqodez@gmail.com |
+| **GitHub** | Code repository | https://github.com/alqode-dev/masjid-notify | alqodez@gmail.com |
+
+### Vercel (Website Hosting)
+
+**What it is:** Vercel hosts our Next.js website. When you push to GitHub, it automatically deploys.
+
+**Key things to know:**
+- Free tier (Hobby plan)
+- Auto-deploys on every `git push`
+- Has its own cron jobs (daily only on free tier - that's why we use cron-job.org)
+- Logs available for debugging
+
+**How to access:**
+1. Go to https://vercel.com
+2. Login with GitHub
+3. Select "masjid-notify" project
+
+### Supabase (Database)
+
+**What it is:** Supabase is our PostgreSQL database with a nice UI. It also handles user authentication for the admin login.
+
+**Key things to know:**
+- Project ID: `jlqtuynaxuooymbwrwth`
+- Has Row Level Security (RLS) - some queries need admin privileges
+- Free tier has limits but we're well under them
+
+**How to access:**
+1. Go to https://supabase.com/dashboard
+2. Login
+3. Select the project
+
+**Important tables:**
+- `mosques` - Mosque settings (prayer calculation, times, etc.)
+- `subscribers` - All subscribed users
+- `messages` - Log of all sent messages
+- `admins` - Admin users linked to mosques
+- `daily_hadith_log` - Tracks which hadith was sent each day
+- `prayer_times_cache` - Caches prayer times to reduce API calls
+- `scheduled_messages` - Future scheduled announcements
+
+### Meta Business / WhatsApp Cloud API
+
+**What it is:** Meta (Facebook) provides the WhatsApp Business API. We use it to send messages.
+
+**Key things to know:**
+- Currently SUSPENDED (appeal submitted)
+- Need to submit message templates for approval
+- Has rate limits and quality scores
+- Phone Number ID: `895363247004714`
+- Business Account ID: `1443752210724410`
+
+**How to access:**
+1. Go to https://business.facebook.com
+2. Login
+3. Go to WhatsApp Manager
+
+**Important areas:**
+- **Message Templates:** Where you create/submit templates for approval
+- **Phone Numbers:** Your WhatsApp Business numbers
+- **Webhooks:** Configuration for receiving messages
+- **API Setup:** Access tokens and settings
+
+### cron-job.org (Scheduled Tasks)
+
+**What it is:** A free service that calls our API endpoints on a schedule. This is how reminders get sent.
+
+**Key things to know:**
+- Free tier allows many jobs
+- Each job calls a URL with headers on a schedule
+- We have 5 jobs set up (see Cron Jobs section)
+
+**How to access:**
+1. Go to https://cron-job.org
+2. Login
+3. View/edit jobs
+
+**Our jobs:**
+1. Prayer Reminders - every 5 mins
+2. Ramadan Reminders - every 5 mins
+3. Nafl Reminders - every 5 mins
+4. Morning Hadith - 3:30 AM UTC
+5. Evening Hadith - 4:00 PM UTC
+
+### GitHub (Code Repository)
+
+**What it is:** Where all the code lives. Push here to deploy.
+
+**Key things to know:**
+- Main branch: `master`
+- Push to master = auto-deploy to Vercel
+
+**How to access:**
+1. Go to https://github.com/alqode-dev/masjid-notify
+2. Login if needed
+
+---
+
+## Credentials Quick Reference
+
+### Admin Dashboard Login
+- **URL:** https://masjid-notify.vercel.app/admin/login
+- **Email:** alqodez@gmail.com
+- **Password:** (your Supabase auth password)
+
+### Cron Job Authentication
+- **Header:** `Authorization: Bearer masjidnotify2025cron`
+- **Used by:** cron-job.org when calling our API
+
+### WhatsApp Webhook Verification
+- **Token:** `masjidnotifywebhook2025`
+- **Used by:** Meta when verifying our webhook
+
+### Supabase Service Role Key
+- **Location:** Vercel environment variables
+- **Name:** `SUPABASE_SERVICE_ROLE_KEY`
+- **Used for:** Server-side database operations that bypass RLS
 
 ---
 
