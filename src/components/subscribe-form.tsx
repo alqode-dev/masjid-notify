@@ -30,10 +30,11 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
   const [phoneError, setPhoneError] = useState("");
   const [reminderOffset, setReminderOffset] = useState("15");
 
-  // Preferences (5 simplified options)
+  // Preferences (6 options)
   const [prefDailyPrayers, setPrefDailyPrayers] = useState(true);
   const [prefJumuah, setPrefJumuah] = useState(true);
   const [prefRamadan, setPrefRamadan] = useState(true);
+  const [prefNaflSalahs, setPrefNaflSalahs] = useState(false);
   const [prefHadith, setPrefHadith] = useState(true);
   const [prefAnnouncements, setPrefAnnouncements] = useState(true);
 
@@ -69,6 +70,7 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
           pref_daily_prayers: prefDailyPrayers,
           pref_jumuah: prefJumuah,
           pref_ramadan: prefRamadan,
+          pref_nafl_salahs: prefNaflSalahs,
           pref_hadith: prefHadith,
           pref_announcements: prefAnnouncements,
         }),
@@ -146,6 +148,13 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
                 description="Suhoor, Iftar, Taraweeh reminders during Ramadan"
                 checked={prefRamadan}
                 onChange={(e) => setPrefRamadan(e.target.checked)}
+              />
+
+              <Checkbox
+                label="Voluntary Prayers (Nafl)"
+                description="Tahajjud, Ishraq, Awwabin reminders"
+                checked={prefNaflSalahs}
+                onChange={(e) => setPrefNaflSalahs(e.target.checked)}
               />
 
               <Checkbox

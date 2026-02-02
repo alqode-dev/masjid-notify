@@ -161,30 +161,48 @@ export async function POST(request: NextRequest) {
 
     const mosque = subscriber.mosques as { name: string; id: string };
 
+    // Log the incoming command to messages table
+    const logCommand = async (command: string) => {
+      await supabaseAdmin.from("messages").insert({
+        mosque_id: mosque.id,
+        type: "webhook_command",
+        content: `User sent: ${command}`,
+        sent_to_count: 1,
+        status: "received",
+        metadata: { command, phone: normalizedPhone },
+      });
+    };
+
     // Handle commands
     switch (true) {
       case text === "STOP" || text === "UNSUBSCRIBE":
+        await logCommand(text);
         await handleStop(subscriber.id, from, mosque.name);
         break;
 
       case text === "SETTINGS" || text === "PREFERENCES":
+        await logCommand(text);
         await handleSettings(subscriber.id, from, mosque.name);
         break;
 
       case text === "HELP" || text === "INFO":
+        await logCommand(text);
         await handleHelp(from, mosque.name);
         break;
 
       case text.startsWith("PAUSE"):
+        await logCommand(text);
         await handlePause(subscriber.id, from, text, mosque.name);
         break;
 
       case text === "RESUME" || text === "START":
+        await logCommand(text);
         await handleResume(subscriber.id, from, mosque.name, subscriber.status);
         break;
 
       default:
-        // Unknown command
+        // Unknown command - also log it
+        await logCommand(text);
         await sendWhatsAppMessage(
           from,
           `Commands:\n• STOP - Unsubscribe\n• SETTINGS - Update preferences\n• PAUSE 7 - Pause for 7 days\n• RESUME - Resume notifications\n• HELP - Get assistance\n\n${mosque.name}`

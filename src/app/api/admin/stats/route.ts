@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 export const GET = withAdminAuth(async (request, { admin }) => {
   try {
-    // Get mosque info
+    // Get mosque info using admin's mosque_id for security
     const { data: mosque, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("id, name")
-      .eq("slug", DEFAULT_MOSQUE_SLUG)
+      .eq("id", admin.mosque_id)
       .single();
 
     if (mosqueError || !mosque) {
@@ -19,23 +18,23 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       );
     }
 
-    // Get subscriber counts
+    // Get subscriber counts using admin's mosque_id
     const { count: totalSubscribers } = await supabaseAdmin
       .from("subscribers")
       .select("*", { count: "exact", head: true })
-      .eq("mosque_id", mosque.id);
+      .eq("mosque_id", admin.mosque_id);
 
     const { count: activeSubscribers } = await supabaseAdmin
       .from("subscribers")
       .select("*", { count: "exact", head: true })
-      .eq("mosque_id", mosque.id)
+      .eq("mosque_id", admin.mosque_id)
       .eq("status", "active");
 
-    // Get message counts
+    // Get message counts using admin's mosque_id
     const { data: totalMessagesData } = await supabaseAdmin
       .from("messages")
       .select("sent_to_count")
-      .eq("mosque_id", mosque.id);
+      .eq("mosque_id", admin.mosque_id);
 
     const totalMessages =
       totalMessagesData?.reduce(
@@ -49,7 +48,7 @@ export const GET = withAdminAuth(async (request, { admin }) => {
     const { data: todayMessagesData } = await supabaseAdmin
       .from("messages")
       .select("sent_to_count")
-      .eq("mosque_id", mosque.id)
+      .eq("mosque_id", admin.mosque_id)
       .gte("sent_at", today.toISOString());
 
     const todayMessages =

@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       pref_daily_prayers = true,
       pref_jumuah = true,
       pref_ramadan = true,
+      pref_nafl_salahs = false,
       pref_hadith = false,
       pref_announcements = true,
     } = body
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
             pref_daily_prayers,
             pref_jumuah,
             pref_ramadan,
+            pref_nafl_salahs,
             pref_hadith,
             pref_announcements,
             reminder_offset,
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest) {
           pref_daily_prayers,
           pref_jumuah,
           pref_ramadan,
+          pref_nafl_salahs,
           pref_hadith,
           pref_announcements,
           reminder_offset,

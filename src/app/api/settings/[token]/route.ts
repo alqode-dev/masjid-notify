@@ -30,6 +30,7 @@ export async function GET(
         pref_daily_prayers,
         pref_jumuah,
         pref_ramadan,
+        pref_nafl_salahs,
         pref_hadith,
         pref_announcements,
         settings_token_expires
@@ -60,6 +61,7 @@ export async function GET(
       pref_daily_prayers: subscriber.pref_daily_prayers,
       pref_jumuah: subscriber.pref_jumuah,
       pref_ramadan: subscriber.pref_ramadan,
+      pref_nafl_salahs: subscriber.pref_nafl_salahs,
       pref_hadith: subscriber.pref_hadith,
       pref_announcements: subscriber.pref_announcements,
     });
@@ -94,6 +96,7 @@ export async function PUT(
       pref_daily_prayers,
       pref_jumuah,
       pref_ramadan,
+      pref_nafl_salahs,
       pref_hadith,
       pref_announcements,
     } = body;
@@ -138,6 +141,7 @@ export async function PUT(
         pref_daily_prayers: pref_daily_prayers ?? true,
         pref_jumuah: pref_jumuah ?? true,
         pref_ramadan: pref_ramadan ?? true,
+        pref_nafl_salahs: pref_nafl_salahs ?? false,
         pref_hadith: pref_hadith ?? true,
         pref_announcements: pref_announcements ?? true,
       })

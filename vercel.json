@@ -9,12 +9,20 @@
       "schedule": "0 10 * * 5"
     },
     {
-      "path": "/api/cron/daily-hadith",
-      "schedule": "30 6 * * *"
+      "path": "/api/cron/daily-hadith?time=fajr",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/daily-hadith?time=maghrib",
+      "schedule": "0 16 * * *"
     },
     {
       "path": "/api/cron/ramadan-reminders",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/nafl-reminders",
+      "schedule": "0 2 * * *"
     }
   ]
 }

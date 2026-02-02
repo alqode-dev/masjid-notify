@@ -20,7 +20,8 @@ import type { Mosque, Subscriber } from "@/lib/supabase";
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
 
-// This should run once daily, after Fajr (e.g., 6:30 AM)
+// This should run twice daily: after Fajr (morning) and around Maghrib (evening)
+// Accepts ?time=fajr or ?time=maghrib query param
 export async function GET(request: NextRequest) {
   // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
@@ -28,11 +29,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logger = createCronLogger("daily-hadith");
+  // Determine time of day from query param
+  const { searchParams } = new URL(request.url);
+  const timeParam = searchParams.get("time");
+  const timeOfDay: "morning" | "evening" =
+    timeParam === "maghrib" ? "evening" : "morning";
+
+  const logger = createCronLogger(`daily-hadith-${timeOfDay}`);
 
   try {
-    // Get today's hadith from the external API (cached for the day)
-    const hadith = await getTodaysHadith();
+    // Get today's hadith from the external API (cached per time of day)
+    const hadith = await getTodaysHadith(timeOfDay);
 
     if (!hadith) {
       logCronError(logger, "Failed to fetch hadith from external API", {});
@@ -121,6 +128,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      timeOfDay,
       hadith: {
         collection: hadith.collection,
         source: hadith.source,

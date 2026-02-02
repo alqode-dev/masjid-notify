@@ -5,6 +5,7 @@ import {
   SUHOOR_REMINDER_TEMPLATE,
   IFTAR_REMINDER_TEMPLATE,
   TARAWEEH_REMINDER_TEMPLATE,
+  SUHOOR_PLANNING_TEMPLATE,
 } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
@@ -229,6 +230,57 @@ export async function GET(request: NextRequest) {
               status: "sent",
               metadata: { reminder_type: "taraweeh" },
             });
+          }
+        }
+
+        // Also send suhoor planning reminder after Isha/Taraweeh (90 mins after Isha)
+        // This helps people prepare for the next day's suhoor
+        if (
+          isWithinMinutes(
+            prayerTimes.isha,
+            -90, // 90 minutes AFTER Isha (negative offset)
+            mosque.timezone
+          )
+        ) {
+          const alreadySent = await wasRamadanReminderSent(mosque.id, "suhoor_planning");
+          if (!alreadySent) {
+            // Get tomorrow's Fajr time
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowPrayerTimes = await getPrayerTimes(
+              mosque.latitude,
+              mosque.longitude,
+              mosque.calculation_method,
+              mosque.madhab,
+              tomorrow,
+              mosque.id
+            );
+
+            if (tomorrowPrayerTimes) {
+              // Template variables: fajr_time, mosque_name
+              const templateVars = [tomorrowPrayerTimes.fajr, mosque.name];
+
+              const batchResult = await sendTemplatesConcurrently(
+                subscribers as Subscriber[],
+                SUHOOR_PLANNING_TEMPLATE,
+                templateVars,
+                logger
+              );
+
+              const message = previewTemplate(SUHOOR_PLANNING_TEMPLATE, templateVars);
+
+              const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+              await batchUpdateLastMessageAt(successfulIds);
+
+              await supabaseAdmin.from("messages").insert({
+                mosque_id: mosque.id,
+                type: "ramadan",
+                content: message,
+                sent_to_count: batchResult.successful,
+                status: "sent",
+                metadata: { reminder_type: "suhoor_planning" },
+              });
+            }
           }
         }
       }

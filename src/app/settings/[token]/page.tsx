@@ -31,11 +31,12 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  // Preferences (5 simplified options)
+  // Preferences (6 options)
   const [reminderOffset, setReminderOffset] = useState("15");
   const [prefDailyPrayers, setPrefDailyPrayers] = useState(true);
   const [prefJumuah, setPrefJumuah] = useState(true);
   const [prefRamadan, setPrefRamadan] = useState(true);
+  const [prefNaflSalahs, setPrefNaflSalahs] = useState(false);
   const [prefHadith, setPrefHadith] = useState(true);
   const [prefAnnouncements, setPrefAnnouncements] = useState(true);
 
@@ -51,6 +52,7 @@ export default function SettingsPage() {
           setPrefDailyPrayers(data.pref_daily_prayers ?? true);
           setPrefJumuah(data.pref_jumuah ?? true);
           setPrefRamadan(data.pref_ramadan ?? true);
+          setPrefNaflSalahs(data.pref_nafl_salahs ?? false);
           setPrefHadith(data.pref_hadith ?? true);
           setPrefAnnouncements(data.pref_announcements ?? true);
         } else {
@@ -78,6 +80,7 @@ export default function SettingsPage() {
           pref_daily_prayers: prefDailyPrayers,
           pref_jumuah: prefJumuah,
           pref_ramadan: prefRamadan,
+          pref_nafl_salahs: prefNaflSalahs,
           pref_hadith: prefHadith,
           pref_announcements: prefAnnouncements,
         }),
@@ -221,6 +224,13 @@ export default function SettingsPage() {
                   description="Suhoor, Iftar, Taraweeh reminders during Ramadan"
                   checked={prefRamadan}
                   onChange={(e) => setPrefRamadan(e.target.checked)}
+                />
+
+                <Checkbox
+                  label="Voluntary Prayers (Nafl)"
+                  description="Tahajjud, Ishraq, Awwabin reminders"
+                  checked={prefNaflSalahs}
+                  onChange={(e) => setPrefNaflSalahs(e.target.checked)}
                 />
 
                 <Checkbox

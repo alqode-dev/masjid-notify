@@ -354,3 +354,55 @@ export function formatDbTime(time: string): string {
   const displayHours = hours % 12 || 12
   return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
 }
+
+/**
+ * Calculate nafl salah times based on prayer times
+ * - Tahajjud: 2 hours before Fajr (last third of the night)
+ * - Ishraq: 20 minutes after Sunrise
+ * - Awwabin: 15 minutes after Maghrib
+ */
+export function calculateNaflTimes(prayerTimes: PrayerTimes): {
+  tahajjud: string;
+  ishraq: string;
+  awwabin: string;
+} {
+  return {
+    tahajjud: applyOffset(prayerTimes.fajr, -120), // 2 hours before Fajr
+    ishraq: applyOffset(prayerTimes.sunrise, 20), // 20 mins after Sunrise
+    awwabin: applyOffset(prayerTimes.maghrib, 15), // 15 mins after Maghrib
+  };
+}
+
+/**
+ * Check if current time is within minutes after a prayer time
+ * Similar to isWithinMinutes but for time AFTER prayer (e.g., Ishraq after Sunrise)
+ */
+export function isWithinMinutesAfter(
+  prayerTime: string,
+  minutesAfter: number,
+  timezone: string
+): boolean {
+  const now = new Date()
+
+  // Parse prayer time
+  const match = prayerTime.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (!match) return false
+
+  let hours = parseInt(match[1])
+  const minutes = parseInt(match[2])
+  const period = match[3].toUpperCase()
+
+  if (period === 'PM' && hours !== 12) hours += 12
+  if (period === 'AM' && hours === 12) hours = 0
+
+  // Create prayer time Date object for today
+  const prayerDate = new Date()
+  prayerDate.setHours(hours, minutes, 0, 0)
+
+  // Calculate target time (after prayer)
+  const targetDate = new Date(prayerDate.getTime() + minutesAfter * 60 * 1000)
+
+  // Check if we're within a 5-minute window of the target time
+  const diff = Math.abs(now.getTime() - targetDate.getTime())
+  return diff <= 5 * 60 * 1000 // 5 minute window
+}

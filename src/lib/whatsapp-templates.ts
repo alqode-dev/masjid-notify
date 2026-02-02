@@ -222,6 +222,90 @@ Join us for Taraweeh at {{2}}. May your prayers be accepted.`,
 };
 
 /**
+ * Tahajjud Reminder Template
+ *
+ * Sent 2 hours before Fajr to remind about night prayers.
+ * Variables: fajr_time, mosque_name
+ */
+export const TAHAJJUD_REMINDER_TEMPLATE: TemplateDefinition = {
+  name: "tahajjud_reminder",
+  description: "Tahajjud prayer reminder",
+  category: "UTILITY",
+  languages: ["en"],
+  body: `Tahajjud Reminder: Last third of the night
+
+This is the perfect time for night prayers. The Prophet (SAW) said the best prayer after the obligatory prayers is the night prayer.
+
+Fajr begins at {{1}}
+
+{{2}}`,
+  variables: ["fajr_time", "mosque_name"],
+  sampleValues: ["5:30 AM", "Anwaarul Islam"],
+};
+
+/**
+ * Ishraq/Duha Reminder Template
+ *
+ * Sent 20 minutes after sunrise to remind about forenoon prayer.
+ * Variables: mosque_name
+ */
+export const ISHRAQ_REMINDER_TEMPLATE: TemplateDefinition = {
+  name: "ishraq_reminder",
+  description: "Ishraq/Duha prayer reminder",
+  category: "UTILITY",
+  languages: ["en"],
+  body: `Salat ad-Duha Reminder
+
+Time for the forenoon prayer. Even 2 rakahs earns great reward.
+
+{{1}}`,
+  variables: ["mosque_name"],
+  sampleValues: ["Anwaarul Islam"],
+};
+
+/**
+ * Awwabin Reminder Template
+ *
+ * Sent 15 minutes after Maghrib to remind about Awwabin prayers.
+ * Variables: mosque_name
+ */
+export const AWWABIN_REMINDER_TEMPLATE: TemplateDefinition = {
+  name: "awwabin_reminder",
+  description: "Awwabin prayer reminder",
+  category: "UTILITY",
+  languages: ["en"],
+  body: `Awwabin Reminder
+
+Time for Salat al-Awwabin (6 rakahs between Maghrib and Isha).
+
+{{1}}`,
+  variables: ["mosque_name"],
+  sampleValues: ["Anwaarul Islam"],
+};
+
+/**
+ * Suhoor Planning Reminder Template
+ *
+ * Sent the night before (after Isha/Taraweeh) to remind about suhoor.
+ * Variables: fajr_time, mosque_name
+ */
+export const SUHOOR_PLANNING_TEMPLATE: TemplateDefinition = {
+  name: "suhoor_planning",
+  description: "Night before suhoor planning reminder",
+  category: "UTILITY",
+  languages: ["en"],
+  body: `Suhoor Planning Reminder
+
+Suhoor ends at {{1}} tomorrow. Set your alarms!
+
+May your fast be accepted.
+
+{{2}}`,
+  variables: ["fajr_time", "mosque_name"],
+  sampleValues: ["5:15 AM", "Anwaarul Islam"],
+};
+
+/**
  * Collection of all templates for easy iteration
  */
 export const ALL_TEMPLATES: TemplateDefinition[] = [
@@ -233,6 +317,10 @@ export const ALL_TEMPLATES: TemplateDefinition[] = [
   SUHOOR_REMINDER_TEMPLATE,
   IFTAR_REMINDER_TEMPLATE,
   TARAWEEH_REMINDER_TEMPLATE,
+  TAHAJJUD_REMINDER_TEMPLATE,
+  ISHRAQ_REMINDER_TEMPLATE,
+  AWWABIN_REMINDER_TEMPLATE,
+  SUHOOR_PLANNING_TEMPLATE,
 ];
 
 /**

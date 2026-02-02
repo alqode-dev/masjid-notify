@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 export const GET = withAdminAuth(async (request, { admin }) => {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "all";
 
-    // Get mosque
+    // Get mosque using admin's mosque_id for security
     const { data: mosque, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*")
-      .eq("slug", DEFAULT_MOSQUE_SLUG)
+      .eq("id", admin.mosque_id)
       .single();
 
     if (mosqueError || !mosque) {
@@ -22,11 +21,11 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       );
     }
 
-    // Build query
+    // Build query - use admin's mosque_id for security
     let query = supabaseAdmin
       .from("subscribers")
       .select("*")
-      .eq("mosque_id", mosque.id)
+      .eq("mosque_id", admin.mosque_id)
       .order("subscribed_at", { ascending: false });
 
     if (status !== "all") {
@@ -68,10 +67,12 @@ export const PATCH = withAdminAuth(async (request, { admin }) => {
       );
     }
 
+    // Security: Only update subscribers belonging to admin's mosque
     const { error } = await supabaseAdmin
       .from("subscribers")
       .update({ status })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("mosque_id", admin.mosque_id);
 
     if (error) {
       console.error("Error updating subscriber:", error);
@@ -103,10 +104,12 @@ export const DELETE = withAdminAuth(async (request, { admin }) => {
       );
     }
 
+    // Security: Only delete subscribers belonging to admin's mosque
     const { error } = await supabaseAdmin
       .from("subscribers")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("mosque_id", admin.mosque_id);
 
     if (error) {
       console.error("Error deleting subscriber:", error);

@@ -51,6 +51,7 @@ export interface HadithData {
 export interface DailyHadithLogEntry {
   id: string;
   date: string;
+  time_of_day: "morning" | "evening";
   collection: string;
   hadith_number: number;
   hadith_text: string;
@@ -188,19 +189,25 @@ export async function getUniqueHadith(
 }
 
 /**
- * Get today's hadith (cached for the day)
- * If already fetched today, returns the cached version
+ * Get today's hadith for a specific time of day (cached)
+ * Supports twice-daily hadith: morning (fajr) and evening (maghrib)
+ * If already fetched for this time today, returns the cached version
  * Otherwise fetches a new unique hadith and caches it
+ *
+ * @param timeOfDay - 'morning' for Fajr hadith, 'evening' for Maghrib hadith
  */
-export async function getTodaysHadith(): Promise<HadithData | null> {
+export async function getTodaysHadith(
+  timeOfDay: "morning" | "evening" = "morning"
+): Promise<HadithData | null> {
   const supabase = getSupabaseAdmin();
   const today = new Date().toISOString().split("T")[0];
 
-  // Check if we already have today's hadith cached
+  // Check if we already have today's hadith cached for this time of day
   const { data: cached, error: cacheError } = await supabase
     .from("daily_hadith_log")
     .select("*")
     .eq("date", today)
+    .eq("time_of_day", timeOfDay)
     .single();
 
   if (cached && !cacheError) {
@@ -219,13 +226,14 @@ export async function getTodaysHadith(): Promise<HadithData | null> {
   const hadith = await getUniqueHadith();
 
   if (!hadith) {
-    console.error("Failed to fetch today's hadith");
+    console.error(`Failed to fetch ${timeOfDay} hadith`);
     return null;
   }
 
-  // Cache it for today
+  // Cache it for today with time_of_day
   const { error: insertError } = await supabase.from("daily_hadith_log").insert({
     date: today,
+    time_of_day: timeOfDay,
     collection: hadith.collection,
     hadith_number: hadith.hadithNumber,
     hadith_text: hadith.textEnglish,
@@ -241,6 +249,7 @@ export async function getTodaysHadith(): Promise<HadithData | null> {
         .from("daily_hadith_log")
         .select("*")
         .eq("date", today)
+        .eq("time_of_day", timeOfDay)
         .single();
 
       if (existingCached) {
@@ -254,7 +263,7 @@ export async function getTodaysHadith(): Promise<HadithData | null> {
         };
       }
     }
-    console.error("Failed to cache today's hadith:", insertError);
+    console.error(`Failed to cache ${timeOfDay} hadith:`, insertError);
   }
 
   return hadith;

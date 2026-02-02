@@ -59,6 +59,7 @@ export type Subscriber = {
   pref_ramadan: boolean;
   pref_hadith: boolean;
   pref_announcements: boolean;
+  pref_nafl_salahs: boolean;
   reminder_offset: number;
   last_message_at: string | null;
   created_at: string;
@@ -120,6 +121,7 @@ export type PrayerTimesCache = {
 export type DailyHadithLog = {
   id: string;
   date: string;
+  time_of_day: "morning" | "evening";
   collection: string;
   hadith_number: number;
   hadith_text: string;

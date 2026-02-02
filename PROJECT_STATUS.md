@@ -1,6 +1,6 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 2, 2026 @ 14:00 UTC
+> **Last Updated:** February 2, 2026 @ 22:00 UTC
 > **Status:** ✅ **LIVE IN PRODUCTION - FULLY TESTED**
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -86,6 +86,10 @@
 - ✅ Real Hadith API Integration (random-hadith-generator)
 - ✅ South African phone number validation
 - ✅ Legal pages (Privacy, Terms, Data Deletion)
+- ✅ **Nafl Salah Reminders** (Tahajjud, Ishraq, Awwabin)
+- ✅ **Twice-Daily Hadith** (morning and evening)
+- ✅ **Enhanced Suhoor Reminders** (planning + morning)
+- ✅ **Security Fixes** (mosque-scoped admin operations)
 
 ---
 
@@ -320,14 +324,15 @@ Located in `playwright.config.ts`:
 | 17 | Jumu'ah Reminder | ✅ Live | Friday morning reminder |
 | 18 | Analytics Charts | ✅ Live | Subscriber growth, message breakdown |
 
-### Subscriber Preferences (5 Options)
+### Subscriber Preferences (6 Options)
 
 | Option | Database Field | Description |
 |--------|----------------|-------------|
 | All 5 Daily Prayers | `pref_daily_prayers` | Fajr, Dhuhr, Asr, Maghrib, Isha reminders |
 | Jumu'ah Khutbah Reminder | `pref_jumuah` | Friday prayer notification |
 | Ramadan Mode | `pref_ramadan` | Suhoor, Iftar, Taraweeh reminders |
-| Daily Hadith | `pref_hadith` | One authentic hadith every day |
+| Voluntary Prayers (Nafl) | `pref_nafl_salahs` | Tahajjud, Ishraq, Awwabin reminders |
+| Daily Hadith | `pref_hadith` | Authentic hadith twice daily (morning & evening) |
 | Announcements & Events | `pref_announcements` | Programs, Eid, special events |
 
 ### WhatsApp Commands (6 Total)
@@ -371,10 +376,12 @@ Located in `playwright.config.ts`:
 
 | Method | Endpoint | Schedule (UTC) | Purpose |
 |--------|----------|----------------|---------|
-| `GET` | `/api/cron/prayer-reminders` | 4:00 AM daily | Prayer reminders |
-| `GET` | `/api/cron/daily-hadith` | 6:30 AM daily | Send daily hadith |
+| `GET` | `/api/cron/prayer-reminders` | Every 5 mins | Prayer reminders |
+| `GET` | `/api/cron/daily-hadith?time=fajr` | 3:30 AM daily | Morning hadith |
+| `GET` | `/api/cron/daily-hadith?time=maghrib` | 4:00 PM daily | Evening hadith |
 | `GET` | `/api/cron/jumuah-reminder` | 10:00 AM Fri | Friday reminder |
-| `GET` | `/api/cron/ramadan-reminders` | 3:00 AM daily | Ramadan reminders |
+| `GET` | `/api/cron/ramadan-reminders` | Every 5 mins | Suhoor/Iftar/Taraweeh |
+| `GET` | `/api/cron/nafl-reminders` | Every 5 mins | Tahajjud/Ishraq/Awwabin |
 
 ---
 
@@ -445,10 +452,27 @@ Prayer times need to be accurate to the minute based on sun position. Jumu'ah is
 | `pref_daily_prayers` | BOOLEAN | All 5 daily prayers opt-in |
 | `pref_jumuah` | BOOLEAN | Jumu'ah reminder opt-in |
 | `pref_ramadan` | BOOLEAN | Ramadan reminders opt-in |
+| `pref_nafl_salahs` | BOOLEAN | Voluntary prayers opt-in (Tahajjud, Ishraq, Awwabin) |
 | `pref_hadith` | BOOLEAN | Daily hadith opt-in |
 | `pref_announcements` | BOOLEAN | Announcements opt-in |
 | `reminder_offset` | INT | Minutes before prayer |
 | `subscribed_at` | TIMESTAMP | First subscription date |
+
+### Key Table: daily_hadith_log
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `date` | DATE | Date of hadith |
+| `time_of_day` | VARCHAR(10) | 'morning' or 'evening' |
+| `collection` | TEXT | Bukhari, Muslim, etc. |
+| `hadith_number` | INT | Hadith reference number |
+| `hadith_text` | TEXT | English text |
+| `hadith_arabic` | TEXT | Arabic text (nullable) |
+| `source` | TEXT | Source name |
+| `reference` | TEXT | Full reference |
+
+**Unique Constraint:** `(date, time_of_day)` - ensures one hadith per time slot per day
 
 ---
 
@@ -598,7 +622,210 @@ masjid-notify/
 
 ---
 
+## Nafl Salah Reminders
+
+### Overview
+
+Voluntary (nafl) prayer reminders are sent at optimal times based on prayer calculations.
+
+### Nafl Prayer Types & Timing
+
+| Prayer | Time Calculation | Description |
+|--------|------------------|-------------|
+| **Tahajjud** | Fajr - 2 hours | Last third of the night (best time for night prayers) |
+| **Ishraq/Duha** | Sunrise + 20 min | Forenoon prayer after sunrise |
+| **Awwabin** | Maghrib + 15 min | 6 rakahs between Maghrib and Isha |
+
+### How It Works
+
+1. Cron runs every 5 minutes via cron-job.org
+2. For each mosque, calculates nafl times from prayer times
+3. Checks if current time is within 5-minute window of nafl time
+4. Sends reminder to subscribers with `pref_nafl_salahs = true`
+5. Deduplication prevents double-sending within 10 minutes
+
+---
+
+## Twice-Daily Hadith
+
+### Overview
+
+Subscribers receive one authentic hadith in the morning (after Fajr) and another in the evening (around Maghrib).
+
+### Schedule
+
+| Time | Query Param | UTC Schedule | SAST Time |
+|------|-------------|--------------|-----------|
+| Morning | `?time=fajr` | 3:30 AM | 5:30 AM |
+| Evening | `?time=maghrib` | 4:00 PM | 6:00 PM |
+
+### Database Changes
+
+The `daily_hadith_log` table now includes a `time_of_day` column:
+
+```sql
+ALTER TABLE daily_hadith_log ADD COLUMN IF NOT EXISTS time_of_day VARCHAR(10) DEFAULT 'morning';
+ALTER TABLE daily_hadith_log DROP CONSTRAINT IF EXISTS daily_hadith_log_date_key;
+ALTER TABLE daily_hadith_log ADD CONSTRAINT daily_hadith_log_date_time_key UNIQUE (date, time_of_day);
+```
+
+---
+
+## Enhanced Ramadan Reminders
+
+### Reminder Types
+
+| Reminder | Timing | Description |
+|----------|--------|-------------|
+| **Suhoor Planning** | Isha + 90 min | Night-before reminder to prepare for tomorrow |
+| **Suhoor** | User's offset before Fajr | Morning reminder to eat |
+| **Iftar** | User's offset before Maghrib | Reminder to prepare to break fast |
+| **Taraweeh** | 30 min before Taraweeh time | Night prayer reminder |
+
+---
+
+## External Cron Setup (cron-job.org)
+
+### Why External Cron?
+
+Vercel's free tier only supports daily cron jobs. For real-time prayer reminders (every 5 minutes), use cron-job.org.
+
+### Account Setup
+
+1. Go to https://cron-job.org
+2. Click "Sign Up" (free account)
+3. Verify email
+
+### Cron Jobs to Create
+
+**Job 1: Prayer Reminders**
+- Title: `Masjid Notify - Prayer Reminders`
+- URL: `https://masjid-notify.vercel.app/api/cron/prayer-reminders`
+- Schedule: `*/5 * * * *` (every 5 minutes)
+- Headers: `Authorization: Bearer masjidnotify2025cron`
+
+**Job 2: Ramadan Reminders**
+- Title: `Masjid Notify - Ramadan Reminders`
+- URL: `https://masjid-notify.vercel.app/api/cron/ramadan-reminders`
+- Schedule: `*/5 * * * *` (every 5 minutes)
+- Headers: `Authorization: Bearer masjidnotify2025cron`
+
+**Job 3: Nafl Reminders**
+- Title: `Masjid Notify - Nafl Reminders`
+- URL: `https://masjid-notify.vercel.app/api/cron/nafl-reminders`
+- Schedule: `*/5 * * * *` (every 5 minutes)
+- Headers: `Authorization: Bearer masjidnotify2025cron`
+
+**Job 4: Morning Hadith**
+- Title: `Masjid Notify - Morning Hadith`
+- URL: `https://masjid-notify.vercel.app/api/cron/daily-hadith?time=fajr`
+- Schedule: `30 3 * * *` (3:30 AM UTC = 5:30 AM SAST)
+- Headers: `Authorization: Bearer masjidnotify2025cron`
+
+**Job 5: Evening Hadith**
+- Title: `Masjid Notify - Evening Hadith`
+- URL: `https://masjid-notify.vercel.app/api/cron/daily-hadith?time=maghrib`
+- Schedule: `0 16 * * *` (4:00 PM UTC = 6:00 PM SAST)
+- Headers: `Authorization: Bearer masjidnotify2025cron`
+
+### Vercel Crons as Backup
+
+The `vercel.json` daily crons serve as backup if cron-job.org fails.
+
+---
+
+## Security Fixes (v1.4.0)
+
+### Changes Applied
+
+| File | Fix |
+|------|-----|
+| `/api/admin/subscribers` | PATCH/DELETE now require `mosque_id` match |
+| `/api/admin/subscribers` | GET uses `admin.mosque_id` instead of slug |
+| `/api/admin/stats` | All queries use `admin.mosque_id` |
+| `/api/webhook/whatsapp` | Commands logged to messages table |
+
+### Why This Matters
+
+- Admins can only modify subscribers belonging to their mosque
+- Prevents cross-mosque data access
+- Webhook command logging provides audit trail
+
+---
+
+## Database Migrations Required
+
+Run these SQL statements in Supabase SQL Editor:
+
+```sql
+-- Add nafl salahs preference column
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS pref_nafl_salahs BOOLEAN DEFAULT FALSE;
+
+-- Add time_of_day to daily_hadith_log for twice-daily hadith
+ALTER TABLE daily_hadith_log ADD COLUMN IF NOT EXISTS time_of_day VARCHAR(10) DEFAULT 'morning';
+
+-- Update unique constraint for twice-daily hadith
+ALTER TABLE daily_hadith_log DROP CONSTRAINT IF EXISTS daily_hadith_log_date_key;
+ALTER TABLE daily_hadith_log ADD CONSTRAINT daily_hadith_log_date_time_key UNIQUE (date, time_of_day);
+```
+
+---
+
 ## Changelog
+
+### Version 1.4.0 - February 2, 2026
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Nafl Salah Reminders** | Tahajjud (2h before Fajr), Ishraq (20min after Sunrise), Awwabin (15min after Maghrib) |
+| **Twice-Daily Hadith** | Morning and evening hadith with separate caching |
+| **Suhoor Planning Reminder** | Night-before reminder (90min after Isha) |
+| **Webhook Command Logging** | All WhatsApp commands logged to messages table |
+
+#### Security Fixes
+
+| Fix | Description |
+|-----|-------------|
+| **Mosque-scoped Admin Operations** | PATCH/DELETE require mosque_id match |
+| **Admin Queries Use mosque_id** | Replaced DEFAULT_MOSQUE_SLUG with admin.mosque_id |
+
+#### Database Changes
+
+| Change | SQL |
+|--------|-----|
+| New column | `subscribers.pref_nafl_salahs BOOLEAN DEFAULT FALSE` |
+| New column | `daily_hadith_log.time_of_day VARCHAR(10)` |
+| New constraint | `daily_hadith_log_date_time_key UNIQUE (date, time_of_day)` |
+
+#### Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/cron/nafl-reminders/route.ts` | Nafl prayer reminder cron |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/lib/supabase.ts` | Added `pref_nafl_salahs`, `time_of_day` types |
+| `src/lib/whatsapp-templates.ts` | Added 4 new templates |
+| `src/lib/whatsapp.ts` | Export new templates |
+| `src/lib/prayer-times.ts` | Added `calculateNaflTimes`, `isWithinMinutesAfter` |
+| `src/lib/hadith-api.ts` | Support `timeOfDay` parameter |
+| `src/app/api/cron/daily-hadith/route.ts` | Accept `?time=` param |
+| `src/app/api/cron/ramadan-reminders/route.ts` | Added suhoor planning reminder |
+| `src/components/subscribe-form.tsx` | Added nafl checkbox |
+| `src/app/settings/[token]/page.tsx` | Added nafl checkbox |
+| `src/app/api/settings/[token]/route.ts` | Handle pref_nafl_salahs |
+| `src/app/api/subscribe/route.ts` | Handle pref_nafl_salahs |
+| `src/app/api/admin/subscribers/route.ts` | Security: mosque_id checks |
+| `src/app/api/admin/stats/route.ts` | Use admin.mosque_id |
+| `src/app/api/webhook/whatsapp/route.ts` | Command logging |
+| `vercel.json` | Updated cron schedules |
+
+---
 
 ### Version 1.3.0 - February 2, 2026
 
@@ -698,7 +925,7 @@ Initial production release with 24 user stories completed.
 
 ---
 
-**Document Version:** 1.3.0
-**Last Updated:** February 2, 2026 @ 14:00 UTC
+**Document Version:** 1.4.0
+**Last Updated:** February 2, 2026 @ 22:00 UTC
 **Author:** Claude Code
 **Status:** Production Ready - Fully Tested
