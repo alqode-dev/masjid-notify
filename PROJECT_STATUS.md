@@ -1,8 +1,8 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 3, 2026 @ 03:00 UTC
-> **Version:** 1.5.0
-> **Status:** ⚠️ **WHATSAPP ACCOUNT UNDER REVIEW** - App code ready, awaiting Meta appeal
+> **Last Updated:** February 4, 2026 @ 22:00 UTC
+> **Version:** 1.5.1
+> **Status:** ✅ **WHATSAPP ACTIVE** - Need to submit message templates for Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -219,8 +219,10 @@ git push origin master
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Landing page | ✅ Works | Shows prayer times, subscribe form |
+| Landing page | ✅ Works | Shows prayer times, subscribe form, correct location |
 | Subscribe form | ✅ Works | Saves to database correctly |
+| WhatsApp sending | ✅ Works | Account restored, welcome messages sending |
+| Welcome messages | ✅ Works | Sent on subscription via `masjid_notify_welcome` template |
 | Admin login | ✅ Works | Email: alqodez@gmail.com |
 | Admin dashboard | ✅ Works | Stats cards, subscriber counts, analytics charts |
 | Admin subscribers | ✅ Works | Table, search, filter, export, import, delete |
@@ -230,7 +232,7 @@ git push origin master
 | Admin analytics | ✅ Works | Subscriber growth, message types, status breakdown |
 | Database | ✅ Works | All tables created and functional |
 | Cron jobs | ✅ Works | All 5 jobs running on cron-job.org |
-| Prayer times API | ✅ Works | Aladhan API responding |
+| Prayer times API | ✅ Works | Aladhan API responding, coordinates updated to Rondebosch East |
 | Hadith API | ✅ Works | Returns authentic hadith |
 | Server-side API routes | ✅ Works | All admin pages use secure server-side routes |
 
@@ -238,22 +240,19 @@ git push origin master
 
 | Feature | Status | Why | Fix |
 |---------|--------|-----|-----|
-| WhatsApp sending | 🔴 Broken | Meta suspended account | Waiting for appeal (24-48h) |
-| Welcome messages | 🔴 Broken | Can't send without WhatsApp | Wait for appeal |
-| All notifications | 🔴 Broken | Can't send without WhatsApp | Wait for appeal |
-| Message templates | ⚠️ Not approved | Never submitted to Meta | Submit after account restored |
+| Message templates | ⚠️ Not approved | Never submitted to Meta | Submit all templates for Meta approval |
 | Ramadan settings save | ⚠️ Needs migration | DB columns missing | Run migration 007 in Supabase SQL Editor |
-| Messages count on dashboard | ⚠️ Investigating | May show 0 despite messages in DB | Check Vercel logs for debug output |
+| Messages count on dashboard | ⚠️ Bug | Welcome msg insert failing silently (likely CHECK constraint on `type` column in deployed DB) | Run ALTER to update constraint; check Vercel logs for `[subscribe]` errors |
 
-### 📋 TODO After WhatsApp Restored
+### 📋 TODO: Next Steps
 
-1. [ ] Submit ALL message templates to Meta for approval
-2. [ ] Wait for template approval (24-48h each)
-3. [ ] Apply for Meta Business Verification
-4. [ ] Get a test phone number for testing
-5. [ ] Implement number warmup (start slow)
-6. [ ] Test welcome message flow
-7. [ ] Test prayer reminder flow
+1. [ ] **Fix messages count bug** — Update CHECK constraint on `messages.type` column (see SQL below)
+2. [ ] Submit ALL message templates to Meta for approval
+3. [ ] Wait for template approval (24-48h each)
+4. [ ] Apply for Meta Business Verification
+5. [ ] Get a test phone number for testing
+6. [ ] Implement number warmup (start slow)
+7. [ ] Test prayer reminder flow end-to-end
 8. [ ] Go live with real users
 
 ### 📋 TODO Database Migrations
@@ -272,13 +271,13 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 3, 2026 | All pages loading correctly |
-| **Backend API** | ✅ Operational | Feb 3, 2026 | All admin endpoints use server-side routes |
-| **Database (Supabase)** | ✅ Connected | Feb 3, 2026 | PostgreSQL with RLS, need migration 007 |
-| **Admin Dashboard** | ✅ Fixed | Feb 3, 2026 | All pages migrated to API routes |
+| **Frontend (Next.js)** | ✅ Operational | Feb 4, 2026 | All pages loading correctly |
+| **Backend API** | ✅ Operational | Feb 4, 2026 | All admin endpoints use server-side routes |
+| **Database (Supabase)** | ✅ Connected | Feb 4, 2026 | PostgreSQL with RLS, need migration 007, coordinates updated |
+| **Admin Dashboard** | ✅ Fixed | Feb 4, 2026 | All pages migrated to API routes |
 | **Admin Settings** | ⚠️ Partial | Feb 3, 2026 | Prayer settings work, Ramadan needs migration 007 |
-| **WhatsApp Sending** | 🔴 Suspended | Feb 2, 2026 | Account under Meta review |
-| **WhatsApp Webhook** | 🔴 Suspended | Feb 2, 2026 | Awaiting account restoration |
+| **WhatsApp Sending** | ✅ Active | Feb 4, 2026 | Account restored, name updated, welcome messages working |
+| **WhatsApp Webhook** | ✅ Active | Feb 4, 2026 | Receiving messages |
 | **Cron Jobs** | ✅ Running | Feb 2, 2026 | 5 jobs on cron-job.org |
 | **Hadith API** | ✅ Integrated | Feb 2, 2026 | random-hadith-generator.vercel.app |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
@@ -291,6 +290,8 @@ git push origin master
 |----------|-------|
 | **Name** | Anwaarul Islam Rondebosch East |
 | **Slug** | anwaarul-islam-rondebosch-east |
+| **Address** | 123 2nd Ave, Rondebosch East, Cape Town, 7780 |
+| **Coordinates** | -33.9769192, 18.5006926 |
 | **City** | Cape Town |
 | **Country** | South Africa |
 | **Madhab** | Hanafi |
@@ -331,14 +332,15 @@ git push origin master
 
 ## WhatsApp Account Status & Compliance
 
-### Current Status: ⚠️ UNDER REVIEW
+### Current Status: ✅ ACTIVE
 
 | Item | Status | Details |
 |------|--------|---------|
-| **Account Status** | 🔴 Suspended | "Activity that does not comply with WhatsApp Business terms of service" |
-| **Appeal Submitted** | ✅ Yes | February 2, 2026 |
-| **Expected Response** | 24-48 hours | Meta review in progress |
-| **Business Name** | Bochi / Masjid Notify | Mosque prayer reminder service |
+| **Account Status** | ✅ Active | Restored after appeal — business name was updated |
+| **Appeal Result** | ✅ Approved | February 4, 2026 |
+| **Business Name** | Masjid Notify | Updated from "Bochi" (name issue caused original suspension) |
+| **Welcome Messages** | ✅ Sending | `masjid_notify_welcome` template working |
+| **Message Templates** | ⚠️ Need approval | All other templates must be submitted to Meta for approval |
 
 ### Why the Ban Likely Occurred
 
@@ -675,6 +677,16 @@ npx playwright test --headed
 | **Missing preference badges** | Only 4 of 6 badges shown in subscribers table | Added Ramadan (teal) and Nafl Salahs (indigo) badges | ✅ Fixed |
 | **WhatsApp 24h policy not shown** | Users unaware of messaging window limit | Added policy notice banner on announcements form | ✅ Fixed |
 | **Messages count showing 0** | Possible mosque_id mismatch or silent insert failure | Added debug logging + error handling on welcome msg insert | ⚠️ Investigating |
+
+### February 4, 2026 (v1.5.1)
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **Wrong mosque coordinates** | Lat/lng pointed to Cape Town city center (-33.9249, 18.4241) instead of mosque | Updated DB to -33.9769192, 18.5006926 (Rondebosch East) | ✅ Fixed |
+| **Landing page location text** | Showed "Cape Town, South Africa" — too generic | Changed to "Rondebosch East, Cape Town" | ✅ Fixed |
+| **Stale prayer times cache** | Cached times based on old coordinates | Cleared `prayer_times_cache` for the mosque | ✅ Fixed |
+| **Messages count = 0 on dashboard** | Welcome message insert to `messages` table failing silently | Enhanced error logging; likely CHECK constraint on `type` column needs updating in deployed DB | ⚠️ Investigating |
+| **WhatsApp account status** | Was suspended by Meta | Appeal approved; business name updated to "Masjid Notify" | ✅ Resolved |
 
 ### February 2, 2026 (v1.3.0)
 
@@ -1370,6 +1382,41 @@ ALTER TABLE mosques ADD COLUMN IF NOT EXISTS taraweeh_time TIME;
 
 ## Changelog
 
+### Version 1.5.1 - February 4, 2026
+
+#### Mosque Coordinates & Location Fix
+
+Updated mosque coordinates from Cape Town city center to actual mosque location in Rondebosch East. This improves prayer time accuracy and the Google Maps link on the landing page.
+
+#### Changes
+
+| Change | Description |
+|--------|-------------|
+| **Coordinates updated** | -33.9249, 18.4241 → -33.9769192, 18.5006926 (via Supabase SQL) |
+| **Landing page location** | "Cape Town, South Africa" → "Rondebosch East, Cape Town" |
+| **Prayer times cache** | Cleared to force recalculation with correct coordinates |
+| **Messages INSERT policy** | Added RLS policy to ensure message logging succeeds |
+| **Subscribe error logging** | Enhanced logging for welcome message insert failures |
+| **WhatsApp status** | Account restored and active after Meta appeal |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/app/landing-page.tsx` | Location text updated to "Rondebosch East, {mosque.city}" |
+| `src/app/api/subscribe/route.ts` | Enhanced error logging for message insert with payload details |
+| `PROJECT_STATUS.md` | Comprehensive update: WhatsApp active, coordinates, bug status |
+
+#### SQL Run in Supabase
+
+| SQL | Purpose |
+|-----|---------|
+| `UPDATE mosques SET latitude/longitude` | Correct coordinates for Rondebosch East |
+| `DELETE FROM prayer_times_cache` | Clear stale cache |
+| `CREATE POLICY on messages FOR INSERT` | Ensure message logging works |
+
+---
+
 ### Version 1.5.0 - February 3, 2026
 
 #### Complete Admin Dashboard API Migration
@@ -1744,7 +1791,7 @@ Initial production release with 24 user stories completed.
 
 ---
 
-**Document Version:** 1.5.0
-**Last Updated:** February 3, 2026 @ 03:00 UTC
+**Document Version:** 1.5.1
+**Last Updated:** February 4, 2026 @ 22:00 UTC
 **Author:** Claude Code
-**Status:** App Ready - WhatsApp Account Under Meta Review
+**Status:** WhatsApp Active - Need to submit message templates for Meta approval

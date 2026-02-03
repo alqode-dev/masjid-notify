@@ -157,18 +157,21 @@ export async function POST(request: NextRequest) {
     const welcomeMessage = previewTemplate(WELCOME_TEMPLATE, [])
 
     // Log the welcome message
+    const msgPayload = {
+      mosque_id,
+      type: 'welcome',
+      content: welcomeMessage,
+      sent_to_count: 1,
+      status: whatsappResult.success ? 'sent' : 'failed',
+    }
     const { error: msgLogError } = await supabaseAdmin
       .from('messages')
-      .insert({
-        mosque_id,
-        type: 'welcome',
-        content: welcomeMessage,
-        sent_to_count: 1,
-        status: whatsappResult.success ? 'sent' : 'failed',
-      })
+      .insert(msgPayload)
 
     if (msgLogError) {
-      console.error('Failed to log welcome message:', msgLogError)
+      console.error('[subscribe] Failed to log welcome message:', msgLogError.message, msgLogError.details, msgLogError.code, 'payload:', JSON.stringify(msgPayload))
+    } else {
+      console.log('[subscribe] Welcome message logged for mosque_id:', mosque_id)
     }
 
     return NextResponse.json({
