@@ -31,10 +31,14 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       .eq("status", "active");
 
     // Get message counts using admin's mosque_id
-    const { data: totalMessagesData } = await supabaseAdmin
+    const { data: totalMessagesData, error: msgError } = await supabaseAdmin
       .from("messages")
       .select("sent_to_count")
       .eq("mosque_id", admin.mosque_id);
+
+    if (msgError) {
+      console.error("Error fetching messages for stats:", msgError);
+    }
 
     const totalMessages =
       totalMessagesData?.reduce(

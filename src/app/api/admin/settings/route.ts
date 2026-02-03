@@ -56,7 +56,7 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
     if (error) {
       console.error("Error updating settings:", error);
       return NextResponse.json(
-        { error: "Failed to save settings" },
+        { error: `Failed to save settings: ${error.message}` },
         { status: 500 }
       );
     }
