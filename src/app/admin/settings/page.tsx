@@ -92,12 +92,17 @@ export default function SettingsPage() {
         }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "Failed to save settings");
       }
 
-      toast.success("Settings saved successfully");
+      if (data.warning) {
+        toast.warning(data.warning);
+      } else {
+        toast.success("Settings saved successfully");
+      }
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save settings");

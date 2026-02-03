@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { SubscribersTable } from "@/components/admin/subscribers-table";
 import { SubscriberImport } from "@/components/admin/subscriber-import";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { Subscriber, Mosque } from "@/lib/supabase";
 import { Search, Download } from "lucide-react";
@@ -115,8 +114,9 @@ export default function SubscribersPage() {
     a.click();
   };
 
+  const normalizedQuery = searchQuery.replace(/[\s\-+]/g, "");
   const filteredSubscribers = subscribers.filter((s) =>
-    s.phone_number.includes(searchQuery.replace(/[\s\-+]/g, ""))
+    normalizedQuery === "" || s.phone_number.replace(/[\s\-+]/g, "").includes(normalizedQuery)
   );
 
   return (
@@ -145,12 +145,13 @@ export default function SubscribersPage() {
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <Input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+          <input
+            type="text"
             placeholder="Search by phone number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="w-full pl-10 pr-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50"
           />
         </div>
         <Select

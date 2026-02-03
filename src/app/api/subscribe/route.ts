@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
     const welcomeMessage = previewTemplate(WELCOME_TEMPLATE, [])
 
     // Log the welcome message
-    await supabaseAdmin
+    const { error: msgLogError } = await supabaseAdmin
       .from('messages')
       .insert({
         mosque_id,
@@ -166,6 +166,10 @@ export async function POST(request: NextRequest) {
         sent_to_count: 1,
         status: whatsappResult.success ? 'sent' : 'failed',
       })
+
+    if (msgLogError) {
+      console.error('Failed to log welcome message:', msgLogError)
+    }
 
     return NextResponse.json({
       success: true,

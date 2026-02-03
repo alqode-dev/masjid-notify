@@ -1,6 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 3, 2026 @ 01:00 UTC
+> **Last Updated:** February 3, 2026 @ 03:00 UTC
+> **Version:** 1.5.0
 > **Status:** ⚠️ **WHATSAPP ACCOUNT UNDER REVIEW** - App code ready, awaiting Meta appeal
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -221,11 +222,17 @@ git push origin master
 | Landing page | ✅ Works | Shows prayer times, subscribe form |
 | Subscribe form | ✅ Works | Saves to database correctly |
 | Admin login | ✅ Works | Email: alqodez@gmail.com |
-| Admin dashboard | ✅ Works | Shows stats, subscribers |
+| Admin dashboard | ✅ Works | Stats cards, subscriber counts, analytics charts |
+| Admin subscribers | ✅ Works | Table, search, filter, export, import, delete |
+| Admin announcements | ✅ Works | Send now, schedule, templates, WhatsApp policy notice |
+| Admin settings | ⚠️ Partial | Prayer settings save. Ramadan settings need migration 007 |
+| Admin QR code | ✅ Works | Generate and download QR codes |
+| Admin analytics | ✅ Works | Subscriber growth, message types, status breakdown |
 | Database | ✅ Works | All tables created and functional |
 | Cron jobs | ✅ Works | All 5 jobs running on cron-job.org |
 | Prayer times API | ✅ Works | Aladhan API responding |
 | Hadith API | ✅ Works | Returns authentic hadith |
+| Server-side API routes | ✅ Works | All admin pages use secure server-side routes |
 
 ### ⚠️ Currently Broken / Pending
 
@@ -235,6 +242,8 @@ git push origin master
 | Welcome messages | 🔴 Broken | Can't send without WhatsApp | Wait for appeal |
 | All notifications | 🔴 Broken | Can't send without WhatsApp | Wait for appeal |
 | Message templates | ⚠️ Not approved | Never submitted to Meta | Submit after account restored |
+| Ramadan settings save | ⚠️ Needs migration | DB columns missing | Run migration 007 in Supabase SQL Editor |
+| Messages count on dashboard | ⚠️ Investigating | May show 0 despite messages in DB | Check Vercel logs for debug output |
 
 ### 📋 TODO After WhatsApp Restored
 
@@ -246,6 +255,10 @@ git push origin master
 6. [ ] Test welcome message flow
 7. [ ] Test prayer reminder flow
 8. [ ] Go live with real users
+
+### 📋 TODO Database Migrations
+
+1. [ ] **Run migration 007** (`supabase/migrations/007_add_ramadan_columns.sql`) — Adds `ramadan_mode`, `suhoor_reminder_mins`, `iftar_reminder_mins`, `taraweeh_time` columns to mosques table. Required for Ramadan settings to save.
 
 ---
 
@@ -259,10 +272,11 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 2, 2026 | All pages loading correctly |
-| **Backend API** | ✅ Operational | Feb 2, 2026 | All endpoints responding |
-| **Database (Supabase)** | ✅ Connected | Feb 2, 2026 | PostgreSQL with RLS |
-| **Admin Dashboard** | ✅ Fixed | Feb 2, 2026 | Now shows subscribers correctly |
+| **Frontend (Next.js)** | ✅ Operational | Feb 3, 2026 | All pages loading correctly |
+| **Backend API** | ✅ Operational | Feb 3, 2026 | All admin endpoints use server-side routes |
+| **Database (Supabase)** | ✅ Connected | Feb 3, 2026 | PostgreSQL with RLS, need migration 007 |
+| **Admin Dashboard** | ✅ Fixed | Feb 3, 2026 | All pages migrated to API routes |
+| **Admin Settings** | ⚠️ Partial | Feb 3, 2026 | Prayer settings work, Ramadan needs migration 007 |
 | **WhatsApp Sending** | 🔴 Suspended | Feb 2, 2026 | Account under Meta review |
 | **WhatsApp Webhook** | 🔴 Suspended | Feb 2, 2026 | Awaiting account restoration |
 | **Cron Jobs** | ✅ Running | Feb 2, 2026 | 5 jobs on cron-job.org |
@@ -647,7 +661,22 @@ npx playwright test --headed
 
 ## Recent Bug Fixes
 
-### February 2, 2026
+### February 3, 2026 (v1.5.0)
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **Announcements page showing 0 subscribers** | Used `createClientSupabase()` blocked by RLS | New API route `/api/admin/announcements/data` | ✅ Fixed |
+| **Analytics charts empty** | Same RLS issue | New API route `/api/admin/analytics` | ✅ Fixed |
+| **Settings page using client Supabase** | Same RLS issue | New API route `/api/admin/settings` (GET/PUT) | ✅ Fixed |
+| **QR code page using client Supabase** | Same RLS issue | Now uses existing `/api/admin/stats` | ✅ Fixed |
+| **Subscriber import using client Supabase** | Same RLS issue | New API route `/api/admin/subscribers/import` | ✅ Fixed |
+| **Search bar not working** | Input component wrapper div blocking interaction | Replaced with raw `<input>` element | ✅ Fixed |
+| **Settings save error: missing columns** | `ramadan_mode`, `iftar_reminder_mins` etc. not in DB | Created migration 007, added fallback in PUT route | ⚠️ Needs migration |
+| **Missing preference badges** | Only 4 of 6 badges shown in subscribers table | Added Ramadan (teal) and Nafl Salahs (indigo) badges | ✅ Fixed |
+| **WhatsApp 24h policy not shown** | Users unaware of messaging window limit | Added policy notice banner on announcements form | ✅ Fixed |
+| **Messages count showing 0** | Possible mosque_id mismatch or silent insert failure | Added debug logging + error handling on welcome msg insert | ⚠️ Investigating |
+
+### February 2, 2026 (v1.3.0)
 
 | Issue | Root Cause | Solution | Status |
 |-------|------------|----------|--------|
@@ -655,15 +684,18 @@ npx playwright test --headed
 | **Subscribers page showing empty** | Same RLS issue | API route uses `supabaseAdmin` which bypasses RLS | ✅ Fixed |
 | **Messages count showing 0** | Queries not filtered by mosque_id | Added mosque_id filter to all queries | ✅ Fixed |
 
-### Technical Details
+### Technical Details: v1.5.0 Admin Migration
 
-The admin pages were using `createClientSupabase()` (browser client) which is subject to Row Level Security (RLS) policies. The fix was to:
+All admin pages were migrated from `createClientSupabase()` (browser client blocked by RLS) to server-side API routes using `withAdminAuth()` + `supabaseAdmin` (service role key). The hardcoded `DEFAULT_MOSQUE_SLUG` was replaced with `admin.mosque_id` from the authenticated admin record.
 
-1. Create new API routes that use `supabaseAdmin` (service role)
-2. Update dashboard and subscribers pages to fetch via API
-3. The API routes are protected by `withAdminAuth()` middleware
+**New API Routes Created (v1.5.0):**
+- `GET /api/admin/settings` - Fetch mosque settings
+- `PUT /api/admin/settings` - Update mosque settings (with Ramadan column fallback)
+- `GET /api/admin/announcements/data` - Announcements page data
+- `GET /api/admin/analytics` - Analytics charts data (subscriber growth, message types, status)
+- `POST /api/admin/subscribers/import` - Bulk CSV import
 
-**New API Routes Created:**
+**Previously Created (v1.3.0):**
 - `GET /api/admin/stats` - Dashboard statistics
 - `GET /api/admin/subscribers` - List subscribers with filters
 - `PATCH /api/admin/subscribers` - Update subscriber status
@@ -891,18 +923,23 @@ Located in `playwright.config.ts`:
 | `GET` | `/api/settings/[token]` | Get user preferences |
 | `POST` | `/api/settings/[token]` | Update user preferences |
 
-### Admin Endpoints (Requires Auth)
+### Admin Endpoints (Requires Auth via `withAdminAuth`)
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `GET` | `/api/admin/stats` | Dashboard statistics |
-| `GET` | `/api/admin/subscribers` | List subscribers |
+| `GET` | `/api/admin/stats` | Dashboard statistics (subscriber counts, message counts) |
+| `GET` | `/api/admin/subscribers` | List subscribers with optional status filter |
 | `PATCH` | `/api/admin/subscribers` | Update subscriber status |
 | `DELETE` | `/api/admin/subscribers?id=` | Delete subscriber |
-| `POST` | `/api/admin/announcements` | Send announcement |
-| `GET` | `/api/admin/announcements/schedule` | List scheduled |
-| `POST` | `/api/admin/announcements/schedule` | Create scheduled |
-| `DELETE` | `/api/admin/announcements/schedule/[id]` | Cancel scheduled |
+| `POST` | `/api/admin/subscribers/import` | Bulk import subscribers from CSV |
+| `GET` | `/api/admin/settings` | Get mosque settings |
+| `PUT` | `/api/admin/settings` | Update mosque settings (prayer & Ramadan) |
+| `GET` | `/api/admin/announcements/data` | Announcements page data (mosque, active count, recent) |
+| `POST` | `/api/admin/announcements` | Send announcement immediately |
+| `GET` | `/api/admin/announcements/schedule` | List scheduled messages |
+| `POST` | `/api/admin/announcements/schedule` | Create scheduled message |
+| `DELETE` | `/api/admin/announcements/schedule/[id]` | Cancel scheduled message |
+| `GET` | `/api/admin/analytics` | Analytics data (subscriber growth, message types, status) |
 
 ### Cron Endpoints (Requires CRON_SECRET)
 
@@ -1076,11 +1113,15 @@ masjid-notify/
 │   │       ├── subscribe/route.ts      # Subscription endpoint
 │   │       │
 │   │       ├── admin/
-│   │       │   ├── stats/route.ts      # Dashboard stats (NEW)
-│   │       │   ├── subscribers/route.ts # Subscribers CRUD (NEW)
+│   │       │   ├── stats/route.ts          # Dashboard stats
+│   │       │   ├── subscribers/route.ts    # Subscribers CRUD
+│   │       │   ├── subscribers/import/route.ts # CSV bulk import
+│   │       │   ├── settings/route.ts       # Mosque settings GET/PUT
+│   │       │   ├── analytics/route.ts      # Analytics charts data
 │   │       │   └── announcements/
-│   │       │       ├── route.ts
-│   │       │       └── schedule/
+│   │       │       ├── route.ts            # Send announcement
+│   │       │       ├── data/route.ts       # Announcements page data
+│   │       │       └── schedule/           # Scheduled messages
 │   │       │
 │   │       ├── cron/
 │   │       │   ├── prayer-reminders/route.ts
@@ -1142,7 +1183,8 @@ masjid-notify/
 │       ├── 003_add_scheduled_messages.sql
 │       ├── 004_update_mosque_details.sql
 │       ├── 005_add_daily_hadith_log.sql
-│       └── 006_simplify_preferences.sql
+│       ├── 006_simplify_preferences.sql
+│       └── 007_add_ramadan_columns.sql   # Ramadan settings for mosques
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
@@ -1288,7 +1330,9 @@ The `vercel.json` daily crons serve as backup if cron-job.org fails.
 
 ## Database Migrations Required
 
-Run these SQL statements in Supabase SQL Editor:
+Run these SQL statements in Supabase SQL Editor **in order**:
+
+### Migration: Nafl Salahs + Hadith (if not already run)
 
 ```sql
 -- Add nafl salahs preference column
@@ -1302,9 +1346,89 @@ ALTER TABLE daily_hadith_log DROP CONSTRAINT IF EXISTS daily_hadith_log_date_key
 ALTER TABLE daily_hadith_log ADD CONSTRAINT daily_hadith_log_date_time_key UNIQUE (date, time_of_day);
 ```
 
+### Migration 007: Ramadan Columns (REQUIRED for settings save)
+
+File: `supabase/migrations/007_add_ramadan_columns.sql`
+
+```sql
+-- Add Ramadan mode toggle
+ALTER TABLE mosques ADD COLUMN IF NOT EXISTS ramadan_mode BOOLEAN DEFAULT FALSE;
+
+-- Add Suhoor reminder offset (minutes before Fajr)
+ALTER TABLE mosques ADD COLUMN IF NOT EXISTS suhoor_reminder_mins INTEGER DEFAULT 30;
+
+-- Add Iftar reminder offset (minutes before Maghrib)
+ALTER TABLE mosques ADD COLUMN IF NOT EXISTS iftar_reminder_mins INTEGER DEFAULT 15;
+
+-- Add Taraweeh prayer time (optional)
+ALTER TABLE mosques ADD COLUMN IF NOT EXISTS taraweeh_time TIME;
+```
+
+**Without this migration:** Settings page will show a warning "Ramadan settings require a database migration" and only save prayer time settings. The admin dashboard and Ramadan cron jobs will not function correctly for Ramadan features.
+
 ---
 
 ## Changelog
+
+### Version 1.5.0 - February 3, 2026
+
+#### Complete Admin Dashboard API Migration
+
+All admin pages now use secure server-side API routes instead of client-side Supabase queries. This fixes the RLS (Row Level Security) issue that caused empty data on multiple admin pages.
+
+#### Bug Fixes
+
+| Fix | Description |
+|-----|-------------|
+| **Announcements page: 0 subscribers** | Created `/api/admin/announcements/data` route |
+| **Analytics charts: empty** | Created `/api/admin/analytics` route |
+| **Settings: client-side queries** | Created `/api/admin/settings` route (GET + PUT) |
+| **QR code page: client-side queries** | Now uses existing `/api/admin/stats` |
+| **Subscriber import: client-side insert** | Created `/api/admin/subscribers/import` route |
+| **Search bar not working** | Replaced Input component with raw `<input>` to fix wrapper div issue |
+| **Settings save: missing columns** | Created migration 007 + fallback in PUT route for Ramadan columns |
+| **Missing preference badges** | Added Ramadan (teal) and Nafl Salahs (indigo) badges to subscribers table |
+| **WhatsApp policy not visible** | Added 24-hour messaging window notice on announcements form |
+| **Welcome message silent failure** | Added error handling to message insert in subscribe route |
+
+#### New API Routes
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/admin/settings` | GET | Fetch mosque settings |
+| `/api/admin/settings` | PUT | Update mosque settings (with Ramadan column fallback) |
+| `/api/admin/announcements/data` | GET | Announcements page data (mosque, active count, recent messages) |
+| `/api/admin/analytics` | GET | Analytics data (subscriber growth, message types, status breakdown) |
+| `/api/admin/subscribers/import` | POST | Bulk CSV import with validation |
+
+#### Database Changes
+
+| Change | File |
+|--------|------|
+| New migration: Ramadan columns for mosques | `supabase/migrations/007_add_ramadan_columns.sql` |
+
+#### Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/app/admin/announcements/page.tsx` | Removed `createClientSupabase`, uses API route |
+| `src/app/admin/settings/page.tsx` | Removed `createClientSupabase`, uses API route, shows migration warning |
+| `src/app/admin/qr-code/page.tsx` | Removed `createClientSupabase`, uses stats API |
+| `src/app/admin/subscribers/page.tsx` | Fixed search bar with raw `<input>`, improved partial matching |
+| `src/components/admin/analytics-charts.tsx` | Removed `createClientSupabase`, uses API route |
+| `src/components/admin/subscriber-import.tsx` | Removed `createClientSupabase`, uses API route |
+| `src/components/admin/subscribers-table.tsx` | Added Ramadan and Nafl Salahs preference badges |
+| `src/components/admin/announcement-form.tsx` | Added WhatsApp 24-hour policy warning banner |
+| `src/app/api/admin/stats/route.ts` | Added debug logging for messages count |
+| `src/app/api/subscribe/route.ts` | Added error handling for welcome message insert |
+
+#### Security
+
+- All admin pages now use `admin.mosque_id` from the authenticated admin record
+- No hardcoded `DEFAULT_MOSQUE_SLUG` in any admin page or component
+- `createClientSupabase` only used for authentication (layout.tsx, login/page.tsx) — NOT for data queries
+
+---
 
 ### Version 1.4.1 - February 3, 2026
 
@@ -1620,7 +1744,7 @@ Initial production release with 24 user stories completed.
 
 ---
 
-**Document Version:** 1.4.1
-**Last Updated:** February 3, 2026 @ 00:30 UTC
+**Document Version:** 1.5.0
+**Last Updated:** February 3, 2026 @ 03:00 UTC
 **Author:** Claude Code
 **Status:** App Ready - WhatsApp Account Under Meta Review

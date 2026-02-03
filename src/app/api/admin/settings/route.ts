@@ -28,32 +28,51 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
   try {
     const body = await request.json();
 
-    const {
-      calculation_method,
-      madhab,
-      jumuah_adhaan_time,
-      jumuah_khutbah_time,
-      ramadan_mode,
-      suhoor_reminder_mins,
-      iftar_reminder_mins,
-      taraweeh_time,
-    } = body;
+    // Always-available fields
+    const coreUpdate: Record<string, unknown> = {
+      calculation_method: body.calculation_method,
+      madhab: body.madhab,
+      jumuah_adhaan_time: body.jumuah_adhaan_time,
+      jumuah_khutbah_time: body.jumuah_khutbah_time,
+    };
 
+    // Ramadan fields (may not exist in DB yet — migration 007 required)
+    const ramadanFields: Record<string, unknown> = {
+      ramadan_mode: body.ramadan_mode,
+      suhoor_reminder_mins: body.suhoor_reminder_mins,
+      iftar_reminder_mins: body.iftar_reminder_mins,
+      taraweeh_time: body.taraweeh_time,
+    };
+
+    // Try saving all fields first
     const { error } = await supabaseAdmin
       .from("mosques")
-      .update({
-        calculation_method,
-        madhab,
-        jumuah_adhaan_time,
-        jumuah_khutbah_time,
-        ramadan_mode,
-        suhoor_reminder_mins,
-        iftar_reminder_mins,
-        taraweeh_time,
-      })
+      .update({ ...coreUpdate, ...ramadanFields })
       .eq("id", admin.mosque_id);
 
     if (error) {
+      // If Ramadan columns don't exist, retry with core fields only
+      if (error.message.includes("column") && error.message.includes("schema cache")) {
+        console.warn("Ramadan columns missing — saving core settings only. Run migration 007.", error.message);
+        const { error: coreError } = await supabaseAdmin
+          .from("mosques")
+          .update(coreUpdate)
+          .eq("id", admin.mosque_id);
+
+        if (coreError) {
+          console.error("Error updating core settings:", coreError);
+          return NextResponse.json(
+            { error: `Failed to save settings: ${coreError.message}` },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          warning: "Prayer settings saved. Ramadan settings require a database migration — run migration 007 in Supabase SQL Editor.",
+        });
+      }
+
       console.error("Error updating settings:", error);
       return NextResponse.json(
         { error: `Failed to save settings: ${error.message}` },
