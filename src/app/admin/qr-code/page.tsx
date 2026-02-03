@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientSupabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QRCodeDisplay } from "@/components/qr-code";
@@ -10,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 export default function QRCodePage() {
   const [mosqueName, setMosqueName] = useState("");
@@ -21,17 +19,17 @@ export default function QRCodePage() {
 
   useEffect(() => {
     const fetchMosque = async () => {
-      const supabase = createClientSupabase();
-      const { data } = await supabase
-        .from("mosques")
-        .select("name")
-        .eq("slug", DEFAULT_MOSQUE_SLUG)
-        .single();
-
-      if (data) {
-        setMosqueName(data.name);
+      try {
+        const response = await fetch("/api/admin/stats");
+        if (response.ok) {
+          const data = await response.json();
+          setMosqueName(data.mosqueName || "");
+        }
+      } catch (error) {
+        console.error("Error fetching mosque name:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchMosque();

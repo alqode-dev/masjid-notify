@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientSupabase } from "@/lib/supabase";
 import { AnnouncementForm } from "@/components/admin/announcement-form";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import type { Message, Mosque, ScheduledMessage } from "@/lib/supabase";
+import type { Message, ScheduledMessage } from "@/lib/supabase";
 import { getRelativeTime } from "@/lib/utils";
 import { Calendar, Clock, X } from "lucide-react";
 import { toast } from "sonner";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 export default function AnnouncementsPage() {
-  const [mosque, setMosque] = useState<Mosque | null>(null);
+  const [mosqueId, setMosqueId] = useState("");
+  const [mosqueName, setMosqueName] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
   const [activeCount, setActiveCount] = useState(0);
@@ -22,51 +21,32 @@ export default function AnnouncementsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const fetchData = async () => {
-    const supabase = createClientSupabase();
+    try {
+      // Fetch announcements data via API route
+      const response = await fetch("/api/admin/announcements/data");
+      if (!response.ok) throw new Error("Failed to fetch announcements data");
+      const data = await response.json();
 
-    // Get mosque
-    const { data: mosqueData } = await supabase
-      .from("mosques")
-      .select("*")
-      .eq("slug", DEFAULT_MOSQUE_SLUG)
-      .single();
-
-    if (mosqueData) {
-      setMosque(mosqueData as Mosque);
-
-      // Get active subscribers count
-      const { count } = await supabase
-        .from("subscribers")
-        .select("*", { count: "exact", head: true })
-        .eq("mosque_id", mosqueData.id)
-        .eq("status", "active");
-
-      setActiveCount(count || 0);
-
-      // Get recent announcements
-      const { data: messagesData } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("mosque_id", mosqueData.id)
-        .eq("type", "announcement")
-        .order("sent_at", { ascending: false })
-        .limit(10);
-
-      setMessages((messagesData || []) as Message[]);
+      setMosqueId(data.mosque.id);
+      setMosqueName(data.mosque.name);
+      setActiveCount(data.activeCount);
+      setMessages(data.recentAnnouncements as Message[]);
 
       // Fetch scheduled messages via API (requires auth)
       try {
-        const response = await fetch("/api/admin/announcements/schedule");
-        if (response.ok) {
-          const data = await response.json();
-          setScheduledMessages(data.messages || []);
+        const schedResponse = await fetch("/api/admin/announcements/schedule");
+        if (schedResponse.ok) {
+          const schedData = await schedResponse.json();
+          setScheduledMessages(schedData.messages || []);
         }
       } catch (error) {
         console.error("Error fetching scheduled messages:", error);
       }
+    } catch (error) {
+      console.error("Error fetching announcements data:", error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleCancelScheduled = async (id: string) => {
@@ -122,7 +102,7 @@ export default function AnnouncementsPage() {
     );
   }
 
-  if (!mosque) {
+  if (!mosqueId) {
     return <div>Mosque not found</div>;
   }
 
@@ -140,8 +120,8 @@ export default function AnnouncementsPage() {
           New Announcement
         </h2>
         <AnnouncementForm
-          mosqueId={mosque.id}
-          mosqueName={mosque.name}
+          mosqueId={mosqueId}
+          mosqueName={mosqueName}
           activeSubscribers={activeCount}
           onSent={fetchData}
         />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientSupabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -17,7 +16,6 @@ import {
   Legend,
 } from "recharts";
 import { TrendingUp, PieChartIcon, Users } from "lucide-react";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 interface SubscriberGrowthData {
   date: string;
@@ -36,21 +34,6 @@ interface StatusBreakdownData {
   color: string;
 }
 
-const MESSAGE_TYPE_COLORS: Record<string, string> = {
-  prayer: "#0d9488",
-  hadith: "#f59e0b",
-  announcement: "#8b5cf6",
-  ramadan: "#ec4899",
-  welcome: "#10b981",
-  jumuah: "#3b82f6",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  active: "#10b981",
-  paused: "#f59e0b",
-  unsubscribed: "#ef4444",
-};
-
 export function AnalyticsCharts() {
   const [loading, setLoading] = useState(true);
   const [subscriberGrowth, setSubscriberGrowth] = useState<SubscriberGrowthData[]>([]);
@@ -59,118 +42,14 @@ export function AnalyticsCharts() {
 
   useEffect(() => {
     const fetchAnalytics = async () => {
-      const supabase = createClientSupabase();
-
       try {
-        // Get mosque
-        const { data: mosque } = await supabase
-          .from("mosques")
-          .select("id")
-          .eq("slug", DEFAULT_MOSQUE_SLUG)
-          .single();
+        const response = await fetch("/api/admin/analytics");
+        if (!response.ok) throw new Error("Failed to fetch analytics");
+        const data = await response.json();
 
-        if (!mosque) return;
-
-        // Fetch subscriber growth (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        const { data: subscribers } = await supabase
-          .from("subscribers")
-          .select("subscribed_at")
-          .eq("mosque_id", mosque.id)
-          .gte("subscribed_at", thirtyDaysAgo.toISOString())
-          .order("subscribed_at", { ascending: true });
-
-        // Group by date
-        const growthMap = new Map<string, number>();
-        let cumulativeCount = 0;
-
-        // Get count before 30 days
-        const { count: priorCount } = await supabase
-          .from("subscribers")
-          .select("*", { count: "exact", head: true })
-          .eq("mosque_id", mosque.id)
-          .lt("subscribed_at", thirtyDaysAgo.toISOString());
-
-        cumulativeCount = priorCount || 0;
-
-        // Generate all dates in range
-        const dates: string[] = [];
-        for (let i = 0; i < 30; i++) {
-          const date = new Date();
-          date.setDate(date.getDate() - (29 - i));
-          dates.push(date.toISOString().split("T")[0]);
-        }
-
-        // Count subscribers per date
-        const dateCountMap = new Map<string, number>();
-        subscribers?.forEach((sub) => {
-          const date = new Date(sub.subscribed_at).toISOString().split("T")[0];
-          dateCountMap.set(date, (dateCountMap.get(date) || 0) + 1);
-        });
-
-        // Build cumulative data
-        const growthData: SubscriberGrowthData[] = dates.map((date) => {
-          cumulativeCount += dateCountMap.get(date) || 0;
-          return {
-            date: new Date(date).toLocaleDateString("en-ZA", {
-              month: "short",
-              day: "numeric",
-            }),
-            count: cumulativeCount,
-          };
-        });
-
-        setSubscriberGrowth(growthData);
-
-        // Fetch message types breakdown - sum sent_to_count for actual messages sent
-        const { data: messages } = await supabase
-          .from("messages")
-          .select("type, sent_to_count")
-          .eq("mosque_id", mosque.id);
-
-        const typeCounts = new Map<string, number>();
-        messages?.forEach((msg) => {
-          const count = msg.sent_to_count || 0;
-          typeCounts.set(msg.type, (typeCounts.get(msg.type) || 0) + count);
-        });
-
-        const typeData: MessageTypeData[] = Array.from(typeCounts.entries()).map(
-          ([name, value]) => ({
-            name: name.charAt(0).toUpperCase() + name.slice(1),
-            value,
-            color: MESSAGE_TYPE_COLORS[name] || "#6b7280",
-          })
-        );
-
-        setMessageTypes(typeData);
-
-        // Fetch status breakdown
-        const statusCounts: Record<string, number> = {
-          active: 0,
-          paused: 0,
-          unsubscribed: 0,
-        };
-
-        const { data: allSubscribers } = await supabase
-          .from("subscribers")
-          .select("status")
-          .eq("mosque_id", mosque.id);
-
-        allSubscribers?.forEach((sub) => {
-          statusCounts[sub.status] = (statusCounts[sub.status] || 0) + 1;
-        });
-
-        const statusData: StatusBreakdownData[] = Object.entries(statusCounts)
-          .filter(([, value]) => value > 0)
-          .map(([name, value]) => ({
-            name: name.charAt(0).toUpperCase() + name.slice(1),
-            value,
-            color: STATUS_COLORS[name] || "#6b7280",
-          }));
-
-        setStatusBreakdown(statusData);
+        setSubscriberGrowth(data.subscriberGrowth || []);
+        setMessageTypes(data.messageTypes || []);
+        setStatusBreakdown(data.statusBreakdown || []);
       } catch (error) {
         console.error("Error fetching analytics:", error);
       } finally {

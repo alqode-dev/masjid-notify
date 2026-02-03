@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Upload, FileSpreadsheet, AlertCircle, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { createClientSupabase } from "@/lib/supabase";
 import { isValidSAPhoneNumber, formatPhoneNumber } from "@/lib/utils";
 
 interface ParsedSubscriber {
@@ -91,48 +90,40 @@ export function SubscriberImport({ mosqueId, onImportComplete }: SubscriberImpor
     }
 
     setImporting(true);
-    let success = 0;
-    let failed = 0;
-    let duplicates = 0;
 
-    const supabase = createClientSupabase();
+    try {
+      const response = await fetch("/api/admin/subscribers/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscribers: validSubscribers.map((s) => ({
+            phone_number: s.formattedPhone,
+          })),
+        }),
+      });
 
-    for (const subscriber of validSubscribers) {
-      try {
-        const { error } = await supabase.from("subscribers").insert({
-          phone_number: subscriber.formattedPhone,
-          mosque_id: mosqueId,
-          status: "active",
-          pref_daily_prayers: true,
-          pref_jumuah: true,
-          pref_ramadan: true,
-          pref_hadith: true,
-          pref_announcements: true,
-          reminder_offset: 15,
-        });
-
-        if (error) {
-          if (error.code === "23505") {
-            // Unique constraint violation
-            duplicates++;
-          } else {
-            failed++;
-          }
-        } else {
-          success++;
-        }
-      } catch {
-        failed++;
+      if (!response.ok) {
+        throw new Error("Failed to import subscribers");
       }
-    }
 
-    setImportResults({ success, failed, duplicates });
-    setStep("complete");
-    setImporting(false);
+      const result = await response.json();
 
-    if (success > 0) {
-      toast.success(`Successfully imported ${success} subscribers`);
-      onImportComplete?.();
+      setImportResults({
+        success: result.imported,
+        failed: result.errors,
+        duplicates: result.skipped,
+      });
+      setStep("complete");
+
+      if (result.imported > 0) {
+        toast.success(`Successfully imported ${result.imported} subscribers`);
+        onImportComplete?.();
+      }
+    } catch (error) {
+      console.error("Error importing subscribers:", error);
+      toast.error("Failed to import subscribers");
+    } finally {
+      setImporting(false);
     }
   };
 

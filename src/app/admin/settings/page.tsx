@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientSupabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { Separator } from "@/components/ui/separator";
 import type { Mosque } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Save, Moon, Clock } from "lucide-react";
-import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 const CALCULATION_METHODS = [
   { value: "1", label: "University of Islamic Sciences, Karachi" },
@@ -45,31 +43,24 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchMosque = async () => {
       try {
-        const supabase = createClientSupabase();
-        const { data, error } = await supabase
-          .from("mosques")
-          .select("*")
-          .eq("slug", DEFAULT_MOSQUE_SLUG)
-          .single();
-
-        if (error) {
-          console.error("Error fetching mosque:", error);
+        const response = await fetch("/api/admin/settings");
+        if (!response.ok) {
+          console.error("Error fetching settings");
           setLoading(false);
           return;
         }
 
-        if (data) {
-          const mosqueData = data as Mosque;
-          setMosque(mosqueData);
-          setRamadanMode(mosqueData.ramadan_mode ?? false);
-          setSuhoorMins((mosqueData.suhoor_reminder_mins ?? 30).toString());
-          setIftarMins((mosqueData.iftar_reminder_mins ?? 15).toString());
-          setTaraweehTime(mosqueData.taraweeh_time ? mosqueData.taraweeh_time.slice(0, 5) : "");
-          setJumuahAdhaan(mosqueData.jumuah_adhaan_time ? mosqueData.jumuah_adhaan_time.slice(0, 5) : "12:45");
-          setJumuahKhutbah(mosqueData.jumuah_khutbah_time ? mosqueData.jumuah_khutbah_time.slice(0, 5) : "13:00");
-          setCalculationMethod((mosqueData.calculation_method ?? 3).toString());
-          setMadhab(mosqueData.madhab ?? "hanafi");
-        }
+        const data = await response.json();
+        const mosqueData = data.mosque as Mosque;
+        setMosque(mosqueData);
+        setRamadanMode(mosqueData.ramadan_mode ?? false);
+        setSuhoorMins((mosqueData.suhoor_reminder_mins ?? 30).toString());
+        setIftarMins((mosqueData.iftar_reminder_mins ?? 15).toString());
+        setTaraweehTime(mosqueData.taraweeh_time ? mosqueData.taraweeh_time.slice(0, 5) : "");
+        setJumuahAdhaan(mosqueData.jumuah_adhaan_time ? mosqueData.jumuah_adhaan_time.slice(0, 5) : "12:45");
+        setJumuahKhutbah(mosqueData.jumuah_khutbah_time ? mosqueData.jumuah_khutbah_time.slice(0, 5) : "13:00");
+        setCalculationMethod((mosqueData.calculation_method ?? 3).toString());
+        setMadhab(mosqueData.madhab ?? "hanafi");
       } catch (error) {
         console.error("Error in fetchMosque:", error);
       } finally {
@@ -86,10 +77,10 @@ export default function SettingsPage() {
     setSaving(true);
 
     try {
-      const supabase = createClientSupabase();
-      const { error } = await supabase
-        .from("mosques")
-        .update({
+      const response = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           ramadan_mode: ramadanMode,
           suhoor_reminder_mins: parseInt(suhoorMins),
           iftar_reminder_mins: parseInt(iftarMins),
@@ -98,11 +89,11 @@ export default function SettingsPage() {
           jumuah_khutbah_time: jumuahKhutbah + ":00",
           calculation_method: parseInt(calculationMethod),
           madhab: madhab as "hanafi" | "shafii",
-        })
-        .eq("id", mosque.id);
+        }),
+      });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error("Failed to save settings");
       }
 
       toast.success("Settings saved successfully");

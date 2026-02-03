@@ -121,6 +121,16 @@ export function SubscribersTable({
                         Announcements
                       </span>
                     )}
+                    {subscriber.pref_ramadan && (
+                      <span className="text-xs px-1.5 py-0.5 bg-teal-100 text-teal-700 rounded">
+                        Ramadan
+                      </span>
+                    )}
+                    {subscriber.pref_nafl_salahs && (
+                      <span className="text-xs px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded">
+                        Nafl Salahs
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
