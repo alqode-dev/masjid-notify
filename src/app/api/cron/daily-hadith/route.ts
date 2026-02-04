@@ -83,11 +83,10 @@ export async function GET(request: NextRequest) {
 
       if (!subscribers || subscribers.length === 0) continue;
 
-      // Template variables: hadith_text, source, reference, mosque_name
+      // Template variables: hadith_text, source_and_reference, mosque_name
       const templateVars = [
         hadith.textEnglish,
-        hadith.source,
-        hadith.reference,
+        `${hadith.source}, Hadith ${hadith.reference}`,
         mosque.name,
       ];
 

@@ -1,6 +1,6 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 4, 2026 @ 22:00 UTC
+> **Last Updated:** February 5, 2026 @ 00:00 SAST
 > **Version:** 1.5.1
 > **Status:** ✅ **WHATSAPP ACTIVE** - Need to submit message templates for Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
@@ -240,20 +240,23 @@ git push origin master
 
 | Feature | Status | Why | Fix |
 |---------|--------|-----|-----|
-| Message templates | ⚠️ Not approved | Never submitted to Meta | Submit all templates for Meta approval |
+| Meta message templates | ⚠️ Not approved | 11 of 12 never submitted to Meta | Submit all templates for Meta approval (see Template Guide below) |
+| Welcome message content | ⚠️ Needs rewrite | Current text is generic, missing Islamic greeting and commands | Rewrite with Assalamu Alaikum, commands, mosque name variable |
 | Ramadan settings save | ⚠️ Needs migration | DB columns missing | Run migration 007 in Supabase SQL Editor |
 | Messages count on dashboard | ⚠️ Bug | Welcome msg insert failing silently (likely CHECK constraint on `type` column in deployed DB) | Run ALTER to update constraint; check Vercel logs for `[subscribe]` errors |
 
 ### 📋 TODO: Next Steps
 
-1. [ ] **Fix messages count bug** — Update CHECK constraint on `messages.type` column (see SQL below)
-2. [ ] Submit ALL message templates to Meta for approval
+1. [ ] **Rewrite welcome message** — Update `masjid_notify_welcome` template with Islamic greeting, commands list, mosque name variable (edit in Meta + update code)
+2. [ ] **Submit ALL 12 Meta templates** for approval (see Template Guide section below for exact body text)
 3. [ ] Wait for template approval (24-48h each)
-4. [ ] Apply for Meta Business Verification
-5. [ ] Get a test phone number for testing
-6. [ ] Implement number warmup (start slow)
-7. [ ] Test prayer reminder flow end-to-end
-8. [ ] Go live with real users
+4. [ ] **Fix messages count bug** — Update CHECK constraint on `messages.type` column
+5. [ ] **Run migration 007** — Ramadan columns for mosques table
+6. [ ] Apply for Meta Business Verification
+7. [ ] Get a test phone number for testing
+8. [ ] Implement number warmup (start slow)
+9. [ ] Test prayer reminder flow end-to-end
+10. [ ] Go live with real users
 
 ### 📋 TODO Database Migrations
 
@@ -342,14 +345,16 @@ git push origin master
 | **Welcome Messages** | ✅ Sending | `masjid_notify_welcome` template working |
 | **Message Templates** | ⚠️ Need approval | All other templates must be submitted to Meta for approval |
 
-### Why the Ban Likely Occurred
+### Why the Original Ban Occurred (Resolved)
+
+The WhatsApp Business account was suspended on Feb 2, 2026 and restored on Feb 4, 2026. Root cause was the business name ("Bochi") not matching the service. After updating to "Masjid Notify" and appealing, Meta restored the account.
 
 | Cause | Explanation | Prevention |
 |-------|-------------|------------|
+| **Business name mismatch** | Name "Bochi" didn't match mosque notification service | Updated to "Masjid Notify" |
 | **New unverified account** | Meta is suspicious of new WhatsApp Business accounts | Get Meta Business Verified |
 | **No approved templates** | Messages sent without Meta-approved templates | Submit templates for approval FIRST |
 | **Testing pattern** | Repeatedly deleting/re-adding numbers looks like spam testing | Use dedicated test numbers |
-| **Rapid messaging** | Sending multiple messages quickly on new account | Warm up account gradually |
 
 ### WhatsApp Business Terms Compliance
 
@@ -367,29 +372,162 @@ Our service **fully complies** with WhatsApp's terms:
 
 ---
 
-## WhatsApp Ban Prevention Guide
+## WhatsApp Template Guide
 
-### What Respond.io & BSPs Do (Best Practices)
+### IMPORTANT: Two Different Types of "Templates"
+
+This project uses the word "template" in two completely different ways:
+
+#### 1. Meta WhatsApp Templates (submitted to Meta for approval)
+
+- **What:** Message structures registered with Meta's WhatsApp Business API
+- **Why:** Required to send messages outside the 24-hour conversation window
+- **Where defined:** `src/lib/whatsapp-templates.ts`
+- **How many:** 12 templates total
+- **Admin interaction:** None — these work automatically behind the scenes
+- **Key point:** ALL automated messages (cron reminders, welcome) use these
+
+#### 2. Dashboard Announcement Templates (UI helpers in admin panel)
+
+- **What:** Pre-written text snippets the admin can pick from when composing announcements
+- **Why:** Convenience — admin clicks "Use a template" and gets pre-filled text
+- **Where defined:** `src/components/admin/message-templates.tsx`
+- **How many:** 11 templates (Eid, Juma, lectures, fundraiser, Ramadan, etc.)
+- **Admin interaction:** Yes — admin selects one, edits the `[PLACEHOLDERS]`, and sends
+- **Key point:** ALL of these are sent through ONE Meta template: `mosque_announcement`
+
+#### How They Connect
+
+```
+Admin picks "Eid ul-Fitr" dashboard template
+  → Text fills the announcement box
+  → Admin edits [TIME] placeholders
+  → Clicks "Send Now"
+  → System sends via Meta's "mosque_announcement" template
+  → {{1}} = mosque name, {{2}} = the announcement text
+```
+
+So 11 dashboard templates all flow through 1 Meta template. The admin never needs to think about Meta templates — they just work.
+
+### Meta Template Approval Status
+
+| # | Template Name | Category | Meta Status | Used By | Variables |
+|---|--------------|----------|-------------|---------|-----------|
+| 1 | `masjid_notify_welcome` | UTILITY | ✅ Approved (needs rewrite) | Auto: on subscribe | `{{1}}` = mosque name (to be added) |
+| 2 | `prayer_reminder` | UTILITY | ❌ Not submitted | Auto: cron every 5 min | `{{1}}` = prayer, `{{2}}` = time, `{{3}}` = mosque |
+| 3 | `jumuah_reminder` | UTILITY | ❌ Not submitted | Auto: Friday cron | `{{1}}` = adhaan, `{{2}}` = khutbah, `{{3}}` = mosque |
+| 4 | `daily_hadith` | UTILITY | ❌ Not submitted | Auto: morning + evening cron | `{{1}}` = text, `{{2}}` = source, `{{3}}` = ref, `{{4}}` = mosque |
+| 5 | `mosque_announcement` | MARKETING | ❌ Not submitted | Admin dashboard (powers ALL 11 announcement templates) | `{{1}}` = mosque, `{{2}}` = content |
+| 6 | `ramadan_suhoor` | UTILITY | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = fajr time, `{{2}}` = mosque |
+| 7 | `ramadan_iftar` | UTILITY | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = mins, `{{2}}` = maghrib, `{{3}}` = mosque |
+| 8 | `ramadan_taraweeh` | UTILITY | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = time, `{{2}}` = mosque |
+| 9 | `tahajjud_reminder` | UTILITY | ❌ Not submitted | Auto: nafl cron | `{{1}}` = fajr time, `{{2}}` = mosque |
+| 10 | `ishraq_reminder` | UTILITY | ❌ Not submitted | Auto: nafl cron | `{{1}}` = mosque |
+| 11 | `awwabin_reminder` | UTILITY | ❌ Not submitted | Auto: nafl cron | `{{1}}` = mosque |
+| 12 | `suhoor_planning` | UTILITY | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = fajr time, `{{2}}` = mosque |
+
+### Dashboard Announcement Templates (Admin UI)
+
+These are NOT Meta templates. They are convenience text in the admin panel that pre-fill the announcement box:
+
+| Template | Category | What Admin Sees |
+|----------|----------|-----------------|
+| Eid ul-Fitr Announcement | Eid | Eid salah time, takbeer time |
+| Eid ul-Adha Announcement | Eid | Eid salah time, sacrifice |
+| Special Jumu'ah | Jumu'ah | Guest speaker, topic, time |
+| Jumu'ah Reminder | Jumu'ah | Surah Al-Kahf, salawat, dua |
+| Lecture/Talk | Events | Topic, speaker, date, venue |
+| Fundraiser | Events | Cause, target, bank details |
+| Classes/Programs | Events | Class name, schedule, registration |
+| Maintenance Notice | General | Type, date, impact |
+| Urgent Announcement | General | Details, contact |
+| Thank You Message | General | JazakAllah khair, reason |
+| Ramadan Start | Ramadan | Taraweeh time |
+| Laylatul Qadr | Ramadan | Last 10 nights, worship tips |
+
+All of these get sent through the single `mosque_announcement` Meta template.
+
+### Welcome Message Rewrite (TODO)
+
+**Current welcome message** (approved on Meta, but needs rewrite):
+```
+Hello! Welcome to Masjid Notify. You'll receive prayer time reminders and announcements here.
+```
+
+**Problems with current:**
+- No Islamic greeting (no Assalamu Alaikum)
+- Generic and uninspiring
+- Doesn't mention available commands (SETTINGS, STOP, etc.)
+- No mosque name variable
+
+**Proposed new welcome message:**
+```
+Assalamu Alaikum!
+
+Welcome to {{1}} notifications. You've taken a beautiful step towards staying connected with your salah and your community.
+
+You can manage your experience anytime:
+- Type SETTINGS to update your preferences
+- Type PAUSE 7 to pause for 7 days
+- Type HELP to see all commands
+- Type STOP to unsubscribe
+
+May Allah make this a means of barakah for you.
+```
+
+**Changes needed:**
+1. Edit `masjid_notify_welcome` template in Meta Business Manager (will go through re-approval)
+2. Update `WELCOME_TEMPLATE` in `src/lib/whatsapp-templates.ts` to match new body + add `{{1}}` variable
+3. Update `src/app/api/subscribe/route.ts` to pass mosque name as variable
+
+### WhatsApp Commands (Available to Subscribers)
+
+Users can text these commands to the WhatsApp number at any time:
+
+| Command | What It Does | Code Location |
+|---------|-------------|---------------|
+| **STOP** | Unsubscribe from all messages | `webhook/whatsapp/route.ts` → `handleStop()` |
+| **START** | Resubscribe after STOP | `webhook/whatsapp/route.ts` → `handleResume()` |
+| **RESUME** | Resume after PAUSE | `webhook/whatsapp/route.ts` → `handleResume()` |
+| **PAUSE [days]** | Pause notifications for 1-30 days (default 7) | `webhook/whatsapp/route.ts` → `handlePause()` |
+| **SETTINGS** | Get a 24-hour link to update preferences on the web | `webhook/whatsapp/route.ts` → `handleSettings()` |
+| **HELP** | Show all available commands | `webhook/whatsapp/route.ts` → `handleHelp()` |
+
+Any unrecognized text also returns the commands list.
+
+### How to Submit Templates to Meta
+
+1. Go to **Meta Business Manager**: https://business.facebook.com/
+2. Navigate to: **WhatsApp Manager > Account Tools > Message Templates**
+3. Click **"Create Template"**
+4. Select Category: **UTILITY** (for reminders) or **MARKETING** (for announcements only)
+5. Enter template name (use underscore format, e.g., `prayer_reminder`)
+6. Select language: **English (en)**
+7. Enter the template body text exactly as specified in `src/lib/whatsapp-templates.ts`
+8. For variables (`{{1}}`, `{{2}}`, etc.) — add sample values when prompted
+9. Submit for review (typically 24-48 hours)
+
+**To edit existing templates** (e.g., `masjid_notify_welcome`):
+1. Find the template in the list
+2. Click "Edit" or "Submit for re-approval" depending on Meta's UI
+3. Update the body text
+4. Re-submit for review
+
+### Ban Prevention Best Practices
 
 | Practice | What They Do | Our Implementation |
 |----------|--------------|-------------------|
 | **Business Verification** | Get Meta Business verified (blue checkmark) | ❌ TODO: Apply for verification |
-| **Template Approval** | ONLY send pre-approved templates, never plain text for first contact | ⚠️ Templates created, need approval |
-| **Double Opt-in** | Send "Reply YES to confirm" after signup | ❌ TODO: Implement |
+| **Template Approval** | ONLY send pre-approved templates, never plain text for first contact | ⚠️ 1 of 12 approved, 11 remaining |
+| **Double Opt-in** | Send "Reply YES to confirm" after signup | ❌ TODO: Future feature |
 | **Number Warmup** | Start 50 msgs/day, increase 20% weekly | ❌ TODO: Implement rate scaling |
-| **Quality Monitoring** | Track blocks/reports, auto-pause if quality drops | ❌ TODO: Implement |
+| **Quality Monitoring** | Track blocks/reports, auto-pause if quality drops | ❌ TODO: Future feature |
 | **Dedicated Test Numbers** | Use separate numbers for testing | ❌ TODO: Get test number |
 | **Message Spacing** | Min 1 second between messages | ✅ Implemented (p-limit) |
 | **Opt-out Compliance** | Process STOP within 24 hours | ✅ Implemented (instant) |
 
-### Implementation Priority (After Account Restored)
+### Number Warmup Strategy (After All Templates Approved)
 
-#### Phase 1: Immediate (Before ANY messaging)
-1. **Get ALL templates approved by Meta** before sending any messages
-2. **Set up a test phone number** - never test with production number
-3. **Verify Meta Business** - apply for business verification
-
-#### Phase 2: Number Warmup Strategy
 ```
 Week 1: Max 50 messages/day
 Week 2: Max 100 messages/day
@@ -398,49 +536,15 @@ Week 4: Max 500 messages/day
 Week 5+: Gradual increase to 1000/day
 ```
 
-#### Phase 3: Quality Protection (Future Implementation)
-- Track message delivery rates
-- Monitor for user blocks/reports
-- Auto-pause sending if quality drops below 90%
-- Implement "message quality score" dashboard
+### Action Checklist
 
-### WhatsApp Message Templates Status
-
-| Template | Purpose | Meta Status | Action Needed |
-|----------|---------|-------------|---------------|
-| `masjid_notify_welcome` | Welcome message | ⚠️ Unknown | Verify in Meta dashboard |
-| `prayer_reminder` | Prayer time alerts | ❌ Not submitted | Submit for approval |
-| `jumuah_reminder` | Friday reminder | ❌ Not submitted | Submit for approval |
-| `daily_hadith` | Hadith messages | ❌ Not submitted | Submit for approval |
-| `ramadan_suhoor` | Suhoor reminder | ❌ Not submitted | Submit for approval |
-| `ramadan_iftar` | Iftar reminder | ❌ Not submitted | Submit for approval |
-| `ramadan_taraweeh` | Taraweeh reminder | ❌ Not submitted | Submit for approval |
-| `tahajjud_reminder` | Tahajjud alert | ❌ Not submitted | Submit for approval |
-| `ishraq_reminder` | Ishraq alert | ❌ Not submitted | Submit for approval |
-| `awwabin_reminder` | Awwabin alert | ❌ Not submitted | Submit for approval |
-| `suhoor_planning` | Night-before suhoor | ❌ Not submitted | Submit for approval |
-| `mosque_announcement` | Announcements | ❌ Not submitted | Submit for approval |
-
-### How to Submit Templates to Meta
-
-1. Go to **Meta Business Manager**: https://business.facebook.com/
-2. Navigate to: **WhatsApp Manager > Account Tools > Message Templates**
-3. Click **"Create Template"**
-4. Select Category: **UTILITY** (for reminders) or **MARKETING** (for announcements)
-5. Enter template name (use underscore format, e.g., `prayer_reminder`)
-6. Select language: **English (en)**
-7. Enter the template body text exactly as specified in `src/lib/whatsapp-templates.ts`
-8. Submit for review (typically 24-48 hours)
-
-### After Account is Restored: Action Checklist
-
-- [ ] Submit ALL templates to Meta for approval (wait for approval before using)
+- [ ] Rewrite welcome message (edit in Meta + update code)
+- [ ] Submit all 11 remaining templates to Meta for approval
+- [ ] Wait for all templates to be approved before enabling cron messaging
 - [ ] Apply for Meta Business Verification
 - [ ] Get a dedicated test phone number
 - [ ] Implement number warmup strategy (code change)
 - [ ] Add quality monitoring dashboard (future feature)
-- [ ] Implement double opt-in flow (future feature)
-- [ ] Document testing procedures to avoid test-pattern bans
 
 ---
 
@@ -1792,6 +1896,6 @@ Initial production release with 24 user stories completed.
 ---
 
 **Document Version:** 1.5.1
-**Last Updated:** February 4, 2026 @ 22:00 UTC
+**Last Updated:** February 5, 2026 @ 00:00 SAST
 **Author:** Claude Code
 **Status:** WhatsApp Active - Need to submit message templates for Meta approval

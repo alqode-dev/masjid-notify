@@ -67,13 +67,9 @@ export const PRAYER_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Prayer time reminder notification",
   category: "UTILITY",
   languages: ["en"],
-  body: `Salah Reminder: {{1}} begins at {{2}}
-
-May Allah accept your prayers.
-
-{{3}}`,
+  body: `Salah Reminder from {{3}}: {{1}} is at {{2}} today. Please prepare for your prayer.`,
   variables: ["prayer_name", "prayer_time", "mosque_name"],
-  sampleValues: ["Fajr", "05:30", "Green Point Masjid"],
+  sampleValues: ["Fajr", "05:32", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -85,11 +81,21 @@ May Allah accept your prayers.
 export const WELCOME_TEMPLATE: TemplateDefinition = {
   name: "masjid_notify_welcome",
   description: "Welcome message for new subscribers",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Hello! Welcome to Masjid Notify. You'll receive prayer time reminders and announcements here.`,
-  variables: [],
-  sampleValues: [],
+  body: `Assalamu Alaikum! Welcome to {{1}} prayer notifications.
+
+You will receive prayer time reminders, hadith, and announcements on WhatsApp, in sha Allah.
+
+You can manage your preferences anytime:
+- Type SETTINGS to update your choices
+- Type PAUSE 7 to pause for 7 days
+- Type HELP to see all commands
+- Type STOP to unsubscribe
+
+Reply STOP to opt out.`,
+  variables: ["mosque_name"],
+  sampleValues: ["Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -103,14 +109,9 @@ export const JUMUAH_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Friday Jumu'ah prayer reminder",
   category: "UTILITY",
   languages: ["en"],
-  body: `Jumu'ah Mubarak!
-
-First Adhaan: {{1}}
-Khutbah begins: {{2}}
-
-We look forward to seeing you at {{3}}.`,
+  body: `Jumuah Reminder from {{3}}: The adhaan is at {{1}} and the khutbah begins at {{2}} today. Please remember to recite Surah Al-Kahf.`,
   variables: ["adhaan_time", "khutbah_time", "mosque_name"],
-  sampleValues: ["12:30 PM", "12:50 PM", "Green Point Masjid"],
+  sampleValues: ["13:00", "13:20", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -124,19 +125,18 @@ export const DAILY_HADITH_TEMPLATE: TemplateDefinition = {
   description: "Daily hadith notification",
   category: "UTILITY",
   languages: ["en"],
-  body: `Daily Hadith:
+  body: `Daily Hadith from {{3}}:
+
+The Prophet (SAW) and his companions taught us:
 
 {{1}}
 
-Source: {{2}} ({{3}})
-
-{{4}}`,
-  variables: ["hadith_text", "source", "reference", "mosque_name"],
+This hadith is reported in {{2}}.`,
+  variables: ["hadith_text", "source_and_reference", "mosque_name"],
   sampleValues: [
-    "The best among you are those who learn the Quran and teach it.",
-    "Sahih al-Bukhari",
-    "5027",
-    "Green Point Masjid",
+    "The best among you are those who have the best manners and character.",
+    "Sahih al-Bukhari, Hadith 6029",
+    "Anwaarul Islam Rondebosch East",
   ],
 };
 
@@ -158,8 +158,8 @@ export const ANNOUNCEMENT_TEMPLATE: TemplateDefinition = {
 Reply STOP to unsubscribe.`,
   variables: ["mosque_name", "announcement_content"],
   sampleValues: [
-    "Green Point Masjid",
-    "Eid Salah will be held at 7:30 AM on Wednesday. Please arrive early.",
+    "Anwaarul Islam Rondebosch East",
+    "Eid salah will be at 08:00 tomorrow morning. Please arrive early for takbeer at 07:45.",
   ],
 };
 
@@ -174,13 +174,9 @@ export const SUHOOR_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Suhoor reminder during Ramadan",
   category: "UTILITY",
   languages: ["en"],
-  body: `Suhoor Reminder: Time ends at {{1}}
-
-Eat something, even if just dates and water. Remember your intention for fasting.
-
-{{2}}`,
+  body: `Suhoor Reminder from {{2}}: Fajr adhaan is at {{1}} today. Please complete your suhoor before this time.`,
   variables: ["fajr_time", "mosque_name"],
-  sampleValues: ["04:45 AM", "Green Point Masjid"],
+  sampleValues: ["05:15", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -194,13 +190,9 @@ export const IFTAR_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Iftar reminder during Ramadan",
   category: "UTILITY",
   languages: ["en"],
-  body: `Iftar Reminder: {{1}} minutes until Maghrib at {{2}}
-
-Prepare to break your fast. Remember the dua when breaking fast.
-
-{{3}}`,
+  body: `Iftar Reminder from {{3}}: {{1}} minutes until Maghrib at {{2}}. Please begin preparing to break your fast.`,
   variables: ["minutes_until", "maghrib_time", "mosque_name"],
-  sampleValues: ["15", "6:30 PM", "Green Point Masjid"],
+  sampleValues: ["15", "19:32", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -214,11 +206,9 @@ export const TARAWEEH_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Taraweeh prayer reminder during Ramadan",
   category: "UTILITY",
   languages: ["en"],
-  body: `Taraweeh Reminder: Night prayers begin at {{1}}
-
-Join us for Taraweeh at {{2}}. May your prayers be accepted.`,
+  body: `Taraweeh Reminder from {{2}}: Taraweeh salah begins at {{1}} tonight at the masjid.`,
   variables: ["taraweeh_time", "mosque_name"],
-  sampleValues: ["8:00 PM", "Green Point Masjid"],
+  sampleValues: ["20:30", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -232,15 +222,9 @@ export const TAHAJJUD_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Tahajjud prayer reminder",
   category: "UTILITY",
   languages: ["en"],
-  body: `Tahajjud Reminder: Last third of the night
-
-This is the perfect time for night prayers. The Prophet (SAW) said the best prayer after the obligatory prayers is the night prayer.
-
-Fajr begins at {{1}}
-
-{{2}}`,
+  body: `Tahajjud Reminder from {{2}}: The last third of the night has begun. Fajr adhaan is at {{1}} today.`,
   variables: ["fajr_time", "mosque_name"],
-  sampleValues: ["5:30 AM", "Anwaarul Islam"],
+  sampleValues: ["05:15", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -254,13 +238,9 @@ export const ISHRAQ_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Ishraq/Duha prayer reminder",
   category: "UTILITY",
   languages: ["en"],
-  body: `Salat ad-Duha Reminder
-
-Time for the forenoon prayer. Even 2 rakahs earns great reward.
-
-{{1}}`,
+  body: `Ishraq Reminder from {{1}}: The sun has risen. It is now time for Ishraq salah.`,
   variables: ["mosque_name"],
-  sampleValues: ["Anwaarul Islam"],
+  sampleValues: ["Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -274,13 +254,9 @@ export const AWWABIN_REMINDER_TEMPLATE: TemplateDefinition = {
   description: "Awwabin prayer reminder",
   category: "UTILITY",
   languages: ["en"],
-  body: `Awwabin Reminder
-
-Time for Salat al-Awwabin (6 rakahs between Maghrib and Isha).
-
-{{1}}`,
+  body: `Awwabin Reminder from {{1}}: The time between Maghrib and Isha has begun. It is now time for Awwabin salah.`,
   variables: ["mosque_name"],
-  sampleValues: ["Anwaarul Islam"],
+  sampleValues: ["Anwaarul Islam Rondebosch East"],
 };
 
 /**
@@ -294,15 +270,9 @@ export const SUHOOR_PLANNING_TEMPLATE: TemplateDefinition = {
   description: "Night before suhoor planning reminder",
   category: "UTILITY",
   languages: ["en"],
-  body: `Suhoor Planning Reminder
-
-Suhoor ends at {{1}} tomorrow. Set your alarms!
-
-May your fast be accepted.
-
-{{2}}`,
+  body: `Suhoor Planning from {{2}}: Fajr adhaan is at {{1}} tomorrow morning. Please set your alarm and prepare your suhoor tonight.`,
   variables: ["fajr_time", "mosque_name"],
-  sampleValues: ["5:15 AM", "Anwaarul Islam"],
+  sampleValues: ["05:15", "Anwaarul Islam Rondebosch East"],
 };
 
 /**
