@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 5, 2026 @ 19:30 SAST
-> **Version:** 1.6.2
+> **Last Updated:** February 5, 2026 @ 22:00 SAST
+> **Version:** 1.6.3
 > **Status:** Production-Ready - WhatsApp templates pending Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -264,12 +264,19 @@ git push origin master
 6. [ ] Test prayer reminder flow end-to-end
 7. [ ] Go live with real users
 
-### 📋 Optional Database Migration
+### 📋 Required Database Migration
 
 | Migration | Purpose | Status |
 |-----------|---------|--------|
+| **Migration 009** | Fix messages CHECK constraints + prayer_times_cache RLS | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | Migration 007 | Adds Ramadan columns to mosques table | Optional - settings page has fallback |
 | Add retry_count | For scheduled message retry tracking | Optional - code handles missing column |
+
+**Migration 009 Details:**
+- Adds `nafl` and `webhook_command` to allowed message types
+- Adds `received` to allowed message statuses
+- Adds `status` column to messages table if missing
+- Adds RLS INSERT/UPDATE policies for `prayer_times_cache`
 
 ---
 
@@ -1146,9 +1153,9 @@ npx playwright test --headed
 | `mosques` | Mosque configuration | ✅ |
 | `subscribers` | User subscriptions | ✅ |
 | `admins` | Admin users | ✅ |
-| `messages` | Message log | ✅ |
+| `messages` | Message log (all notification types) | ✅ |
 | `daily_hadith_log` | Tracks sent hadiths | ✅ |
-| `prayer_times_cache` | API response cache | ✅ |
+| `prayer_times_cache` | API response cache (with INSERT/UPDATE policies) | ✅ |
 | `scheduled_messages` | Scheduled announcements | ✅ |
 
 ### Key Table: subscribers
@@ -1167,6 +1174,20 @@ npx playwright test --headed
 | `pref_announcements` | BOOLEAN | Announcements opt-in |
 | `reminder_offset` | INT | Minutes before prayer |
 | `subscribed_at` | TIMESTAMP | First subscription date |
+
+### Key Table: messages (v1.6.3 - Fixed Constraints)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `mosque_id` | UUID | Foreign key to mosques |
+| `type` | TEXT | **prayer / hadith / announcement / ramadan / welcome / jumuah / nafl / webhook_command** |
+| `content` | TEXT | Message content |
+| `sent_to_count` | INT | Number of recipients |
+| `sent_at` | TIMESTAMP | When sent |
+| `sent_by` | UUID | Admin who sent (null for automated) |
+| `status` | TEXT | **pending / sent / failed / received** |
+| `metadata` | JSONB | Additional data (prayer name, hadith source, etc.) |
 
 ### Key Table: scheduled_messages
 
@@ -1284,7 +1305,9 @@ masjid-notify/
 │       ├── 004_update_mosque_details.sql
 │       ├── 005_add_daily_hadith_log.sql
 │       ├── 006_simplify_preferences.sql
-│       └── 007_add_ramadan_columns.sql
+│       ├── 007_add_ramadan_columns.sql
+│       ├── 008_prayer_reminder_locks.sql
+│       └── 009_fix_messages_constraints.sql  # (v1.6.3) Fix CHECK constraints
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
@@ -1450,6 +1473,63 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 
 ## Changelog
 
+### Version 1.6.3 - February 5, 2026
+
+**CRITICAL: Fix Empty Messages & Prayer Times Cache Tables**
+
+The `messages` and `prayer_times_cache` tables were always empty because database CHECK constraints and RLS policies were blocking inserts.
+
+#### Root Causes Fixed
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| **Messages table empty** | CHECK constraint only allowed types: `prayer`, `hadith`, `announcement`, `ramadan`, `welcome`, `jumuah` | Added `nafl` and `webhook_command` to allowed types |
+| **Messages table empty** | CHECK constraint only allowed statuses: `pending`, `sent`, `failed` | Added `received` to allowed statuses |
+| **Messages missing status column** | Column didn't exist in production database | Migration adds column if missing |
+| **Prayer times cache empty** | RLS enabled but no INSERT/UPDATE policies | Added permissive policies for service role |
+
+#### Migration Required
+
+Run `supabase/migrations/009_fix_messages_constraints.sql` in Supabase SQL Editor:
+
+```sql
+-- Updates messages type constraint
+ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_type_check;
+ALTER TABLE messages ADD CONSTRAINT messages_type_check
+  CHECK (type IN ('prayer', 'hadith', 'announcement', 'ramadan', 'welcome', 'jumuah', 'nafl', 'webhook_command'));
+
+-- Adds status column if missing, updates constraint
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'messages' AND column_name = 'status') THEN
+    ALTER TABLE messages ADD COLUMN status VARCHAR(20) DEFAULT 'sent';
+  END IF;
+END $$;
+
+ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_status_check;
+ALTER TABLE messages ADD CONSTRAINT messages_status_check
+  CHECK (status IN ('pending', 'sent', 'failed', 'received'));
+
+-- Adds RLS policies for prayer_times_cache
+CREATE POLICY "Service role can insert prayer times cache" ON prayer_times_cache FOR INSERT WITH CHECK (true);
+CREATE POLICY "Service role can update prayer times cache" ON prayer_times_cache FOR UPDATE USING (true) WITH CHECK (true);
+```
+
+#### Files Changed
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/009_fix_messages_constraints.sql` | **NEW** - Migration to fix constraints |
+| `src/lib/supabase.ts` | Updated `Message` type to include `nafl`, `webhook_command` types and `received` status |
+
+#### Impact
+
+- ✅ Nafl reminder cron (`/api/cron/nafl-reminders`) can now log messages
+- ✅ Webhook commands (STOP, START, PAUSE, etc.) can now be logged
+- ✅ Prayer times will be cached, reducing Aladhan API calls
+- ✅ Messages table will populate with all notification types
+
+---
+
 ### Version 1.6.2 - February 5, 2026
 
 **CRITICAL: Hadith API Migration**
@@ -1589,7 +1669,7 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 
 ---
 
-**Document Version:** 1.6.2
-**Last Updated:** February 5, 2026 @ 19:30 SAST
+**Document Version:** 1.6.3
+**Last Updated:** February 5, 2026 @ 22:00 SAST
 **Author:** Claude Code
 **Status:** Production-Ready - WhatsApp templates pending Meta approval

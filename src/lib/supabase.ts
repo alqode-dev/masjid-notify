@@ -80,12 +80,12 @@ export type Admin = {
 export type Message = {
   id: string;
   mosque_id: string;
-  type: "prayer" | "hadith" | "announcement" | "ramadan" | "welcome" | "jumuah";
+  type: "prayer" | "hadith" | "announcement" | "ramadan" | "welcome" | "jumuah" | "nafl" | "webhook_command";
   content: string;
   sent_to_count: number;
   sent_at: string;
   sent_by: string | null;
-  status: "pending" | "sent" | "failed";
+  status: "pending" | "sent" | "failed" | "received";
   metadata: Record<string, unknown> | null;
 };
 
