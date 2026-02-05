@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase'
-import { MINUTES_IN_DAY, MINUTES_HALF_DAY, CRON_WINDOW_MINUTES } from './constants'
+import { MINUTES_IN_DAY, MINUTES_HALF_DAY, CRON_WINDOW_MINUTES, JAMAAT_DELAY_MINUTES } from './constants'
 
 const ALADHAN_API_URL = process.env.ALADHAN_API_URL || 'https://api.aladhan.com/v1'
 
@@ -434,4 +434,25 @@ export function isWithinMinutesAfter(
   if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 
   return diff <= CRON_WINDOW_MINUTES // Window matches cron interval
+}
+
+/**
+ * Convert Adhan time to Jamaat (congregation) time.
+ *
+ * At Anwaarul Islam Rondebosch East (and most mosques):
+ * - Jamaat starts 15 minutes after Adhan for all prayers
+ * - EXCEPTION: Maghrib - Jamaat starts immediately with Adhan
+ *
+ * @param adhanTime - The Adhan time in "HH:MM AM/PM" format
+ * @param prayerKey - The prayer identifier (fajr, dhuhr, asr, maghrib, isha)
+ * @returns Jamaat time in the same format
+ */
+export function getJamaatTime(adhanTime: string, prayerKey: string): string {
+  // Maghrib exception: Jamaat starts immediately with Adhan
+  if (prayerKey.toLowerCase() === 'maghrib') {
+    return adhanTime
+  }
+
+  // All other prayers: Jamaat is 15 minutes after Adhan
+  return applyOffset(adhanTime, JAMAAT_DELAY_MINUTES)
 }

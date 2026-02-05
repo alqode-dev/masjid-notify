@@ -28,6 +28,11 @@ export const TAHAJJUD_MINUTES_BEFORE_FAJR = 120; // 2 hours before Fajr
 export const ISHRAQ_MINUTES_AFTER_SUNRISE = 20; // 20 mins after sunrise
 export const AWWABIN_MINUTES_AFTER_MAGHRIB = 15; // 15 mins after Maghrib
 
+// Jamaat timing
+// Jamaat (congregation prayer) starts 15 minutes after Adhan for all prayers EXCEPT Maghrib
+// Maghrib Jamaat starts immediately with Adhan (no delay)
+export const JAMAAT_DELAY_MINUTES = 15;
+
 // Subscriber preferences
 export const VALID_REMINDER_OFFSETS = [5, 10, 15, 30] as const;
 export type ReminderOffset = typeof VALID_REMINDER_OFFSETS[number];

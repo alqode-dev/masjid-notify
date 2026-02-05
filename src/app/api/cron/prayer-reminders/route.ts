@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getPrayerTimes, isWithinMinutes } from "@/lib/prayer-times";
+import { getPrayerTimes, isWithinMinutes, getJamaatTime } from "@/lib/prayer-times";
 import {
   PRAYER_REMINDER_TEMPLATE,
   ANNOUNCEMENT_TEMPLATE,
@@ -251,12 +251,15 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
+      // Convert Adhan times to Jamaat times
+      // Jamaat = Adhan + 15 minutes (except Maghrib where Jamaat starts immediately)
+      // This way reminders are based on when congregation actually prays
       const prayers = [
-        { key: "fajr", name: "Fajr", time: prayerTimes.fajr },
-        { key: "dhuhr", name: "Dhuhr", time: prayerTimes.dhuhr },
-        { key: "asr", name: "Asr", time: prayerTimes.asr },
-        { key: "maghrib", name: "Maghrib", time: prayerTimes.maghrib },
-        { key: "isha", name: "Isha", time: prayerTimes.isha },
+        { key: "fajr", name: "Fajr", time: getJamaatTime(prayerTimes.fajr, "fajr") },
+        { key: "dhuhr", name: "Dhuhr", time: getJamaatTime(prayerTimes.dhuhr, "dhuhr") },
+        { key: "asr", name: "Asr", time: getJamaatTime(prayerTimes.asr, "asr") },
+        { key: "maghrib", name: "Maghrib", time: getJamaatTime(prayerTimes.maghrib, "maghrib") },
+        { key: "isha", name: "Isha", time: getJamaatTime(prayerTimes.isha, "isha") },
       ];
 
       // Get subscribers for this mosque
