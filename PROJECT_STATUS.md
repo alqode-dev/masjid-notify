@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 5, 2026 @ 14:30 SAST
-> **Version:** 1.6.0
+> **Last Updated:** February 5, 2026 @ 18:00 SAST
+> **Version:** 1.6.1
 > **Status:** Production-Ready - WhatsApp templates pending Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -246,6 +246,7 @@ git push origin master
 | Rate limiting | ✅ Works | **Secure IP detection** (x-vercel-forwarded-for, rightmost IP) |
 | 404 page | ✅ Works | Branded not-found page |
 | Error handling | ✅ Works | Comprehensive logging, **batch update error handling** |
+| Social preview | ✅ Works | **Custom OG image** for WhatsApp/social sharing (v1.6.1) |
 
 ### ⚠️ Pending Meta Approval
 
@@ -316,7 +317,7 @@ git push origin master
 | **Development Sprint** | January 31 - February 5, 2026 |
 | **User Stories Completed** | 24/24 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
-| **Bug Fixes (v1.6.0)** | 22 issues resolved |
+| **Bug Fixes (v1.6.x)** | 37 issues resolved (22 in v1.6.0 + 15 in v1.6.1) |
 | **Total Commits** | 30+ commits |
 | **Lines of Code** | ~9,000+ lines |
 | **Build Time** | ~3.5 seconds (Turbopack) |
@@ -396,6 +397,27 @@ export const DUPLICATE_CHECK_MINUTES = 10;
 export const MS_PER_MINUTE = 60 * 1000;
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const TEN_MINUTES_MS = 10 * MS_PER_MINUTE;
+export const HADITH_API_DELAY_MS = 200;  // Delay between hadith API retries
+
+// Ramadan reminder timing (in minutes)
+export const TARAWEEH_REMINDER_MINUTES = 30;        // 30 mins before Taraweeh
+export const SUHOOR_PLANNING_OFFSET_MINUTES = 90;   // 90 mins after Isha
+
+// Nafl salah timing (in minutes)
+export const TAHAJJUD_MINUTES_BEFORE_FAJR = 120;    // 2 hours before Fajr
+export const ISHRAQ_MINUTES_AFTER_SUNRISE = 20;     // 20 mins after sunrise
+export const AWWABIN_MINUTES_AFTER_MAGHRIB = 15;    // 15 mins after Maghrib
+
+// Subscriber preferences
+export const VALID_REMINDER_OFFSETS = [5, 10, 15, 30] as const;
+
+// Shared reminder options for UI components
+export const REMINDER_OPTIONS = [
+  { value: "5", label: "5 minutes before" },
+  { value: "10", label: "10 minutes before" },
+  { value: "15", label: "15 minutes before" },
+  { value: "30", label: "30 minutes before" },
+];
 ```
 
 ---
@@ -776,7 +798,7 @@ This release addresses 22 issues identified through thorough code review, includ
 | **Prayer cache not invalidated on settings change** | Stale prayer times after admin changes calculation method | Added `invalidatePrayerCache()` called after settings save | ✅ Fixed |
 | **Missing ARIA labels** | Accessibility issues for screen readers | Added `aria-label` to table, action buttons; proper `id`/`htmlFor` in Checkbox | ✅ Fixed |
 
-#### Code Quality Fixes
+#### Code Quality Fixes (P2)
 
 | Issue | Root Cause | Solution | Status |
 |-------|------------|----------|--------|
@@ -793,26 +815,54 @@ This release addresses 22 issues identified through thorough code review, includ
 | **Magic numbers scattered in code** | `720`, `1440`, `10 * 60 * 1000` repeated | Extracted to `constants.ts` | ✅ Fixed |
 | **No branded 404 page** | Generic Next.js 404 | Created `src/app/not-found.tsx` | ✅ Fixed |
 
-#### Files Modified in v1.6.0
+#### P3 Fixes (Code Quality & Hardening)
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **Webhook GET timing attack** | Direct string comparison for verify token | Added constant-time comparison using `timingSafeEqual` | ✅ Fixed |
+| **Subscribe route missing reminder_offset validation** | Accepted any numeric value | Added validation against `VALID_REMINDER_OFFSETS` (5, 10, 15, 30) | ✅ Fixed |
+| **logCommand error handling** | Silent failures when logging webhook commands | Added try/catch with error logging | ✅ Fixed |
+| **parseInt missing radix** | `parseInt(value)` without base could misbehave | Added `, 10` radix to all parseInt calls | ✅ Fixed |
+| **nafl-reminders hardcoded milliseconds** | `10 * 60 * 1000` instead of constant | Now uses `TEN_MINUTES_MS` from constants | ✅ Fixed |
+| **Mosque type assertion unsafe** | No null check before using mosque data | Added null check with early return | ✅ Fixed |
+| **daily-hadith missing error handling** | Message insert had no error check | Added error handling with console logging | ✅ Fixed |
+| **jumuah-reminder missing error handling** | Message insert had no error check | Added error handling with console logging | ✅ Fixed |
+| **Random hadith fallback ID** | `Math.random() * 10000` could cause duplicates | Replaced with stable hash-based ID generation | ✅ Fixed |
+| **Token param validation** | `params.token as string` without check | Added type validation for token param | ✅ Fixed |
+| **Taraweeh magic number 30** | Hardcoded in ramadan-reminders | Extracted to `TARAWEEH_REMINDER_MINUTES` constant | ✅ Fixed |
+| **Suhoor planning magic number 90** | Hardcoded in ramadan-reminders | Extracted to `SUHOOR_PLANNING_OFFSET_MINUTES` constant | ✅ Fixed |
+| **Hadith API delay magic number 200** | Hardcoded milliseconds | Extracted to `HADITH_API_DELAY_MS` constant | ✅ Fixed |
+| **Duplicate REMINDER_OPTIONS** | Same array in multiple files | Centralized in `constants.ts` | ✅ Fixed |
+| **Nafl timing magic numbers** | 120, 20, 15 hardcoded | Extracted to `TAHAJJUD_MINUTES_BEFORE_FAJR`, `ISHRAQ_MINUTES_AFTER_SUNRISE`, `AWWABIN_MINUTES_AFTER_MAGHRIB` | ✅ Fixed |
+
+#### Files Modified in v1.6.0 and v1.6.1
 
 | File | Changes |
 |------|---------|
 | `src/lib/auth.ts` | Fixed timing-safe comparison to properly return result |
 | `src/lib/prayer-times.ts` | NaN validation, midnight wraparound fix, constants usage |
 | `src/lib/message-sender.ts` | Error handling for batch update |
-| `src/lib/hadith-api.ts` | Fisher-Yates shuffle algorithm |
+| `src/lib/hadith-api.ts` | Fisher-Yates shuffle algorithm, stable hash ID fallback, constant delay |
 | `src/lib/ratelimit.ts` | Secure IP detection |
-| `src/lib/constants.ts` | Added time-related constants |
+| `src/lib/constants.ts` | Added 15+ constants for time, validation, and UI |
 | `src/lib/supabase.ts` | Added `retry_count` and `failed` status to ScheduledMessage |
 | `src/app/api/cron/prayer-reminders/route.ts` | Retry limit logic |
-| `src/app/api/cron/ramadan-reminders/route.ts` | Use `isWithinMinutesAfter()`, constants |
+| `src/app/api/cron/ramadan-reminders/route.ts` | Use `isWithinMinutesAfter()`, timing constants |
+| `src/app/api/cron/nafl-reminders/route.ts` | Use timing constants |
+| `src/app/api/cron/daily-hadith/route.ts` | Added error handling for message insert |
+| `src/app/api/cron/jumuah-reminder/route.ts` | Added error handling for message insert |
 | `src/app/api/admin/announcements/route.ts` | Concurrent sending |
 | `src/app/api/admin/settings/route.ts` | Cache invalidation, error code checking |
 | `src/app/api/settings/[token]/route.ts` | Boolean preference validation |
-| `src/app/api/webhook/whatsapp/route.ts` | Message structure validation |
+| `src/app/api/subscribe/route.ts` | Added reminder_offset validation |
+| `src/app/api/webhook/whatsapp/route.ts` | Timing-safe verify, message validation, mosque null check, radix fix |
+| `src/app/settings/[token]/page.tsx` | Token validation, parseInt radix, shared constants |
+| `src/components/subscribe-form.tsx` | Use shared REMINDER_OPTIONS, parseInt radix |
 | `src/components/admin/subscribers-table.tsx` | Delete confirmation, ARIA labels |
 | `src/components/ui/checkbox.tsx` | Accessibility improvements |
 | `src/app/not-found.tsx` | New branded 404 page |
+| `src/app/layout.tsx` | Added OG image metadata for social sharing (v1.6.1) |
+| `public/og-image.png` | Custom social preview image (v1.6.1) |
 
 ---
 
@@ -1400,6 +1450,33 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 
 ## Changelog
 
+### Version 1.6.1 - February 5, 2026
+
+**P3 Fixes + Social Preview Image**
+
+This release completes the comprehensive bug fix initiative with 15 additional P3 fixes and adds custom OG image for social sharing.
+
+#### Highlights
+
+- **Social Sharing:** Custom OG image for WhatsApp/social media previews
+- **Security:** Timing-safe comparison for webhook verify token
+- **Validation:** reminder_offset validation, token param validation
+- **Constants:** 15+ magic numbers extracted to constants.ts
+- **Error Handling:** All cron job message inserts now have error handling
+- **Code Quality:** Stable hash ID for hadith fallback, shared REMINDER_OPTIONS
+
+#### Changes
+
+| Category | Count |
+|----------|-------|
+| Security fixes | 2 |
+| Validation fixes | 3 |
+| Error handling | 4 |
+| Constants extraction | 6 |
+| Social/SEO | 1 |
+
+---
+
 ### Version 1.6.0 - February 5, 2026
 
 **Comprehensive Bug Fix & Security Release**
@@ -1476,7 +1553,7 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 
 ---
 
-**Document Version:** 1.6.0
-**Last Updated:** February 5, 2026 @ 14:30 SAST
+**Document Version:** 1.6.1
+**Last Updated:** February 5, 2026 @ 18:00 SAST
 **Author:** Claude Code
 **Status:** Production-Ready - WhatsApp templates pending Meta approval

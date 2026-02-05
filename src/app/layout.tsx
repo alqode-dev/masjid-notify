@@ -13,6 +13,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://masjid-notify.vercel.app";
+
 export const metadata: Metadata = {
   title: "Masjid Notify - Stay Connected with Your Mosque",
   description:
@@ -29,11 +31,29 @@ export const metadata: Metadata = {
     "muslim",
   ],
   authors: [{ name: "Alqode" }],
+  metadataBase: new URL(siteUrl),
   openGraph: {
     title: "Masjid Notify - Stay Connected with Your Mosque",
     description:
       "Subscribe to receive prayer time reminders and announcements via WhatsApp.",
     type: "website",
+    url: siteUrl,
+    siteName: "Masjid Notify",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Masjid Notify - Prayer Reminders on WhatsApp",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Masjid Notify - Stay Connected with Your Mosque",
+    description:
+      "Subscribe to receive prayer time reminders and announcements via WhatsApp.",
+    images: ["/og-image.png"],
   },
 };
 
