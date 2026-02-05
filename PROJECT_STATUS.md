@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 5, 2026 @ 18:00 SAST
-> **Version:** 1.6.1
+> **Last Updated:** February 5, 2026 @ 19:30 SAST
+> **Version:** 1.6.2
 > **Status:** Production-Ready - WhatsApp templates pending Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -145,7 +145,7 @@ In South Africa (and many countries), **everyone uses WhatsApp**. People don't w
 | **Database** | Stores subscribers, mosques, messages, settings | Supabase (PostgreSQL) |
 | **WhatsApp API** | Actually sends the WhatsApp messages | Meta Cloud API |
 | **Prayer Times API** | Calculates accurate prayer times by location | Aladhan API |
-| **Hadith API** | Provides authentic daily hadith | random-hadith-generator |
+| **Hadith API** | Provides authentic daily hadith | fawazahmed0/hadith-api (jsDelivr CDN) |
 | **Cron Scheduler** | Triggers reminder checks every 5 minutes | cron-job.org |
 
 ### Data Flow Example: Prayer Reminder
@@ -242,7 +242,7 @@ git push origin master
 | Database | ✅ Works | All tables created and functional |
 | Cron jobs | ✅ Works | All 5 jobs running, **retry limits** on scheduled messages |
 | Prayer times API | ✅ Works | Aladhan API, **timezone-aware**, **NaN-safe parsing**, **midnight wraparound** |
-| Hadith API | ✅ Works | **Fisher-Yates shuffle** for unbiased randomization |
+| Hadith API | ✅ Works | **NEW: jsDelivr CDN** (v1.6.2), 6 authentic collections, **Fisher-Yates shuffle** |
 | Rate limiting | ✅ Works | **Secure IP detection** (x-vercel-forwarded-for, rightmost IP) |
 | 404 page | ✅ Works | Branded not-found page |
 | Error handling | ✅ Works | Comprehensive logging, **batch update error handling** |
@@ -291,7 +291,7 @@ git push origin master
 | **WhatsApp Sending** | ✅ Active | Feb 5, 2026 | Account restored, **concurrent sending** |
 | **WhatsApp Webhook** | ✅ Active | Feb 5, 2026 | Receiving messages, **structure validation** |
 | **Cron Jobs** | ✅ Running | Feb 5, 2026 | 5 jobs, **retry limits**, **constant-time auth** |
-| **Hadith API** | ✅ Integrated | Feb 5, 2026 | **Fisher-Yates shuffle** for fair randomization |
+| **Hadith API** | ✅ Integrated | Feb 5, 2026 | **NEW: jsDelivr CDN** (6 collections), **Fisher-Yates shuffle** |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
 | **Rate Limiting** | ✅ Secure | Feb 5, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
@@ -1450,6 +1450,42 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 
 ## Changelog
 
+### Version 1.6.2 - February 5, 2026
+
+**CRITICAL: Hadith API Migration**
+
+The original hadith API (random-hadith-generator.vercel.app) was down/returning 404 errors. This release completely rewrites the hadith integration using a reliable CDN-hosted alternative.
+
+#### Changes
+
+| Category | Description |
+|----------|-------------|
+| **API Migration** | Replaced dead random-hadith-generator.vercel.app with fawazahmed0/hadith-api hosted on jsDelivr CDN |
+| **6 Collections** | Now supports Bukhari, Muslim, Abu Dawud, Tirmidhi, Ibn Majah, Nasai |
+| **Reliability** | jsDelivr CDN provides high availability and caching |
+| **Retry Logic** | 5 attempts per collection to find valid hadith |
+| **Rate Limiting** | Uses HADITH_API_DELAY_MS constant between retries |
+| **TypeScript** | Full type definitions for API responses |
+
+#### API Details
+
+```typescript
+const HADITH_CDN_BASE = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1";
+
+export const HADITH_COLLECTIONS = [
+  { name: "bukhari", source: "Sahih al-Bukhari", edition: "eng-bukhari", maxHadith: 7563 },
+  { name: "muslim", source: "Sahih Muslim", edition: "eng-muslim", maxHadith: 7563 },
+  { name: "abudawud", source: "Sunan Abu Dawud", edition: "eng-abudawud", maxHadith: 5274 },
+  { name: "tirmidhi", source: "Jami at-Tirmidhi", edition: "eng-tirmidhi", maxHadith: 3956 },
+  { name: "ibnmajah", source: "Sunan Ibn Majah", edition: "eng-ibnmajah", maxHadith: 4341 },
+  { name: "nasai", source: "Sunan an-Nasa'i", edition: "eng-nasai", maxHadith: 5758 },
+];
+```
+
+**Impact:** Daily hadith notifications now work reliably. Without this fix, all hadith-related features were broken.
+
+---
+
 ### Version 1.6.1 - February 5, 2026
 
 **P3 Fixes + Social Preview Image**
@@ -1549,11 +1585,11 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
 | **Meta Developer Console** | https://developers.facebook.com/apps |
-| **Hadith API Docs** | https://random-hadith-generator.vercel.app |
+| **Hadith API Docs** | https://github.com/fawazahmed0/hadith-api |
 
 ---
 
-**Document Version:** 1.6.1
-**Last Updated:** February 5, 2026 @ 18:00 SAST
+**Document Version:** 1.6.2
+**Last Updated:** February 5, 2026 @ 19:30 SAST
 **Author:** Claude Code
 **Status:** Production-Ready - WhatsApp templates pending Meta approval
