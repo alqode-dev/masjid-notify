@@ -172,25 +172,57 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
   };
 }
 
-// Check if a prayer reminder was already sent recently (within last 10 minutes)
-// This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
-async function wasRecentlySent(
+/**
+ * Attempt to claim exclusive lock for sending a prayer reminder.
+ * Uses database UNIQUE constraint for atomic, race-condition-proof locking.
+ *
+ * How it works:
+ * 1. Try to INSERT a lock record
+ * 2. If INSERT succeeds → we have the lock, proceed to send
+ * 3. If INSERT fails (duplicate key) → another cron run already claimed it, skip
+ *
+ * This is the ONLY way to prevent duplicates with concurrent serverless functions.
+ *
+ * @returns true if lock acquired (should send), false if already claimed (skip)
+ */
+async function tryClaimReminderLock(
   mosqueId: string,
-  prayer: string,
+  prayerKey: string,
   offset: number
 ): Promise<boolean> {
-  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
+  const { error } = await supabaseAdmin.from("prayer_reminder_locks").insert({
+    mosque_id: mosqueId,
+    prayer_key: prayerKey,
+    reminder_date: today,
+    reminder_offset: offset,
+  });
+
+  if (error) {
+    // Duplicate key error (23505) means another cron run already claimed this slot
+    if (error.code === "23505") {
+      return false; // Lock already claimed - skip sending
+    }
+    // Log other errors but don't block sending (fail open for now)
+    console.error("[prayer-reminders] Lock claim error:", error.message, error.code);
+    // Fall through to legacy check as backup
+  } else {
+    return true; // Lock acquired - proceed to send
+  }
+
+  // Fallback: If lock table doesn't exist yet, use legacy time-based check
+  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
   const { data } = await supabaseAdmin
     .from("messages")
     .select("id")
     .eq("mosque_id", mosqueId)
     .eq("type", "prayer")
     .gte("sent_at", tenMinutesAgo)
-    .contains("metadata", { prayer, offset })
+    .contains("metadata", { prayer: prayerKey, offset })
     .limit(1);
 
-  return data !== null && data.length > 0;
+  return data === null || data.length === 0;
 }
 
 // This endpoint should be called every 5 minutes by Vercel Cron
@@ -292,15 +324,15 @@ export async function GET(request: NextRequest) {
 
         for (const [offset, subs] of offsetGroups) {
           if (isWithinMinutes(prayer.time, offset, mosque.timezone)) {
-            // Check if this reminder was already sent recently to prevent duplicates
-            // This is needed because the 5-minute window may overlap with consecutive cron runs
-            const alreadySent = await wasRecentlySent(
+            // ATOMIC LOCK: Claim exclusive right to send this reminder
+            // Uses database UNIQUE constraint - impossible to race
+            const lockAcquired = await tryClaimReminderLock(
               mosque.id,
               prayer.key,
               offset
             );
-            if (alreadySent) {
-              continue; // Skip - already sent this reminder
+            if (!lockAcquired) {
+              continue; // Another cron run already claimed this - skip
             }
 
             // Template variables: prayer_name, prayer_time, mosque_name
