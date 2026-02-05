@@ -153,6 +153,18 @@ function wasRecentlySent(
 }
 
 /**
+ * Fisher-Yates shuffle for unbiased randomization
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
  * Get a unique hadith that hasn't been sent in the last 30 days
  * Tries multiple collections to find a non-duplicate
  */
@@ -161,10 +173,8 @@ export async function getUniqueHadith(
 ): Promise<HadithData | null> {
   const recentHadiths = await getRecentHadiths(30);
 
-  // Shuffle collections to try them in random order
-  const shuffledCollections = [...HADITH_COLLECTIONS].sort(
-    () => Math.random() - 0.5
-  );
+  // Shuffle collections using proper Fisher-Yates algorithm
+  const shuffledCollections = shuffleArray([...HADITH_COLLECTIONS]);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Pick a collection (cycling through shuffled list)

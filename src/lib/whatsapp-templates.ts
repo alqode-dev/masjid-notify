@@ -20,7 +20,7 @@
  * 2. Navigate to: WhatsApp Manager > Account Tools > Message Templates
  * 3. Click "Create Template"
  * 4. Select Category: UTILITY or MARKETING (see notes below)
- * 5. Enter template name (use underscore format, e.g., "prayer_reminder")
+ * 5. Enter template name (use underscore format, e.g., "salah_reminder")
  * 6. Select language(s): English (en), and add translations if needed
  * 7. Enter the template body text exactly as specified below
  * 8. Submit for review
@@ -63,11 +63,11 @@ export interface TemplateDefinition {
  * Variables: prayer_name, prayer_time, mosque_name
  */
 export const PRAYER_REMINDER_TEMPLATE: TemplateDefinition = {
-  name: "prayer_reminder",
+  name: "salah_reminder",
   description: "Prayer time reminder notification",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Salah Reminder from {{3}}: {{1}} is at {{2}} today. Please prepare for your prayer.`,
+  body: `Salah Reminder from {{3}}: {{1}} is at {{2}} today. Please prepare for your salah. May Allah accept your ibadah.`,
   variables: ["prayer_name", "prayer_time", "mosque_name"],
   sampleValues: ["Fajr", "05:32", "Anwaarul Islam Rondebosch East"],
 };
@@ -88,10 +88,10 @@ export const WELCOME_TEMPLATE: TemplateDefinition = {
 You will receive prayer time reminders, hadith, and announcements on WhatsApp, in sha Allah.
 
 You can manage your preferences anytime:
-- Type SETTINGS to update your choices
-- Type PAUSE 7 to pause for 7 days
-- Type HELP to see all commands
-- Type STOP to unsubscribe
+* Type SETTINGS to update your choices
+* Type PAUSE 7 to pause for 7 days
+* Type HELP to see all commands
+* Type STOP to unsubscribe
 
 Reply STOP to opt out.`,
   variables: ["mosque_name"],
@@ -107,9 +107,9 @@ Reply STOP to opt out.`,
 export const JUMUAH_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "jumuah_reminder",
   description: "Friday Jumu'ah prayer reminder",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Jumuah Reminder from {{3}}: The adhaan is at {{1}} and the khutbah begins at {{2}} today. Please remember to recite Surah Al-Kahf.`,
+  body: `Jumuah Mubarak from {{3}}! The adhaan is at {{1}} and the khutbah begins at {{2}} today. Please remember to recite Surah Al-Kahf and send abundant salawaat upon the Prophet (SAW).`,
   variables: ["adhaan_time", "khutbah_time", "mosque_name"],
   sampleValues: ["13:00", "13:20", "Anwaarul Islam Rondebosch East"],
 };
@@ -118,12 +118,12 @@ export const JUMUAH_REMINDER_TEMPLATE: TemplateDefinition = {
  * Daily Hadith Template
  *
  * Sent daily with an inspirational hadith.
- * Variables: hadith_text, source, reference, mosque_name
+ * Variables: hadith_text, source_and_reference, mosque_name
  */
 export const DAILY_HADITH_TEMPLATE: TemplateDefinition = {
   name: "daily_hadith",
   description: "Daily hadith notification",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
   body: `Daily Hadith from {{3}}:
 
@@ -131,7 +131,7 @@ The Prophet (SAW) and his companions taught us:
 
 {{1}}
 
-This hadith is reported in {{2}}.`,
+Source: {{2}}. May Allah grant us the ability to act upon this teaching.`,
   variables: ["hadith_text", "source_and_reference", "mosque_name"],
   sampleValues: [
     "The best among you are those who have the best manners and character.",
@@ -145,6 +145,10 @@ This hadith is reported in {{2}}.`,
  *
  * Used for general mosque announcements and updates.
  * Variables: mosque_name, announcement_content
+ *
+ * NOTE: This single Meta template powers ALL 11 dashboard announcement types
+ * (Eid, Juma, Lectures, Fundraiser, etc.). The admin picks a template in the
+ * dashboard, edits the text, and it gets sent through this one Meta template.
  */
 export const ANNOUNCEMENT_TEMPLATE: TemplateDefinition = {
   name: "mosque_announcement",
@@ -172,9 +176,9 @@ Reply STOP to unsubscribe.`,
 export const SUHOOR_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "ramadan_suhoor",
   description: "Suhoor reminder during Ramadan",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Suhoor Reminder from {{2}}: Fajr adhaan is at {{1}} today. Please complete your suhoor before this time.`,
+  body: `Suhoor Reminder from {{2}}: Fajr adhaan is at {{1}} today. Please complete your suhoor before this time. The Prophet (SAW) said: "Take suhoor, for indeed in suhoor there is blessing." (Sunan al-Nasa'i, 2164)`,
   variables: ["fajr_time", "mosque_name"],
   sampleValues: ["05:15", "Anwaarul Islam Rondebosch East"],
 };
@@ -188,9 +192,11 @@ export const SUHOOR_REMINDER_TEMPLATE: TemplateDefinition = {
 export const IFTAR_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "ramadan_iftar",
   description: "Iftar reminder during Ramadan",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Iftar Reminder from {{3}}: {{1}} minutes until Maghrib at {{2}}. Please begin preparing to break your fast.`,
+  body: `Iftar Reminder from {{3}}: {{1}} minutes until Maghrib at {{2}}. Please begin preparing to break your fast.
+
+Dua for breaking fast: "Allahumma inni laka sumtu wa bika aamantu wa ala rizqika aftartu." (O Allah, I fasted for You, I believed in You, and with Your provision I break my fast.)`,
   variables: ["minutes_until", "maghrib_time", "mosque_name"],
   sampleValues: ["15", "19:32", "Anwaarul Islam Rondebosch East"],
 };
@@ -204,9 +210,9 @@ export const IFTAR_REMINDER_TEMPLATE: TemplateDefinition = {
 export const TARAWEEH_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "ramadan_taraweeh",
   description: "Taraweeh prayer reminder during Ramadan",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Taraweeh Reminder from {{2}}: Taraweeh salah begins at {{1}} tonight at the masjid.`,
+  body: `Taraweeh Reminder from {{2}}: Taraweeh salah begins at {{1}} tonight at the masjid. May Allah accept your ibadah this Ramadan, Ameen.`,
   variables: ["taraweeh_time", "mosque_name"],
   sampleValues: ["20:30", "Anwaarul Islam Rondebosch East"],
 };
@@ -220,9 +226,9 @@ export const TARAWEEH_REMINDER_TEMPLATE: TemplateDefinition = {
 export const TAHAJJUD_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "tahajjud_reminder",
   description: "Tahajjud prayer reminder",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Tahajjud Reminder from {{2}}: The last third of the night has begun. Fajr adhaan is at {{1}} today.`,
+  body: `Tahajjud Reminder from {{2}}: The last third of the night has begun. Fajr adhaan is at {{1}} today. The Prophet (SAW) said: "Our Lord descends every night to the lowest heaven when the last third of the night remains."`,
   variables: ["fajr_time", "mosque_name"],
   sampleValues: ["05:15", "Anwaarul Islam Rondebosch East"],
 };
@@ -236,9 +242,9 @@ export const TAHAJJUD_REMINDER_TEMPLATE: TemplateDefinition = {
 export const ISHRAQ_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "ishraq_reminder",
   description: "Ishraq/Duha prayer reminder",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Ishraq Reminder from {{1}}: The sun has risen. It is now time for Ishraq salah.`,
+  body: `Ishraq Reminder from {{1}}: The sun has risen. It is now time for Ishraq salah. The Prophet (SAW) said: "Whoever prays Fajr in congregation, then sits remembering Allah until the sun rises, then prays two rakaats, will have a reward like Hajj and Umrah."`,
   variables: ["mosque_name"],
   sampleValues: ["Anwaarul Islam Rondebosch East"],
 };
@@ -252,9 +258,9 @@ export const ISHRAQ_REMINDER_TEMPLATE: TemplateDefinition = {
 export const AWWABIN_REMINDER_TEMPLATE: TemplateDefinition = {
   name: "awwabin_reminder",
   description: "Awwabin prayer reminder",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Awwabin Reminder from {{1}}: The time between Maghrib and Isha has begun. It is now time for Awwabin salah.`,
+  body: `Awwabin Reminder from {{1}}: The time between Maghrib and Isha has begun. It is now time for Awwabin salah. The Prophet (SAW) said: "Whoever prays six rakaats after Maghrib without speaking ill between them, they will be equated to twelve years of worship."`,
   variables: ["mosque_name"],
   sampleValues: ["Anwaarul Islam Rondebosch East"],
 };
@@ -268,9 +274,9 @@ export const AWWABIN_REMINDER_TEMPLATE: TemplateDefinition = {
 export const SUHOOR_PLANNING_TEMPLATE: TemplateDefinition = {
   name: "suhoor_planning",
   description: "Night before suhoor planning reminder",
-  category: "UTILITY",
+  category: "MARKETING",
   languages: ["en"],
-  body: `Suhoor Planning from {{2}}: Fajr adhaan is at {{1}} tomorrow morning. Please set your alarm and prepare your suhoor tonight.`,
+  body: `Suhoor Planning from {{2}}: Fajr adhaan is at {{1}} tomorrow morning. Please set your alarm and prepare your suhoor tonight. The Prophet (SAW) said: "Whoever fasts in the month of Ramadan out of sincere faith and hoping for a reward from Allah, then all his previous sins will be forgiven." (Sahih al-Bukhari)`,
   variables: ["fajr_time", "mosque_name"],
   sampleValues: ["05:15", "Anwaarul Islam Rondebosch East"],
 };
@@ -308,7 +314,7 @@ export function getTemplateByName(name: string): TemplateDefinition | undefined 
  *
  * @example
  * const components = formatTemplateVariables(["Fajr", "05:30", "Green Point Masjid"]);
- * await sendWhatsAppTemplate(phone, "prayer_reminder", "en", components);
+ * await sendWhatsAppTemplate(phone, "salah_reminder", "en", components);
  */
 export function formatTemplateVariables(
   values: string[]

@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
 
-          await supabaseAdmin.from("messages").insert({
+          const { error: msgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "nafl",
             content: message,
@@ -133,6 +133,9 @@ export async function GET(request: NextRequest) {
             status: "sent",
             metadata: { reminder_type: "tahajjud" },
           });
+          if (msgError) {
+            console.error('[nafl-reminders] Failed to log tahajjud message:', msgError.message, msgError.code, msgError.details);
+          }
         }
       }
 
@@ -155,7 +158,7 @@ export async function GET(request: NextRequest) {
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
 
-          await supabaseAdmin.from("messages").insert({
+          const { error: ishraqMsgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "nafl",
             content: message,
@@ -163,6 +166,9 @@ export async function GET(request: NextRequest) {
             status: "sent",
             metadata: { reminder_type: "ishraq" },
           });
+          if (ishraqMsgError) {
+            console.error('[nafl-reminders] Failed to log ishraq message:', ishraqMsgError.message, ishraqMsgError.code, ishraqMsgError.details);
+          }
         }
       }
 
@@ -185,7 +191,7 @@ export async function GET(request: NextRequest) {
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
 
-          await supabaseAdmin.from("messages").insert({
+          const { error: awwabinMsgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "nafl",
             content: message,
@@ -193,6 +199,9 @@ export async function GET(request: NextRequest) {
             status: "sent",
             metadata: { reminder_type: "awwabin" },
           });
+          if (awwabinMsgError) {
+            console.error('[nafl-reminders] Failed to log awwabin message:', awwabinMsgError.message, awwabinMsgError.code, awwabinMsgError.details);
+          }
         }
       }
     }

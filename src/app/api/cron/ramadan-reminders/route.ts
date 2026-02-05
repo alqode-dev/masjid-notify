@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getPrayerTimes, isWithinMinutes, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
+import { getPrayerTimes, isWithinMinutes, isWithinMinutesAfter, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
 import {
   SUHOOR_REMINDER_TEMPLATE,
   IFTAR_REMINDER_TEMPLATE,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
+import { TEN_MINUTES_MS } from "@/lib/constants";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ async function wasRamadanReminderSent(
   mosqueId: string,
   reminderType: string
 ): Promise<boolean> {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
 
   const { data } = await supabaseAdmin
     .from("messages")
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
 
-          await supabaseAdmin.from("messages").insert({
+          const { error: suhoorMsgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "ramadan",
             content: message,
@@ -141,6 +142,9 @@ export async function GET(request: NextRequest) {
             status: "sent",
             metadata: { reminder_type: "suhoor" },
           });
+          if (suhoorMsgError) {
+            console.error('[ramadan-reminders] Failed to log suhoor message:', suhoorMsgError.message, suhoorMsgError.code, suhoorMsgError.details);
+          }
         }
       }
 
@@ -177,7 +181,7 @@ export async function GET(request: NextRequest) {
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
 
-          await supabaseAdmin.from("messages").insert({
+          const { error: iftarMsgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "ramadan",
             content: message,
@@ -185,6 +189,9 @@ export async function GET(request: NextRequest) {
             status: "sent",
             metadata: { reminder_type: "iftar" },
           });
+          if (iftarMsgError) {
+            console.error('[ramadan-reminders] Failed to log iftar message:', iftarMsgError.message, iftarMsgError.code, iftarMsgError.details);
+          }
         }
       }
 
@@ -222,7 +229,7 @@ export async function GET(request: NextRequest) {
             const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
             await batchUpdateLastMessageAt(successfulIds);
 
-            await supabaseAdmin.from("messages").insert({
+            const { error: taraweehMsgError } = await supabaseAdmin.from("messages").insert({
               mosque_id: mosque.id,
               type: "ramadan",
               content: message,
@@ -230,15 +237,18 @@ export async function GET(request: NextRequest) {
               status: "sent",
               metadata: { reminder_type: "taraweeh" },
             });
+            if (taraweehMsgError) {
+              console.error('[ramadan-reminders] Failed to log taraweeh message:', taraweehMsgError.message, taraweehMsgError.code, taraweehMsgError.details);
+            }
           }
         }
 
         // Also send suhoor planning reminder after Isha/Taraweeh (90 mins after Isha)
         // This helps people prepare for the next day's suhoor
         if (
-          isWithinMinutes(
+          isWithinMinutesAfter(
             prayerTimes.isha,
-            -90, // 90 minutes AFTER Isha (negative offset)
+            90, // 90 minutes AFTER Isha
             mosque.timezone
           )
         ) {
@@ -272,7 +282,7 @@ export async function GET(request: NextRequest) {
               const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
               await batchUpdateLastMessageAt(successfulIds);
 
-              await supabaseAdmin.from("messages").insert({
+              const { error: planningMsgError } = await supabaseAdmin.from("messages").insert({
                 mosque_id: mosque.id,
                 type: "ramadan",
                 content: message,
@@ -280,6 +290,9 @@ export async function GET(request: NextRequest) {
                 status: "sent",
                 metadata: { reminder_type: "suhoor_planning" },
               });
+              if (planningMsgError) {
+                console.error('[ramadan-reminders] Failed to log suhoor_planning message:', planningMsgError.message, planningMsgError.code, planningMsgError.details);
+              }
             }
           }
         }

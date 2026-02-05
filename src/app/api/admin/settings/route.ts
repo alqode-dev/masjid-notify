@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
 
+/**
+ * Invalidate prayer times cache when settings that affect calculations change.
+ * This ensures the next cron run will fetch fresh prayer times from the API.
+ */
+async function invalidatePrayerCache(mosqueId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("prayer_times_cache")
+    .delete()
+    .eq("mosque_id", mosqueId);
+
+  if (error) {
+    console.warn("Failed to invalidate prayer cache:", error.message);
+    // Non-critical - cache will naturally expire after the day passes
+  } else {
+    console.log("Prayer cache invalidated for mosque:", mosqueId);
+  }
+}
+
 export const GET = withAdminAuth(async (request, { admin }) => {
   try {
     const { data: mosque, error } = await supabaseAdmin
@@ -52,8 +70,15 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
 
     if (error) {
       // If Ramadan columns don't exist, retry with core fields only
-      if (error.message.includes("column") && error.message.includes("schema cache")) {
-        console.warn("Ramadan columns missing — saving core settings only. Run migration 007.", error.message);
+      // Check for PostgreSQL error codes: 42703 (undefined column), 42P01 (undefined table)
+      // or PGRST204 (column not found in schema cache)
+      const isColumnMissing =
+        error.code === "42703" ||
+        error.code === "PGRST204" ||
+        (error.message && (error.message.includes("column") || error.message.includes("schema cache")));
+
+      if (isColumnMissing) {
+        console.warn("Ramadan columns missing — saving core settings only. Run migration 007.", error.code, error.message);
         const { error: coreError } = await supabaseAdmin
           .from("mosques")
           .update(coreUpdate)
@@ -67,6 +92,9 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
           );
         }
 
+        // Invalidate prayer cache since calculation settings may have changed
+        await invalidatePrayerCache(admin.mosque_id);
+
         return NextResponse.json({
           success: true,
           warning: "Prayer settings saved. Ramadan settings require a database migration — run migration 007 in Supabase SQL Editor.",
@@ -79,6 +107,10 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
         { status: 500 }
       );
     }
+
+    // Invalidate prayer cache since calculation_method or madhab may have changed
+    // This ensures next cron run uses fresh prayer times from Aladhan API
+    await invalidatePrayerCache(admin.mosque_id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

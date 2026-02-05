@@ -67,7 +67,7 @@ export function SubscribersTable({
 
   return (
     <div className="rounded-xl border border-border overflow-hidden">
-      <Table>
+      <Table aria-label="Subscribers list">
         <TableHeader>
           <TableRow className="bg-muted/50">
             <TableHead>Phone Number</TableHead>
@@ -140,7 +140,8 @@ export function SubscribersTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => onStatusChange?.(subscriber.id, "paused")}
-                        title="Pause"
+                        title="Pause notifications"
+                        aria-label={`Pause notifications for ${formatPhoneForDisplay(subscriber.phone_number)}`}
                       >
                         <Pause className="w-4 h-4" />
                       </Button>
@@ -150,7 +151,8 @@ export function SubscribersTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => onStatusChange?.(subscriber.id, "active")}
-                        title="Resume"
+                        title="Resume notifications"
+                        aria-label={`Resume notifications for ${formatPhoneForDisplay(subscriber.phone_number)}`}
                       >
                         <Play className="w-4 h-4" />
                       </Button>
@@ -158,9 +160,14 @@ export function SubscribersTable({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDelete?.(subscriber.id)}
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete this subscriber (${formatPhoneForDisplay(subscriber.phone_number)})? This action cannot be undone.`)) {
+                          onDelete?.(subscriber.id);
+                        }
+                      }}
                       className="text-destructive hover:text-destructive"
-                      title="Delete"
+                      title="Delete subscriber"
+                      aria-label={`Delete subscriber ${formatPhoneForDisplay(subscriber.phone_number)}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

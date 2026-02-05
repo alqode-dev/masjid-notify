@@ -20,9 +20,13 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
+import { TEN_MINUTES_MS } from "@/lib/constants";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
+
+// Maximum retry attempts before marking a scheduled message as permanently failed
+const MAX_SCHEDULED_MESSAGE_RETRIES = 5;
 
 // Process scheduled messages that are due for sending
 // Called from the main cron handler to check for any pending scheduled messages
@@ -99,7 +103,7 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       await batchUpdateLastMessageAt(successfulIds);
 
       // Log the scheduled message as sent in messages table
-      await supabaseAdmin.from("messages").insert({
+      const { error: msgError } = await supabaseAdmin.from("messages").insert({
         mosque_id: scheduled.mosque_id,
         type: "announcement",
         content: scheduled.content,
@@ -111,6 +115,9 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
           scheduled_message_id: scheduled.id,
         },
       });
+      if (msgError) {
+        console.error('[prayer-reminders] Failed to log scheduled message:', msgError.message, msgError.code, msgError.details);
+      }
 
       // Mark the scheduled message as sent
       await supabaseAdmin
@@ -121,13 +128,40 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       successful++;
     } catch (err) {
       // Handle individual failure without stopping the batch
+      const currentRetries = (scheduled.retry_count ?? 0) + 1;
+
       logCronError(logger, "Failed to process scheduled message", {
         scheduledMessageId: scheduled.id,
         mosqueId: scheduled.mosque_id,
+        retryCount: currentRetries,
+        maxRetries: MAX_SCHEDULED_MESSAGE_RETRIES,
         error: err instanceof Error ? err.message : String(err),
       });
+
+      // Update retry count or mark as failed if max retries exceeded
+      if (currentRetries >= MAX_SCHEDULED_MESSAGE_RETRIES) {
+        // Max retries exceeded - mark as permanently failed
+        await supabaseAdmin
+          .from("scheduled_messages")
+          .update({
+            status: "failed",
+            retry_count: currentRetries,
+          })
+          .eq("id", scheduled.id);
+
+        logCronError(logger, "Scheduled message permanently failed after max retries", {
+          scheduledMessageId: scheduled.id,
+          mosqueId: scheduled.mosque_id,
+        });
+      } else {
+        // Increment retry count for next attempt
+        await supabaseAdmin
+          .from("scheduled_messages")
+          .update({ retry_count: currentRetries })
+          .eq("id", scheduled.id);
+      }
+
       failed++;
-      // Don't mark as sent - will be retried on next cron run
     }
   }
 
@@ -145,7 +179,7 @@ async function wasRecentlySent(
   prayer: string,
   offset: number
 ): Promise<boolean> {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
 
   const { data } = await supabaseAdmin
     .from("messages")
@@ -286,7 +320,7 @@ export async function GET(request: NextRequest) {
 
             // Log the batch
             if (subs.length > 0) {
-              await supabaseAdmin.from("messages").insert({
+              const { error: msgError } = await supabaseAdmin.from("messages").insert({
                 mosque_id: mosque.id,
                 type: "prayer",
                 content: message,
@@ -297,6 +331,9 @@ export async function GET(request: NextRequest) {
                   offset,
                 },
               });
+              if (msgError) {
+                console.error('[prayer-reminders] Failed to log message:', msgError.message, msgError.code, msgError.details);
+              }
             }
           }
         }

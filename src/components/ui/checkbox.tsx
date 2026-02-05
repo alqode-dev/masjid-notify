@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, InputHTMLAttributes } from "react";
+import { forwardRef, InputHTMLAttributes, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,18 +12,25 @@ interface CheckboxProps
 }
 
 const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, label, description, checked, onChange, ...props }, ref) => {
+  ({ className, label, description, checked, onChange, id: providedId, ...props }, ref) => {
+    const generatedId = useId();
+    const id = providedId || generatedId;
+    const descriptionId = description ? `${id}-description` : undefined;
+
     return (
       <label
+        htmlFor={id}
         className={cn("flex items-start gap-3 cursor-pointer group", className)}
       >
         <div className="relative mt-0.5">
           <input
             type="checkbox"
+            id={id}
             ref={ref}
             checked={checked}
             onChange={onChange}
             className="sr-only"
+            aria-describedby={descriptionId}
             {...props}
           />
           <motion.div
@@ -55,7 +62,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         <div className="flex-1">
           <span className="text-foreground font-medium">{label}</span>
           {description && (
-            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+            <p id={descriptionId} className="text-sm text-muted-foreground mt-0.5">{description}</p>
           )}
         </div>
       </label>

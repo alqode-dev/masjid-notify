@@ -133,6 +133,25 @@ export async function PUT(
       );
     }
 
+    // Validate boolean preferences (must be boolean if provided)
+    const booleanPrefs = {
+      pref_daily_prayers,
+      pref_jumuah,
+      pref_ramadan,
+      pref_nafl_salahs,
+      pref_hadith,
+      pref_announcements,
+    };
+
+    for (const [key, value] of Object.entries(booleanPrefs)) {
+      if (value !== undefined && typeof value !== "boolean") {
+        return NextResponse.json(
+          { error: `Invalid value for ${key}: must be a boolean` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Update subscriber preferences
     const { error: updateError } = await supabaseAdmin
       .from("subscribers")

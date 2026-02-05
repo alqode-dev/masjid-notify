@@ -283,7 +283,11 @@ export function MessageTemplates({ onSelectTemplate }: MessageTemplatesProps) {
               </div>
 
               <p className="text-xs text-muted-foreground mt-4">
-                Replace [PLACEHOLDERS] with your specific details
+                Replace [PLACEHOLDERS] with your specific details.
+                <br />
+                <span className="text-muted-foreground/70">
+                  Select a starting template, then customize the message before sending.
+                </span>
               </p>
             </Card>
           </motion.div>

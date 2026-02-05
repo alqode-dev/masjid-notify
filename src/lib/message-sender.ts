@@ -169,8 +169,16 @@ export async function batchUpdateLastMessageAt(
 
   // Supabase doesn't support UPDATE ... WHERE id IN (...) directly,
   // but we can use .in() filter
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("subscribers")
     .update({ last_message_at: new Date().toISOString() })
     .in("id", subscriberIds);
+
+  if (error) {
+    console.error("Failed to batch update last_message_at:", error.message, {
+      subscriberCount: subscriberIds.length,
+      code: error.code,
+    });
+    // Don't throw - this is a non-critical update for tracking purposes
+  }
 }

@@ -123,20 +123,26 @@ export async function POST(request: NextRequest) {
     // Parse the raw body as JSON
     const body = JSON.parse(rawBody);
 
-    // Extract message data
+    // Extract message data with validation
     const entry = body.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
     const messages = value?.messages;
 
     if (!messages || messages.length === 0) {
-      // Could be a status update, ignore
+      // Could be a status update or delivery receipt, ignore silently
       return NextResponse.json({ success: true });
     }
 
     const message = messages[0];
-    const from = message.from; // Phone number
-    const text = message.text?.body?.toUpperCase().trim();
+    const from = message?.from; // Phone number
+    const text = message?.text?.body?.toUpperCase().trim();
+
+    // Validate message structure
+    if (!from) {
+      console.warn("Webhook received message without 'from' field:", JSON.stringify(message));
+      return NextResponse.json({ success: true });
+    }
 
     if (!text) {
       return NextResponse.json({ success: true });

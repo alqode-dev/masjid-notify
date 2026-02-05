@@ -136,10 +136,11 @@ export type ScheduledMessage = {
   mosque_id: string;
   content: string;
   scheduled_at: string;
-  status: "pending" | "sent" | "cancelled";
+  status: "pending" | "sent" | "cancelled" | "failed";
   sent_at: string | null;
   created_at: string;
   created_by: string | null;
+  retry_count?: number; // Added for retry limiting (defaults to 0 if column doesn't exist)
 };
 
 // Client-side Supabase client (for use in React components)

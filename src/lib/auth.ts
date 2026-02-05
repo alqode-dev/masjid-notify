@@ -121,23 +121,20 @@ export function verifyCronSecret(authHeader: string | null): boolean {
   }
 
   const expectedValue = `Bearer ${cronSecret}`;
+  const receivedBuffer = Buffer.from(authHeader);
+  const expectedBuffer = Buffer.from(expectedValue);
 
-  // Ensure both strings have the same length for timingSafeEqual
-  // If lengths differ, we still need constant-time comparison
-  // by padding the shorter one (but always returning false)
-  if (authHeader.length !== expectedValue.length) {
-    // Still perform a comparison to maintain constant time
-    const paddedAuth = authHeader.padEnd(expectedValue.length, '\0');
-    const paddedExpected = expectedValue.padEnd(authHeader.length, '\0');
-    crypto.timingSafeEqual(
-      Buffer.from(paddedAuth),
-      Buffer.from(paddedExpected)
-    );
+  // For constant-time comparison, both buffers must be the same length
+  // If lengths differ, compare against expected to maintain constant time, then return false
+  if (receivedBuffer.length !== expectedBuffer.length) {
+    // Perform a dummy comparison to prevent timing attacks based on early return
+    crypto.timingSafeEqual(expectedBuffer, expectedBuffer);
     return false;
   }
 
-  return crypto.timingSafeEqual(
-    Buffer.from(authHeader),
-    Buffer.from(expectedValue)
-  );
+  try {
+    return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+  } catch {
+    return false;
+  }
 }

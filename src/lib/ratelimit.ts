@@ -60,11 +60,29 @@ export function getWebhookRateLimiter(): Ratelimit | null {
 }
 
 // Helper to get IP from request
+// Secure against X-Forwarded-For spoofing by using Vercel's trusted header
 export function getClientIP(request: Request): string {
-  // Check common headers for forwarded IP
+  // On Vercel, use x-vercel-forwarded-for which cannot be spoofed by clients
+  // This is set by Vercel's edge network and represents the true client IP
+  const vercelForwarded = request.headers.get('x-vercel-forwarded-for')
+  if (vercelForwarded) {
+    return vercelForwarded.split(',')[0].trim()
+  }
+
+  // Fallback: x-forwarded-for - use RIGHTMOST IP (last proxy before our server)
+  // The leftmost IP can be spoofed by clients, but each proxy appends its own
+  // The rightmost is added by the last trusted proxy (our infrastructure)
   const forwarded = request.headers.get('x-forwarded-for')
   if (forwarded) {
-    return forwarded.split(',')[0].trim()
+    const ips = forwarded.split(',').map(ip => ip.trim())
+    // Use the rightmost non-empty IP (closest to our server, hardest to spoof)
+    for (let i = ips.length - 1; i >= 0; i--) {
+      if (ips[i] && ips[i] !== '127.0.0.1' && ips[i] !== '::1') {
+        return ips[i]
+      }
+    }
+    // If all IPs are localhost, return the first one
+    return ips[0]
   }
 
   const realIP = request.headers.get('x-real-ip')

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase'
+import { MINUTES_IN_DAY, MINUTES_HALF_DAY, CRON_WINDOW_MINUTES } from './constants'
 
 const ALADHAN_API_URL = process.env.ALADHAN_API_URL || 'https://api.aladhan.com/v1'
 
@@ -256,6 +257,12 @@ function formatTime(time: string): string {
   const timeOnly = time.split(' ')[0]
   const [hours, minutes] = timeOnly.split(':').map(Number)
 
+  // Validate parsed values to prevent NaN in output
+  if (isNaN(hours) || isNaN(minutes)) {
+    console.error('formatTime: Invalid time format:', time)
+    return time // Return original if parsing fails
+  }
+
   const period = hours >= 12 ? 'PM' : 'AM'
   const displayHours = hours % 12 || 12
 
@@ -272,54 +279,90 @@ export function applyOffset(time: string, offsetMinutes: number): string {
   const minutes = parseInt(match[2])
   const period = match[3].toUpperCase()
 
+  // Validate parsed values
+  if (isNaN(hours) || isNaN(minutes)) {
+    console.error('applyOffset: Invalid time format:', time)
+    return time
+  }
+
   // Convert to 24-hour
   if (period === 'PM' && hours !== 12) hours += 12
   if (period === 'AM' && hours === 12) hours = 0
 
-  // Create date and apply offset
-  const date = new Date()
-  date.setHours(hours, minutes + offsetMinutes, 0, 0)
+  // Calculate total minutes and apply offset
+  let totalMinutes = hours * 60 + minutes + offsetMinutes
 
-  // Format back to 12-hour
-  const newHours = date.getHours()
-  const newMinutes = date.getMinutes()
+  // Handle midnight wraparound (both directions)
+  while (totalMinutes < 0) totalMinutes += MINUTES_IN_DAY
+  while (totalMinutes >= MINUTES_IN_DAY) totalMinutes -= MINUTES_IN_DAY
+
+  // Convert back to hours and minutes
+  const newHours = Math.floor(totalMinutes / 60)
+  const newMinutes = totalMinutes % 60
   const newPeriod = newHours >= 12 ? 'PM' : 'AM'
   const displayHours = newHours % 12 || 12
 
   return `${displayHours}:${newMinutes.toString().padStart(2, '0')} ${newPeriod}`
 }
 
-// Check if current time is within X minutes of a prayer time
+/**
+ * Get current time in a specific timezone as total minutes since midnight.
+ * Uses Intl.DateTimeFormat — built into Node.js, no dependencies.
+ */
+function getNowInTimezone(timezone: string): number {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  })
+  const parts = formatter.formatToParts(now)
+  const hours = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
+  const minutes = parseInt(parts.find(p => p.type === 'minute')?.value || '0')
+  return hours * 60 + minutes
+}
+
+/**
+ * Parse a time string (12h "6:15 PM" or 24h "18:15") to minutes since midnight.
+ */
+function parseTimeToMinutes(time: string): number | null {
+  // Try 12-hour format first
+  const match12 = time.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (match12) {
+    let hours = parseInt(match12[1])
+    const minutes = parseInt(match12[2])
+    const period = match12[3].toUpperCase()
+    if (period === 'PM' && hours !== 12) hours += 12
+    if (period === 'AM' && hours === 12) hours = 0
+    return hours * 60 + minutes
+  }
+  // Try 24-hour format (e.g., "18:15" or "18:15:00")
+  const match24 = time.match(/^(\d+):(\d+)/)
+  if (match24) {
+    return parseInt(match24[1]) * 60 + parseInt(match24[2])
+  }
+  return null
+}
+
+// Check if current time is within X minutes before a prayer time
 // Uses a 5-minute window to account for cron timing variance (cron runs every 5 mins)
 export function isWithinMinutes(
   prayerTime: string,
   minutesBefore: number,
   timezone: string
 ): boolean {
-  const now = new Date()
+  const nowMinutes = getNowInTimezone(timezone)
+  const prayerMinutes = parseTimeToMinutes(prayerTime)
+  if (prayerMinutes === null) return false
 
-  // Parse prayer time
-  const match = prayerTime.match(/(\d+):(\d+)\s*(AM|PM)/i)
-  if (!match) return false
+  const reminderMinutes = prayerMinutes - minutesBefore
+  let diff = Math.abs(nowMinutes - reminderMinutes)
 
-  let hours = parseInt(match[1])
-  const minutes = parseInt(match[2])
-  const period = match[3].toUpperCase()
+  // Handle midnight wraparound (e.g., Tahajjud at 3 AM, reminder at 11:50 PM)
+  if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 
-  if (period === 'PM' && hours !== 12) hours += 12
-  if (period === 'AM' && hours === 12) hours = 0
-
-  // Create prayer time Date object for today
-  const prayerDate = new Date()
-  prayerDate.setHours(hours, minutes, 0, 0)
-
-  // Calculate reminder time
-  const reminderDate = new Date(prayerDate.getTime() - minutesBefore * 60 * 1000)
-
-  // Check if we're within a 5-minute window of the reminder time
-  // This matches the cron interval to ensure reminders are never missed
-  const diff = Math.abs(now.getTime() - reminderDate.getTime())
-  return diff <= 5 * 60 * 1000 // 5 minute window
+  return diff <= CRON_WINDOW_MINUTES // Window matches cron interval
 }
 
 // Check if current time is within X minutes before a fixed time (HH:MM format)
@@ -329,27 +372,27 @@ export function isTimeWithinMinutesBefore(
   minutesBefore: number,
   timezone: string
 ): boolean {
-  const now = new Date()
+  const nowMinutes = getNowInTimezone(timezone)
+  const targetMinutes = parseTimeToMinutes(time)
+  if (targetMinutes === null) return false
 
-  // Parse time (expected format: "20:30:00" or "20:30")
-  const [hours, minutes] = time.split(':').map(Number)
+  const reminderMinutes = targetMinutes - minutesBefore
+  let diff = Math.abs(nowMinutes - reminderMinutes)
+  if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 
-  // Create target time Date object for today
-  const targetDate = new Date()
-  targetDate.setHours(hours, minutes, 0, 0)
-
-  // Calculate reminder time
-  const reminderDate = new Date(targetDate.getTime() - minutesBefore * 60 * 1000)
-
-  // Check if we're within a 5-minute window of the reminder time
-  // This matches the cron interval to ensure reminders are never missed
-  const diff = Math.abs(now.getTime() - reminderDate.getTime())
-  return diff <= 5 * 60 * 1000 // 5 minute window
+  return diff <= CRON_WINDOW_MINUTES // Window matches cron interval
 }
 
 // Format database time (HH:MM:SS) to display format (H:MM AM/PM)
 export function formatDbTime(time: string): string {
   const [hours, minutes] = time.split(':').map(Number)
+
+  // Validate parsed values to prevent NaN in output
+  if (isNaN(hours) || isNaN(minutes)) {
+    console.error('formatDbTime: Invalid time format:', time)
+    return time // Return original if parsing fails
+  }
+
   const period = hours >= 12 ? 'PM' : 'AM'
   const displayHours = hours % 12 || 12
   return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
@@ -382,27 +425,13 @@ export function isWithinMinutesAfter(
   minutesAfter: number,
   timezone: string
 ): boolean {
-  const now = new Date()
+  const nowMinutes = getNowInTimezone(timezone)
+  const prayerMinutes = parseTimeToMinutes(prayerTime)
+  if (prayerMinutes === null) return false
 
-  // Parse prayer time
-  const match = prayerTime.match(/(\d+):(\d+)\s*(AM|PM)/i)
-  if (!match) return false
+  const targetMinutes = prayerMinutes + minutesAfter
+  let diff = Math.abs(nowMinutes - targetMinutes)
+  if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 
-  let hours = parseInt(match[1])
-  const minutes = parseInt(match[2])
-  const period = match[3].toUpperCase()
-
-  if (period === 'PM' && hours !== 12) hours += 12
-  if (period === 'AM' && hours === 12) hours = 0
-
-  // Create prayer time Date object for today
-  const prayerDate = new Date()
-  prayerDate.setHours(hours, minutes, 0, 0)
-
-  // Calculate target time (after prayer)
-  const targetDate = new Date(prayerDate.getTime() + minutesAfter * 60 * 1000)
-
-  // Check if we're within a 5-minute window of the target time
-  const diff = Math.abs(now.getTime() - targetDate.getTime())
-  return diff <= 5 * 60 * 1000 // 5 minute window
+  return diff <= CRON_WINDOW_MINUTES // Window matches cron interval
 }

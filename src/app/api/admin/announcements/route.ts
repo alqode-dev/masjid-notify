@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
-import { sendTemplateMessage, ANNOUNCEMENT_TEMPLATE } from "@/lib/whatsapp";
+import { supabaseAdmin, type Subscriber } from "@/lib/supabase";
+import { ANNOUNCEMENT_TEMPLATE } from "@/lib/whatsapp";
 import { verifyAdminAuth } from "@/lib/auth";
 import { previewTemplate } from "@/lib/whatsapp-templates";
+import { sendTemplatesConcurrently } from "@/lib/message-sender";
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,9 +49,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get active subscribers with announcements preference
+    // Select full subscriber object for sendTemplatesConcurrently
     const { data: subscribers, error: subscribersError } = await supabaseAdmin
       .from("subscribers")
-      .select("phone_number")
+      .select("*")
       .eq("mosque_id", mosque_id)
       .eq("status", "active")
       .eq("pref_announcements", true);
@@ -72,26 +74,16 @@ export async function POST(request: NextRequest) {
 
     // Template variables: mosque_name, announcement_content
     const templateVars = [mosque.name, content];
-    let successCount = 0;
-    let failCount = 0;
 
-    // Send to all subscribers using template
-    for (const subscriber of subscribers) {
-      const result = await sendTemplateMessage(
-        subscriber.phone_number,
-        ANNOUNCEMENT_TEMPLATE,
-        templateVars
-      );
-      if (result.success) {
-        successCount++;
-      } else {
-        failCount++;
-        console.error(
-          `Failed to send to ${subscriber.phone_number}:`,
-          result.error
-        );
-      }
-    }
+    // Send to all subscribers concurrently (with p-limit for rate limiting)
+    const batchResult = await sendTemplatesConcurrently(
+      subscribers as Subscriber[],
+      ANNOUNCEMENT_TEMPLATE,
+      templateVars
+    );
+
+    const successCount = batchResult.successful;
+    const failCount = batchResult.failed;
 
     // Generate message content for logging (preview with actual values)
     const message = previewTemplate(ANNOUNCEMENT_TEMPLATE, templateVars);
