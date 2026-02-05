@@ -1,59 +1,53 @@
 /**
  * Hadith API Client
  *
- * Integrates with random-hadith-generator.vercel.app API to fetch authentic hadiths
- * from multiple collections (Bukhari, Muslim, Abu Dawud, Ibn Majah, Tirmidhi).
+ * Integrates with fawazahmed0/hadith-api (hosted on jsDelivr CDN) to fetch authentic hadiths
+ * from multiple collections (Bukhari, Muslim, Abu Dawud, Ibn Majah, Tirmidhi, Nasai).
  *
  * Features:
- * - Fetches random hadiths from 5 authentic collections
+ * - Fetches random hadiths from 6 authentic collections
+ * - Hosted on jsDelivr CDN for high reliability
  * - Caches daily hadith to ensure all subscribers get the same one
  * - Tracks sent hadiths to prevent repetition within 30 days
+ *
+ * API Source: https://github.com/fawazahmed0/hadith-api
  */
 
 import { getSupabaseAdmin } from "./supabase";
 import { HADITH_API_DELAY_MS } from "./constants";
 
-const HADITH_API_BASE = "https://random-hadith-generator.vercel.app";
+// CDN base URL for hadith API (highly reliable)
+const HADITH_CDN_BASE = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1";
 
-/**
- * Generate a stable ID from hadith text content
- * This ensures the same hadith always gets the same ID for duplicate detection
- * when the API doesn't provide an ID
- */
-function generateStableId(text: string, collection: string): number {
-  // Simple hash function for consistent ID generation
-  let hash = 0;
-  const combined = `${collection}:${text}`;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  // Ensure positive number in reasonable range
-  return Math.abs(hash) % 100000;
-}
-
-// Available hadith collections with approximate counts
+// Available hadith collections with their hadith count ranges
+// These counts are approximate - the API handles out-of-range gracefully
 export const HADITH_COLLECTIONS = [
-  { name: "bukhari", source: "Sahih al-Bukhari", endpoint: "/api/bukhari" },
-  { name: "muslim", source: "Sahih Muslim", endpoint: "/api/muslim" },
-  { name: "abudawud", source: "Sunan Abu Dawud", endpoint: "/api/abudawud" },
-  { name: "ibnmajah", source: "Sunan Ibn Majah", endpoint: "/api/ibnmajah" },
-  { name: "tirmidhi", source: "Jami at-Tirmidhi", endpoint: "/api/tirmidhi" },
+  { name: "bukhari", source: "Sahih al-Bukhari", edition: "eng-bukhari", maxHadith: 7563 },
+  { name: "muslim", source: "Sahih Muslim", edition: "eng-muslim", maxHadith: 7563 },
+  { name: "abudawud", source: "Sunan Abu Dawud", edition: "eng-abudawud", maxHadith: 5274 },
+  { name: "tirmidhi", source: "Jami at-Tirmidhi", edition: "eng-tirmidhi", maxHadith: 3956 },
+  { name: "ibnmajah", source: "Sunan Ibn Majah", edition: "eng-ibnmajah", maxHadith: 4341 },
+  { name: "nasai", source: "Sunan an-Nasa'i", edition: "eng-nasai", maxHadith: 5758 },
 ] as const;
 
 export type CollectionName = (typeof HADITH_COLLECTIONS)[number]["name"];
 
-// API response type (based on the random-hadith-generator API)
-export interface HadithApiResponse {
-  data: {
-    hadith_english: string;
-    hadith_arabic?: string;
-    header?: string;
-    book?: string;
-    refno?: string;
-    id?: number;
+// API response type for individual hadith
+interface HadithApiResponse {
+  metadata: {
+    name: string;
+    section?: Record<string, string>;
   };
+  hadiths: Array<{
+    hadithnumber: number;
+    arabicnumber: number;
+    text: string;
+    grades: Array<{ name: string; grade: string }>;
+    reference: {
+      book: number;
+      hadith: number;
+    };
+  }>;
 }
 
 // Our normalized hadith type
@@ -81,6 +75,31 @@ export interface DailyHadithLogEntry {
 }
 
 /**
+ * Fetch a specific hadith by number from a collection
+ */
+async function fetchHadithByNumber(
+  edition: string,
+  hadithNumber: number
+): Promise<HadithApiResponse | null> {
+  try {
+    const url = `${HADITH_CDN_BASE}/editions/${edition}/${hadithNumber}.json`;
+    const response = await fetch(url, {
+      next: { revalidate: 3600 }, // Cache for 1 hour (CDN content is static)
+    });
+
+    if (!response.ok) {
+      // Hadith number might not exist, return null
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Failed to fetch hadith ${hadithNumber} from ${edition}:`, error);
+    return null;
+  }
+}
+
+/**
  * Fetch a random hadith from a specific collection
  */
 export async function fetchRandomHadith(
@@ -92,47 +111,44 @@ export async function fetchRandomHadith(
     return null;
   }
 
-  try {
-    const response = await fetch(`${HADITH_API_BASE}${collection.endpoint}`, {
-      next: { revalidate: 0 }, // No caching for random hadiths
-    });
+  // Try up to 5 random numbers to find a valid hadith
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // Generate random hadith number (start from 1, not 0)
+    const randomNumber = Math.floor(Math.random() * collection.maxHadith) + 1;
 
-    if (!response.ok) {
-      console.error(
-        `Hadith API error: ${response.status} ${response.statusText}`
-      );
-      return null;
+    const result = await fetchHadithByNumber(collection.edition, randomNumber);
+
+    if (result && result.hadiths && result.hadiths.length > 0) {
+      const hadith = result.hadiths[0];
+
+      // Skip if text is too short (likely incomplete)
+      if (!hadith.text || hadith.text.length < 50) {
+        continue;
+      }
+
+      // Format reference string
+      const reference = hadith.reference.book > 0
+        ? `Book ${hadith.reference.book}, Hadith ${hadith.reference.hadith}`
+        : `Hadith ${hadith.hadithnumber}`;
+
+      return {
+        collection: collectionName,
+        hadithNumber: hadith.hadithnumber,
+        textEnglish: hadith.text.trim(),
+        textArabic: null, // This API doesn't include Arabic in English editions
+        source: collection.source,
+        reference: reference,
+      };
     }
 
-    const result: HadithApiResponse = await response.json();
-
-    if (!result.data || !result.data.hadith_english) {
-      console.error("Invalid hadith API response:", result);
-      return null;
+    // Small delay before retry
+    if (attempt < 4) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-
-    const { data } = result;
-
-    // Generate a reference string
-    const reference =
-      data.refno || data.book || `${collection.source} #${data.id || "N/A"}`;
-
-    // Generate a stable fallback ID based on text content hash when API doesn't provide ID
-    // This ensures the same hadith text always gets the same ID for duplicate detection
-    const hadithId = data.id || generateStableId(data.hadith_english, collectionName);
-
-    return {
-      collection: collectionName,
-      hadithNumber: hadithId,
-      textEnglish: data.hadith_english.trim(),
-      textArabic: data.hadith_arabic?.trim() || null,
-      source: collection.source,
-      reference: reference,
-    };
-  } catch (error) {
-    console.error(`Failed to fetch hadith from ${collectionName}:`, error);
-    return null;
   }
+
+  console.error(`Failed to fetch valid hadith from ${collectionName} after 5 attempts`);
+  return null;
 }
 
 /**
