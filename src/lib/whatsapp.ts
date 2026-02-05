@@ -20,9 +20,9 @@ const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0'
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!
 
-// Feature flag to use templates instead of plain text messages
-// Set to false during testing, true in production after templates are approved
-const USE_TEMPLATES = process.env.WHATSAPP_USE_TEMPLATES === "true";
+// All 12 templates are now approved by Meta - always use template API
+// Plain text messages are only allowed within 24-hour conversation windows
+// For first-contact (welcome) and automated messages, templates are REQUIRED
 
 interface WhatsAppResponse {
   messaging_product: string
@@ -144,9 +144,9 @@ export async function sendWhatsAppTemplate(
 }
 
 /**
- * Send a message using a template definition.
- * When USE_TEMPLATES is true, sends via WhatsApp template API.
- * When false, falls back to regular text message with rendered content.
+ * Send a message using a template definition via WhatsApp Template API.
+ * All templates are approved by Meta - this ALWAYS uses the template API.
+ * Plain text fallback removed as it doesn't work for first-contact messages.
  *
  * @param to - Phone number to send to
  * @param template - Template definition from whatsapp-templates.ts
@@ -164,18 +164,9 @@ export async function sendTemplateMessage(
     return { success: false, error: validation.error };
   }
 
-  if (USE_TEMPLATES) {
-    // Use WhatsApp template API
-    const components = formatTemplateVariables(variables);
-    return sendWhatsAppTemplate(to, template.name, "en", components);
-  } else {
-    // Fall back to plain text message (for testing or when templates not approved)
-    let message = template.body;
-    variables.forEach((value, index) => {
-      message = message.replace(`{{${index + 1}}}`, value);
-    });
-    return sendWhatsAppMessage(to, message);
-  }
+  // Always use WhatsApp template API (all 12 templates approved)
+  const components = formatTemplateVariables(variables);
+  return sendWhatsAppTemplate(to, template.name, "en", components);
 }
 
 // Re-export templates for convenience
