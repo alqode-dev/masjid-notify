@@ -85,14 +85,17 @@ export async function GET(request: NextRequest) {
 
       const sentCount = batchResult.successful;
 
-      // Log the message
-      await supabaseAdmin.from("messages").insert({
+      // Log the message with error handling
+      const { error: msgError } = await supabaseAdmin.from("messages").insert({
         mosque_id: mosque.id,
         type: "jumuah",
         content: message,
         sent_to_count: sentCount,
         status: "sent",
       });
+      if (msgError) {
+        console.error('[jumuah-reminder] Failed to log message:', msgError.message, msgError.code, msgError.details);
+      }
     }
 
     const result = finalizeCronLog(logger);

@@ -11,8 +11,27 @@
  */
 
 import { getSupabaseAdmin } from "./supabase";
+import { HADITH_API_DELAY_MS } from "./constants";
 
 const HADITH_API_BASE = "https://random-hadith-generator.vercel.app";
+
+/**
+ * Generate a stable ID from hadith text content
+ * This ensures the same hadith always gets the same ID for duplicate detection
+ * when the API doesn't provide an ID
+ */
+function generateStableId(text: string, collection: string): number {
+  // Simple hash function for consistent ID generation
+  let hash = 0;
+  const combined = `${collection}:${text}`;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Ensure positive number in reasonable range
+  return Math.abs(hash) % 100000;
+}
 
 // Available hadith collections with approximate counts
 export const HADITH_COLLECTIONS = [
@@ -98,9 +117,13 @@ export async function fetchRandomHadith(
     const reference =
       data.refno || data.book || `${collection.source} #${data.id || "N/A"}`;
 
+    // Generate a stable fallback ID based on text content hash when API doesn't provide ID
+    // This ensures the same hadith text always gets the same ID for duplicate detection
+    const hadithId = data.id || generateStableId(data.hadith_english, collectionName);
+
     return {
       collection: collectionName,
-      hadithNumber: data.id || Math.floor(Math.random() * 10000),
+      hadithNumber: hadithId,
       textEnglish: data.hadith_english.trim(),
       textArabic: data.hadith_arabic?.trim() || null,
       source: collection.source,
@@ -188,7 +211,7 @@ export async function getUniqueHadith(
     }
 
     // Small delay between API calls to be polite
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, HADITH_API_DELAY_MS));
   }
 
   // If all attempts fail, return the last fetched hadith anyway

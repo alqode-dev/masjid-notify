@@ -107,8 +107,8 @@ export async function GET(request: NextRequest) {
 
       const sentCount = batchResult.successful;
 
-      // Log the message
-      await supabaseAdmin.from("messages").insert({
+      // Log the message with error handling
+      const { error: msgError } = await supabaseAdmin.from("messages").insert({
         mosque_id: mosque.id,
         type: "hadith",
         content: message,
@@ -121,6 +121,9 @@ export async function GET(request: NextRequest) {
           hadith_reference: hadith.reference,
         },
       });
+      if (msgError) {
+        console.error('[daily-hadith] Failed to log message:', msgError.message, msgError.code, msgError.details);
+      }
     }
 
     const result = finalizeCronLog(logger);

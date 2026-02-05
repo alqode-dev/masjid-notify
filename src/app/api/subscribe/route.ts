@@ -58,6 +58,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate reminder_offset is one of the allowed values
+    const validOffsets = [5, 10, 15, 30]
+    if (!validOffsets.includes(reminder_offset)) {
+      return NextResponse.json(
+        { error: 'Invalid reminder offset. Must be 5, 10, 15, or 30 minutes.' },
+        { status: 400 }
+      )
+    }
+
     // Normalize phone number to +27 format
     const formattedPhone = normalizePhoneNumber(phone_number)
 

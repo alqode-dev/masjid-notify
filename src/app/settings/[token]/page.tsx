@@ -11,20 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Footer } from "@/components/footer";
 import { CheckCircle, Settings, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-
-// Note: In a real implementation, you'd validate the token server-side
-// and fetch the subscriber data. For MVP, this is a simplified version.
-
-const REMINDER_OPTIONS = [
-  { value: "5", label: "5 minutes before" },
-  { value: "10", label: "10 minutes before" },
-  { value: "15", label: "15 minutes before" },
-  { value: "30", label: "30 minutes before" },
-];
+import { REMINDER_OPTIONS } from "@/lib/constants";
 
 export default function SettingsPage() {
   const params = useParams();
-  const token = params.token as string;
+  const token = typeof params.token === "string" ? params.token : "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,7 +67,7 @@ export default function SettingsPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reminder_offset: parseInt(reminderOffset),
+          reminder_offset: parseInt(reminderOffset, 10),
           pref_daily_prayers: prefDailyPrayers,
           pref_jumuah: prefJumuah,
           pref_ramadan: prefRamadan,

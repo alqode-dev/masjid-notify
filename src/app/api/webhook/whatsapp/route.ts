@@ -76,8 +76,18 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && token === process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
-    return new Response(challenge, { status: 200 });
+  // Use constant-time comparison to prevent timing attacks
+  const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+  if (mode === "subscribe" && token && verifyToken) {
+    try {
+      const tokenBuffer = Buffer.from(token);
+      const expectedBuffer = Buffer.from(verifyToken);
+      if (tokenBuffer.length === expectedBuffer.length && timingSafeEqual(tokenBuffer, expectedBuffer)) {
+        return new Response(challenge, { status: 200 });
+      }
+    } catch {
+      // Fall through to verification failed
+    }
   }
 
   return NextResponse.json({ error: "Verification failed" }, { status: 403 });
@@ -165,18 +175,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    const mosque = subscriber.mosques as { name: string; id: string };
+    // Safely extract mosque data with null check
+    const mosqueData = subscriber.mosques as { name: string; id: string } | null;
+    if (!mosqueData) {
+      console.error("Subscriber has no associated mosque:", normalizedPhone);
+      return NextResponse.json({ success: true });
+    }
+    const mosque = mosqueData;
 
-    // Log the incoming command to messages table
+    // Log the incoming command to messages table with error handling
     const logCommand = async (command: string) => {
-      await supabaseAdmin.from("messages").insert({
-        mosque_id: mosque.id,
-        type: "webhook_command",
-        content: `User sent: ${command}`,
-        sent_to_count: 1,
-        status: "received",
-        metadata: { command, phone: normalizedPhone },
-      });
+      try {
+        const { error } = await supabaseAdmin.from("messages").insert({
+          mosque_id: mosque.id,
+          type: "webhook_command",
+          content: `User sent: ${command}`,
+          sent_to_count: 1,
+          status: "received",
+          metadata: { command, phone: normalizedPhone },
+        });
+        if (error) {
+          console.error("[webhook] Failed to log command:", error.message, error.code);
+        }
+      } catch (err) {
+        console.error("[webhook] Error logging command:", err);
+      }
     };
 
     // Handle commands
@@ -274,7 +297,7 @@ async function handlePause(
 ) {
   // Extract number of days
   const match = text.match(/PAUSE\s*(\d+)?/);
-  const days = match?.[1] ? parseInt(match[1]) : 7;
+  const days = match?.[1] ? parseInt(match[1], 10) : 7;
   const pauseDays = Math.min(Math.max(days, 1), 30); // 1-30 days
 
   const pauseUntil = new Date();

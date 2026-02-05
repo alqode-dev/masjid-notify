@@ -24,6 +24,12 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
+import {
+  TEN_MINUTES_MS,
+  TAHAJJUD_MINUTES_BEFORE_FAJR,
+  ISHRAQ_MINUTES_AFTER_SUNRISE,
+  AWWABIN_MINUTES_AFTER_MAGHRIB
+} from "@/lib/constants";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -34,7 +40,7 @@ async function wasNaflReminderSent(
   mosqueId: string,
   reminderType: string
 ): Promise<boolean> {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
 
   const { data } = await supabaseAdmin
     .from("messages")
@@ -107,7 +113,7 @@ export async function GET(request: NextRequest) {
       if (!subscribers || subscribers.length === 0) continue;
 
       // Check Tahajjud reminder (2 hours before Fajr)
-      if (isWithinMinutes(prayerTimes.fajr, 120, mosque.timezone)) {
+      if (isWithinMinutes(prayerTimes.fajr, TAHAJJUD_MINUTES_BEFORE_FAJR, mosque.timezone)) {
         const alreadySent = await wasNaflReminderSent(mosque.id, "tahajjud");
         if (!alreadySent) {
           // Template variables: fajr_time, mosque_name
@@ -140,7 +146,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Check Ishraq reminder (20 minutes after Sunrise)
-      if (isWithinMinutesAfter(prayerTimes.sunrise, 20, mosque.timezone)) {
+      if (isWithinMinutesAfter(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE, mosque.timezone)) {
         const alreadySent = await wasNaflReminderSent(mosque.id, "ishraq");
         if (!alreadySent) {
           // Template variables: mosque_name
@@ -173,7 +179,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Check Awwabin reminder (15 minutes after Maghrib)
-      if (isWithinMinutesAfter(prayerTimes.maghrib, 15, mosque.timezone)) {
+      if (isWithinMinutesAfter(prayerTimes.maghrib, AWWABIN_MINUTES_AFTER_MAGHRIB, mosque.timezone)) {
         const alreadySent = await wasNaflReminderSent(mosque.id, "awwabin");
         if (!alreadySent) {
           // Template variables: mosque_name

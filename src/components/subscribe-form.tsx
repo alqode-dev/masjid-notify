@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Select } from "./ui/select";
 import { isValidSAPhoneNumber } from "@/lib/utils";
+import { REMINDER_OPTIONS } from "@/lib/constants";
 import { CheckCircle, MessageCircle } from "lucide-react";
 
 interface SubscribeFormProps {
@@ -14,12 +15,12 @@ interface SubscribeFormProps {
   mosqueId: string;
 }
 
-const REMINDER_OPTIONS = [
-  { value: "5", label: "5 minutes before" },
-  { value: "10", label: "10 minutes before" },
-  { value: "15", label: "15 minutes before (Recommended)" },
-  { value: "30", label: "30 minutes before" },
-];
+// Add "(Recommended)" label for subscribe form
+const SUBSCRIBE_REMINDER_OPTIONS = REMINDER_OPTIONS.map((opt) =>
+  opt.value === "15"
+    ? { ...opt, label: "15 minutes before (Recommended)" }
+    : opt
+);
 
 export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
   const [step, setStep] = useState<"form" | "success">("form");
@@ -66,7 +67,7 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
         body: JSON.stringify({
           phone_number: phone,
           mosque_id: mosqueId,
-          reminder_offset: parseInt(reminderOffset),
+          reminder_offset: parseInt(reminderOffset, 10),
           pref_daily_prayers: prefDailyPrayers,
           pref_jumuah: prefJumuah,
           pref_ramadan: prefRamadan,
@@ -119,7 +120,7 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
             label="Remind me"
             value={reminderOffset}
             onChange={(e) => setReminderOffset(e.target.value)}
-            options={REMINDER_OPTIONS}
+            options={SUBSCRIBE_REMINDER_OPTIONS}
           />
 
           {/* Preferences */}

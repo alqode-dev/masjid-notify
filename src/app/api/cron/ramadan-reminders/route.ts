@@ -21,7 +21,7 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
-import { TEN_MINUTES_MS } from "@/lib/constants";
+import { TEN_MINUTES_MS, TARAWEEH_REMINDER_MINUTES, SUHOOR_PLANNING_OFFSET_MINUTES } from "@/lib/constants";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -197,12 +197,10 @@ export async function GET(request: NextRequest) {
 
       // Check Taraweeh reminder (if taraweeh_time is set)
       if (mosque.taraweeh_time) {
-        // Send reminder 30 minutes before Taraweeh
-        const taraweehReminderMins = 30;
         if (
           isTimeWithinMinutesBefore(
             mosque.taraweeh_time,
-            taraweehReminderMins,
+            TARAWEEH_REMINDER_MINUTES,
             mosque.timezone
           )
         ) {
@@ -243,12 +241,12 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Also send suhoor planning reminder after Isha/Taraweeh (90 mins after Isha)
+        // Also send suhoor planning reminder after Isha/Taraweeh
         // This helps people prepare for the next day's suhoor
         if (
           isWithinMinutesAfter(
             prayerTimes.isha,
-            90, // 90 minutes AFTER Isha
+            SUHOOR_PLANNING_OFFSET_MINUTES,
             mosque.timezone
           )
         ) {
