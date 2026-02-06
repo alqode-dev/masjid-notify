@@ -15,14 +15,27 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import { getTodaysHadith } from "@/lib/hadith-api";
+import { getPrayerTimes, isWithinMinutesAfter } from "@/lib/prayer-times";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { tryClaimReminderLock, ReminderType } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
 
-// This should run twice daily: after Fajr (morning) and around Maghrib (evening)
-// Accepts ?time=fajr or ?time=maghrib query param
+// How many minutes after Fajr/Maghrib to send the hadith
+const HADITH_MINUTES_AFTER_PRAYER = 15;
+
+/**
+ * Daily Hadith Cron Job
+ *
+ * This should run every 5 minutes (like prayer-reminders).
+ * It automatically sends hadith based on prayer times:
+ * - Morning hadith: 15 minutes after Fajr
+ * - Evening hadith: 15 minutes after Maghrib
+ *
+ * This way hadith timing always follows the actual prayer times,
+ * which change throughout the year.
+ */
 export async function GET(request: NextRequest) {
   // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
@@ -30,109 +43,58 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Determine time of day from query param
-  const { searchParams } = new URL(request.url);
-  const timeParam = searchParams.get("time");
-  const timeOfDay: "morning" | "evening" =
-    timeParam === "maghrib" ? "evening" : "morning";
-
-  const logger = createCronLogger(`daily-hadith-${timeOfDay}`);
+  const logger = createCronLogger("daily-hadith");
 
   try {
-    // Get today's hadith from the external API (cached per time of day)
-    const hadith = await getTodaysHadith(timeOfDay);
-
-    if (!hadith) {
-      logCronError(logger, "Failed to fetch hadith from external API", {});
-      finalizeCronLog(logger);
-      return NextResponse.json(
-        { error: "Failed to fetch hadith" },
-        { status: 500 }
-      );
-    }
-
-    setCronMetadata(logger, {
-      hadithCollection: hadith.collection,
-      hadithSource: hadith.source,
-      hadithReference: hadith.reference,
-    });
-
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*");
 
-    if (mosqueError || !mosques) {
-      logCronError(logger, "Failed to fetch mosques", { error: mosqueError });
-      finalizeCronLog(logger);
-      return NextResponse.json(
-        { error: "Failed to fetch mosques" },
-        { status: 500 }
-      );
+    if (mosqueError || !mosques || mosques.length === 0) {
+      setCronMetadata(logger, { reason: "No mosques found" });
+      const result = finalizeCronLog(logger);
+      return NextResponse.json({
+        success: true,
+        message: "No mosques found",
+        sent: 0,
+        durationMs: result.durationMs,
+      });
     }
 
     setCronMetadata(logger, { mosqueCount: mosques.length });
 
+    let totalSent = 0;
+
     for (const mosque of mosques as Mosque[]) {
-      // ATOMIC LOCK: Claim exclusive right to send hadith for this mosque today
-      // This prevents duplicate sends if cron runs multiple times
-      const lockKey: ReminderType = timeOfDay === "morning" ? "hadith_morning" : "hadith_evening";
-      const lockAcquired = await tryClaimReminderLock(mosque.id, lockKey, 0);
-      if (!lockAcquired) {
-        // Another cron run already sent hadith for this mosque today
+      // Get prayer times for this mosque (with caching)
+      const prayerTimes = await getPrayerTimes(
+        mosque.latitude,
+        mosque.longitude,
+        mosque.calculation_method,
+        mosque.madhab,
+        undefined, // Use today's date
+        mosque.id // Enable caching for this mosque
+      );
+
+      if (!prayerTimes) {
+        logCronError(logger, "Failed to get prayer times for hadith", {
+          mosqueId: mosque.id,
+          mosqueName: mosque.name,
+        });
         continue;
       }
 
-      // Get subscribers who want daily hadith
-      const { data: subscribers } = await supabaseAdmin
-        .from("subscribers")
-        .select("*")
-        .eq("mosque_id", mosque.id)
-        .eq("status", "active")
-        .eq("pref_hadith", true);
+      // Check if it's time for morning hadith (15 minutes after Fajr)
+      if (isWithinMinutesAfter(prayerTimes.fajr, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone)) {
+        const sent = await sendHadithIfNotAlreadySent(mosque, "morning", logger);
+        totalSent += sent;
+      }
 
-      if (!subscribers || subscribers.length === 0) continue;
-
-      // Template variables: hadith_text, source_and_reference, mosque_name
-      const templateVars = [
-        hadith.textEnglish,
-        `${hadith.source}, Hadith ${hadith.reference}`,
-        mosque.name,
-      ];
-
-      // Send messages concurrently with p-limit (max 10 concurrent) using template
-      const batchResult = await sendTemplatesConcurrently(
-        subscribers as Subscriber[],
-        DAILY_HADITH_TEMPLATE,
-        templateVars,
-        logger
-      );
-
-      // Generate message content for logging (preview with actual values)
-      const message = previewTemplate(DAILY_HADITH_TEMPLATE, templateVars);
-
-      // Batch update last_message_at for successful sends
-      const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
-      await batchUpdateLastMessageAt(successfulIds);
-
-      const sentCount = batchResult.successful;
-
-      // Log the message with error handling
-      const { error: msgError } = await supabaseAdmin.from("messages").insert({
-        mosque_id: mosque.id,
-        type: "hadith",
-        content: message,
-        sent_to_count: sentCount,
-        status: "sent",
-        metadata: {
-          hadith_collection: hadith.collection,
-          hadith_number: hadith.hadithNumber,
-          hadith_source: hadith.source,
-          hadith_reference: hadith.reference,
-        },
-      });
-      if (msgError) {
-        console.error('[daily-hadith] Failed to log message:', msgError.message, msgError.code, msgError.details);
+      // Check if it's time for evening hadith (15 minutes after Maghrib)
+      if (isWithinMinutesAfter(prayerTimes.maghrib, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone)) {
+        const sent = await sendHadithIfNotAlreadySent(mosque, "evening", logger);
+        totalSent += sent;
       }
     }
 
@@ -140,13 +102,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      timeOfDay,
-      hadith: {
-        collection: hadith.collection,
-        source: hadith.source,
-        reference: hadith.reference,
-      },
-      sent: result.messagesSent,
+      sent: totalSent,
       durationMs: result.durationMs,
     });
   } catch (error) {
@@ -159,4 +115,88 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Send hadith to subscribers if not already sent today
+ */
+async function sendHadithIfNotAlreadySent(
+  mosque: Mosque,
+  timeOfDay: "morning" | "evening",
+  logger: ReturnType<typeof createCronLogger>
+): Promise<number> {
+  // ATOMIC LOCK: Claim exclusive right to send hadith for this mosque today
+  const lockKey: ReminderType = timeOfDay === "morning" ? "hadith_morning" : "hadith_evening";
+  const lockAcquired = await tryClaimReminderLock(mosque.id, lockKey, 0);
+  if (!lockAcquired) {
+    // Another cron run already sent hadith for this mosque today
+    return 0;
+  }
+
+  // Get today's hadith from the external API
+  const hadith = await getTodaysHadith(timeOfDay);
+
+  if (!hadith) {
+    logCronError(logger, `Failed to fetch ${timeOfDay} hadith from external API`, {
+      mosqueId: mosque.id,
+    });
+    return 0;
+  }
+
+  // Get subscribers who want daily hadith
+  const { data: subscribers } = await supabaseAdmin
+    .from("subscribers")
+    .select("*")
+    .eq("mosque_id", mosque.id)
+    .eq("status", "active")
+    .eq("pref_hadith", true);
+
+  if (!subscribers || subscribers.length === 0) {
+    return 0;
+  }
+
+  // Template variables: hadith_text, source_and_reference, mosque_name
+  const templateVars = [
+    hadith.textEnglish,
+    `${hadith.source}, Hadith ${hadith.reference}`,
+    mosque.name,
+  ];
+
+  // Send messages concurrently with p-limit (max 10 concurrent) using template
+  const batchResult = await sendTemplatesConcurrently(
+    subscribers as Subscriber[],
+    DAILY_HADITH_TEMPLATE,
+    templateVars,
+    logger
+  );
+
+  // Generate message content for logging (preview with actual values)
+  const message = previewTemplate(DAILY_HADITH_TEMPLATE, templateVars);
+
+  // Batch update last_message_at for successful sends
+  const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+  await batchUpdateLastMessageAt(successfulIds);
+
+  // Log the message with error handling
+  const { error: msgError } = await supabaseAdmin.from("messages").insert({
+    mosque_id: mosque.id,
+    type: "hadith",
+    content: message,
+    sent_to_count: batchResult.successful,
+    status: "sent",
+    metadata: {
+      time_of_day: timeOfDay,
+      hadith_collection: hadith.collection,
+      hadith_number: hadith.hadithNumber,
+      hadith_source: hadith.source,
+      hadith_reference: hadith.reference,
+    },
+  });
+  if (msgError) {
+    console.error('[daily-hadith] Failed to log message:', msgError.message, msgError.code, msgError.details);
+  }
+
+  console.log(`[daily-hadith] Sent ${timeOfDay} hadith to ${batchResult.successful} subscribers at ${mosque.name}`);
+
+  return batchResult.successful;
 }
