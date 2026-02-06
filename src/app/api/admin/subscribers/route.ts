@@ -60,9 +60,16 @@ export const PATCH = withAdminAuth(async (request, { admin }) => {
     const body = await request.json();
     const { id, status } = body;
 
+    const VALID_STATUSES = ["active", "paused", "unsubscribed"];
     if (!id || !status) {
       return NextResponse.json(
         { error: "ID and status are required" },
+        { status: 400 }
+      );
+    }
+    if (!VALID_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: "Invalid status. Must be: active, paused, or unsubscribed" },
         { status: 400 }
       );
     }

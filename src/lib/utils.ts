@@ -72,7 +72,9 @@ export function formatPhoneForDisplay(phone: string): string {
 
 // Date/time formatting
 export function formatTime12h(time24: string): string {
+  if (!time24 || !time24.includes(":")) return time24 || "";
   const [hours, minutes] = time24.split(":").map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return time24;
   const period = hours >= 12 ? "PM" : "AM";
   const hours12 = hours % 12 || 12;
   return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;

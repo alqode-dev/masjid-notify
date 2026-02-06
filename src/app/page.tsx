@@ -5,7 +5,6 @@ import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = "force-dynamic";
-export const revalidate = 300; // Revalidate every 5 minutes
 
 async function getMosqueData() {
   const { data: mosque, error } = await getSupabaseAdmin()
@@ -56,7 +55,12 @@ export default async function Home() {
     );
   }
 
-  const prayerTimes = await getPrayerTimesData(mosque);
+  let prayerTimes = null;
+  try {
+    prayerTimes = await getPrayerTimesData(mosque);
+  } catch (error) {
+    console.error("Error fetching prayer times:", error);
+  }
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://masjid-notify.vercel.app";
 
   return <LandingPage mosque={mosque} prayerTimes={prayerTimes} siteUrl={siteUrl} />;

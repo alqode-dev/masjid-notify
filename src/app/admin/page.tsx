@@ -5,6 +5,7 @@ import { StatsCard } from "@/components/admin/stats-card";
 import { AnalyticsCharts } from "@/components/admin/analytics-charts";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 import { Users, MessageCircle, Bell, TrendingUp } from "lucide-react";
 
 interface DashboardStats {
@@ -59,7 +60,7 @@ export default function AdminDashboardPage() {
 
   if (error) {
     return (
-      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive">
+      <div role="alert" className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive">
         {error}
       </div>
     );
@@ -145,13 +146,13 @@ function QuickActionCard({
   description: string;
 }) {
   return (
-    <a
+    <Link
       href={href}
       className="p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-accent/50 transition-colors block"
     >
-      <span className="text-2xl mb-2 block">{icon}</span>
+      <span className="text-2xl mb-2 block" aria-hidden="true">{icon}</span>
       <h3 className="font-medium text-foreground">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
-    </a>
+    </Link>
   );
 }

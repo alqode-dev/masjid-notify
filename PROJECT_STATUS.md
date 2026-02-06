@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 6, 2026 @ 10:00 SAST
-> **Version:** 1.7.0
+> **Last Updated:** February 6, 2026 @ 16:30 SAST
+> **Version:** 1.7.1
 > **Status:** Production-Ready - WhatsApp templates pending Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -39,23 +39,24 @@
 7. [Common Tasks & How-To Guides](#common-tasks--how-to-guides)
 8. [Testing the App](#testing-the-app)
 9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Meta Webhook Configuration](#meta-webhook-configuration)
 
 ### Technical Reference
-10. [All Features](#all-features)
-11. [API Reference](#api-reference)
-12. [Database Schema](#database-schema)
-13. [Cron Jobs Explained](#cron-jobs-explained)
-14. [Environment Variables](#environment-variables)
-15. [Project Structure](#project-structure)
-16. [Code Quality & Security](#code-quality--security)
+11. [All Features](#all-features)
+12. [API Reference](#api-reference)
+13. [Database Schema](#database-schema)
+14. [Cron Jobs Explained](#cron-jobs-explained)
+15. [Environment Variables](#environment-variables)
+16. [Project Structure](#project-structure)
+17. [Code Quality & Security](#code-quality--security)
 
 ### Infrastructure & Accounts
-17. [Production Infrastructure](#production-infrastructure)
-18. [Admin Access & Credentials](#admin-access)
-19. [External Services & Accounts](#external-services--accounts)
+18. [Production Infrastructure](#production-infrastructure)
+19. [Admin Access & Credentials](#admin-access)
+20. [External Services & Accounts](#external-services--accounts)
 
 ### History
-20. [Changelog](#changelog)
+21. [Changelog](#changelog)
 
 ---
 
@@ -254,6 +255,12 @@ git push origin master
 |---------|--------|-----|-----|
 | Meta message templates | ⚠️ Not approved | 11 of 12 templates never submitted to Meta | Submit all templates for Meta approval (see Template Guide below) |
 
+### ⚠️ Known Issues
+
+| Issue | Status | Workaround |
+|-------|--------|------------|
+| **Webhook not receiving messages from Meta** | 🔍 Investigating | Commands (STOP, PAUSE, etc.) may not work. Verify: 1) WHATSAPP_APP_SECRET is correct, 2) "messages" webhook field is subscribed in Meta. See [Troubleshooting](#problem-stoppausesettings-commands-not-working). |
+
 ### 📋 TODO: Next Steps
 
 1. [ ] **Submit ALL 12 Meta templates** for approval (see Template Guide section below for exact body text)
@@ -263,12 +270,14 @@ git push origin master
 5. [ ] Implement number warmup (start slow)
 6. [ ] Test prayer reminder flow end-to-end
 7. [ ] Go live with real users
+8. [ ] **Resolve webhook message reception issue** - Commands (STOP/PAUSE/SETTINGS) may not be working
 
-### 📋 Required Database Migration
+### 📋 Required Database Migrations
 
 | Migration | Purpose | Status |
 |-----------|---------|--------|
 | **Migration 009** | Fix messages CHECK constraints + prayer_times_cache RLS | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 010** | Unified reminder locks for duplicate prevention | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | Migration 007 | Adds Ramadan columns to mosques table | Optional - settings page has fallback |
 | Add retry_count | For scheduled message retry tracking | Optional - code handles missing column |
 
@@ -277,6 +286,11 @@ git push origin master
 - Adds `received` to allowed message statuses
 - Adds `status` column to messages table if missing
 - Adds RLS INSERT/UPDATE policies for `prayer_times_cache`
+
+**Migration 010 Details:**
+- Creates `prayer_reminder_locks` table for atomic duplicate prevention
+- Uses UNIQUE constraint on `(mosque_id, prayer_key, reminder_date, reminder_offset)`
+- Supports all reminder types: prayers, hadith_morning, hadith_evening, jumuah, nafl types, ramadan types
 
 ---
 
@@ -290,17 +304,17 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 5, 2026 | All pages loading correctly, branded 404 page |
-| **Backend API** | ✅ Operational | Feb 5, 2026 | All admin endpoints use secure server-side routes |
-| **Database (Supabase)** | ✅ Connected | Feb 5, 2026 | PostgreSQL with RLS, coordinates correct |
-| **Admin Dashboard** | ✅ Operational | Feb 5, 2026 | All pages functional, accessible |
-| **Admin Settings** | ✅ Operational | Feb 5, 2026 | **Cache invalidated on save** |
-| **WhatsApp Sending** | ✅ Active | Feb 5, 2026 | Account restored, **concurrent sending** |
-| **WhatsApp Webhook** | ✅ Active | Feb 5, 2026 | Receiving messages, **structure validation** |
-| **Cron Jobs** | ✅ Running | Feb 5, 2026 | 5 jobs, **retry limits**, **constant-time auth** |
-| **Hadith API** | ✅ Integrated | Feb 5, 2026 | **NEW: jsDelivr CDN** (6 collections), **Fisher-Yates shuffle** |
+| **Frontend (Next.js)** | ✅ Operational | Feb 6, 2026 | All pages loading correctly, branded 404 page |
+| **Backend API** | ✅ Operational | Feb 6, 2026 | All admin endpoints use secure server-side routes |
+| **Database (Supabase)** | ✅ Connected | Feb 6, 2026 | PostgreSQL with RLS, coordinates correct |
+| **Admin Dashboard** | ✅ Operational | Feb 6, 2026 | All pages functional, accessible |
+| **Admin Settings** | ✅ Operational | Feb 6, 2026 | **Cache invalidated on save** |
+| **WhatsApp Sending** | ✅ Active | Feb 6, 2026 | Account restored, **concurrent sending** |
+| **WhatsApp Webhook** | ⚠️ Partial | Feb 6, 2026 | Signature verification works, but message reception from Meta under investigation. See [Known Issues](#️-known-issues). |
+| **Cron Jobs** | ✅ Running | Feb 6, 2026 | 5 jobs, **atomic locking**, **dynamic timing** |
+| **Hadith API** | ✅ Integrated | Feb 6, 2026 | jsDelivr CDN (6 collections), **dynamic timing** (15 min after Fajr/Maghrib) |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
-| **Rate Limiting** | ✅ Secure | Feb 5, 2026 | **IP spoofing protection** |
+| **Rate Limiting** | ✅ Secure | Feb 6, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
 
 ### Active Mosque
@@ -351,6 +365,8 @@ git push origin master
 - ✅ **Prayer cache invalidation** on settings change
 - ✅ **Concurrent message sending** for announcements
 - ✅ **Branded 404 page**
+- ✅ **Dynamic hadith timing** (follows prayer times, not fixed UTC)
+- ✅ **Atomic reminder locking** (prevents duplicate messages)
 
 ---
 
@@ -412,8 +428,11 @@ export const SUHOOR_PLANNING_OFFSET_MINUTES = 90;   // 90 mins after Isha
 
 // Nafl salah timing (in minutes)
 export const TAHAJJUD_MINUTES_BEFORE_FAJR = 120;    // 2 hours before Fajr
-export const ISHRAQ_MINUTES_AFTER_SUNRISE = 20;     // 20 mins after sunrise
+export const ISHRAQ_MINUTES_AFTER_SUNRISE = 180;    // 3 hours after sunrise (~9 AM when users can pray at work)
 export const AWWABIN_MINUTES_AFTER_MAGHRIB = 15;    // 15 mins after Maghrib
+
+// Hadith timing (dynamically follows prayer times)
+export const HADITH_MINUTES_AFTER_PRAYER = 15;      // 15 mins after Fajr/Maghrib
 
 // Subscriber preferences
 export const VALID_REMINDER_OFFSETS = [5, 10, 15, 30] as const;
@@ -596,13 +615,18 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 curl -H "Authorization: Bearer masjidnotify2025cron" \
   https://masjid-notify.vercel.app/api/cron/nafl-reminders
 
-# Morning hadith
+# Daily hadith (v1.7.1: now checks prayer times automatically)
+# Will only send if current time is within 5 minutes after Fajr or Maghrib
 curl -H "Authorization: Bearer masjidnotify2025cron" \
-  "https://masjid-notify.vercel.app/api/cron/daily-hadith?time=fajr"
+  https://masjid-notify.vercel.app/api/cron/daily-hadith
 
-# Evening hadith
+# Ramadan reminders
 curl -H "Authorization: Bearer masjidnotify2025cron" \
-  "https://masjid-notify.vercel.app/api/cron/daily-hadith?time=maghrib"
+  https://masjid-notify.vercel.app/api/cron/ramadan-reminders
+
+# Jumu'ah reminder (only works on Fridays, 2 hours before khutbah)
+curl -H "Authorization: Bearer masjidnotify2025cron" \
+  https://masjid-notify.vercel.app/api/cron/jumuah-reminder
 ```
 
 ### How to Add a New Subscriber Manually (via Database)
@@ -781,6 +805,66 @@ npx playwright test --headed
 ### Problem: Prayer times seem wrong after changing settings
 
 **Fix:** As of v1.6.0, prayer cache is automatically invalidated when settings are saved. If you edited the database directly, manually delete rows from `prayer_times_cache` for your mosque.
+
+### Problem: STOP/PAUSE/SETTINGS commands not working
+
+Users send commands but nothing happens. This is a multi-step issue:
+
+**Step 1: Check WHATSAPP_APP_SECRET**
+```
+Go to: Meta Developer Console > Your App > App Settings > Basic > App Secret
+Copy the secret and set it in Vercel Dashboard > Settings > Environment Variables
+The value should be: c426370968ddf41c9adf0c3c5a1d2aae
+```
+
+**Step 2: Check Webhook Subscription in Meta**
+```
+Go to: Meta Developer Console > Your App > WhatsApp > Configuration
+Under "Webhook fields", ensure "messages" is SUBSCRIBED (toggled ON)
+This is separate from webhook verification - the webhook can verify but still not receive messages!
+```
+
+**Step 3: Check Vercel Logs**
+```
+Go to: Vercel Dashboard > Your Project > Logs
+Filter by: api/webhook/whatsapp
+Look for: "[webhook] Signature verified successfully" or error messages
+```
+
+**Common Issues:**
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No logs at all | "messages" not subscribed in Meta | Subscribe to "messages" webhook field |
+| "Signature verification failed" | Wrong WHATSAPP_APP_SECRET | Update env var with correct secret |
+| "CRITICAL: WHATSAPP_APP_SECRET is not configured" | Env var missing | Add WHATSAPP_APP_SECRET to Vercel |
+
+---
+
+## Meta Webhook Configuration
+
+### Required Webhook Fields
+
+In Meta Developer Console > WhatsApp > Configuration, ensure these webhook fields are **SUBSCRIBED**:
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| `messages` | ✅ **YES** | Receives incoming user messages (STOP, PAUSE, SETTINGS, etc.) |
+| `message_status` | Optional | Delivery receipts |
+
+**CRITICAL:** The `messages` field subscription is separate from webhook URL verification. Your webhook can pass verification but still not receive messages if `messages` is not subscribed.
+
+### Webhook URL Configuration
+
+| Setting | Value |
+|---------|-------|
+| **Callback URL** | `https://masjid-notify.vercel.app/api/webhook/whatsapp` |
+| **Verify Token** | `masjidnotifywebhook2025` |
+
+### Verifying Webhook Works
+
+1. **Check subscription:** Meta Console > WhatsApp > Configuration > Webhook fields > "messages" should be ON
+2. **Send a test message:** Text "HELP" to your WhatsApp number from any phone
+3. **Check Vercel logs:** Should see `[webhook] Signature verified successfully` and `[webhook] Processing command 'HELP'`
 
 ---
 
@@ -1035,8 +1119,8 @@ npx playwright test --headed
 | `WHATSAPP_ACCESS_TOKEN` | ✅ Set | Meta access token |
 | `WHATSAPP_PHONE_NUMBER_ID` | ✅ Set | `895363247004714` |
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | ✅ Set | `1443752210724410` |
-| `WHATSAPP_APP_SECRET` | ✅ Set | For webhook signature verification |
-| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | ✅ Set | `masjidnotifywebhook2025` |
+| `WHATSAPP_APP_SECRET` | ✅ Set | **CRITICAL:** For webhook signature verification. Get from Meta > App Dashboard > App Settings > Basic > App Secret. Value: `c426370968ddf41c9adf0c3c5a1d2aae` |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | ✅ Set | `masjidnotifywebhook2025` - Must match Meta webhook configuration |
 | `CRON_SECRET` | ✅ Set | `masjidnotify2025cron` |
 | `ALADHAN_API_URL` | ✅ Set | `https://api.aladhan.com/v1` |
 | `NEXT_PUBLIC_APP_URL` | ✅ Set | `https://masjid-notify.vercel.app` |
@@ -1073,7 +1157,7 @@ npx playwright test --headed
 | 13 | Ramadan Mode | ✅ Live | Toggle Suhoor/Iftar/Taraweeh reminders |
 | 14 | QR Code Generator | ✅ Live | Generate, download, print QR codes |
 | 15 | Prayer Reminders | ✅ Live | **Timezone-aware**, **NaN-safe** |
-| 16 | Daily Hadith | ✅ Live | Real API - 5 authentic collections, **fair shuffle** |
+| 16 | Daily Hadith | ✅ Live | Real API - 6 authentic collections, **fair shuffle**, **dynamic timing** (15 min after Fajr/Maghrib) |
 | 17 | Jumu'ah Reminder | ✅ Live | Friday morning reminder |
 | 18 | Analytics Charts | ✅ Live | Subscriber growth, message breakdown |
 | 19 | 404 Page | ✅ Live | **Branded not-found page** (v1.6.0) |
@@ -1133,14 +1217,15 @@ npx playwright test --headed
 
 ### Cron Endpoints (Requires CRON_SECRET)
 
-| Method | Endpoint | Schedule (UTC) | Purpose |
-|--------|----------|----------------|---------|
+| Method | Endpoint | Schedule | Purpose |
+|--------|----------|----------|---------|
 | `GET` | `/api/cron/prayer-reminders` | Every 5 mins | Prayer reminders + scheduled messages |
-| `GET` | `/api/cron/daily-hadith?time=fajr` | 3:30 AM daily | Morning hadith |
-| `GET` | `/api/cron/daily-hadith?time=maghrib` | 4:00 PM daily | Evening hadith |
-| `GET` | `/api/cron/jumuah-reminder` | 10:00 AM Fri | Friday reminder |
+| `GET` | `/api/cron/daily-hadith` | Every 5 mins | **Dynamic:** Sends 15 min after Fajr (morning) and Maghrib (evening) |
+| `GET` | `/api/cron/jumuah-reminder` | Every 5 mins | Friday reminder (checks if 2 hours before khutbah) |
 | `GET` | `/api/cron/ramadan-reminders` | Every 5 mins | Suhoor/Iftar/Taraweeh |
 | `GET` | `/api/cron/nafl-reminders` | Every 5 mins | Tahajjud/Ishraq/Awwabin |
+
+> **Note:** As of v1.7.1, all cron jobs run every 5 minutes and use **dynamic prayer-time-based scheduling**. Fixed UTC times are no longer used. Each job checks the current time against mosque prayer times and only sends when appropriate.
 
 ---
 
@@ -1279,7 +1364,8 @@ masjid-notify/
 │       ├── message-sender.ts           # Concurrent sending (error handling)
 │       ├── ratelimit.ts                # Rate limiting (IP spoofing protection)
 │       ├── auth.ts                     # Auth utilities (constant-time comparison)
-│       ├── constants.ts                # Time constants (v1.6.0)
+│       ├── constants.ts                # Time constants (v1.6.0, updated v1.7.1)
+│       ├── reminder-locks.ts           # Atomic reminder locking utility (v1.7.0)
 │       ├── logger.ts                   # Structured logging
 │       └── utils.ts                    # Helpers
 │
@@ -1307,7 +1393,8 @@ masjid-notify/
 │       ├── 006_simplify_preferences.sql
 │       ├── 007_add_ramadan_columns.sql
 │       ├── 008_prayer_reminder_locks.sql
-│       └── 009_fix_messages_constraints.sql  # (v1.6.3) Fix CHECK constraints
+│       ├── 009_fix_messages_constraints.sql  # (v1.6.3) Fix CHECK constraints
+│       └── 010_unified_reminder_locks.sql    # (v1.7.0) Unified atomic locking
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
@@ -1333,7 +1420,9 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 2. Click "Sign Up" (free account)
 3. Verify email
 
-### Cron Jobs to Create
+### Cron Jobs to Create (5 Jobs - All Every 5 Minutes)
+
+> **IMPORTANT (v1.7.1):** As of v1.7.1, ALL cron jobs run every 5 minutes. The old fixed-time hadith jobs have been replaced with a single dynamic job that checks prayer times.
 
 **Job 1: Prayer Reminders**
 - Title: `Masjid Notify - Prayer Reminders`
@@ -1353,17 +1442,32 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 - Schedule: `*/5 * * * *` (every 5 minutes)
 - Headers: `Authorization: Bearer masjidnotify2025cron`
 
-**Job 4: Morning Hadith**
-- Title: `Masjid Notify - Morning Hadith`
-- URL: `https://masjid-notify.vercel.app/api/cron/daily-hadith?time=fajr`
-- Schedule: `30 3 * * *` (3:30 AM UTC = 5:30 AM SAST)
+**Job 4: Daily Hadith (Dynamic Timing)**
+- Title: `Masjid Notify - Daily Hadith`
+- URL: `https://masjid-notify.vercel.app/api/cron/daily-hadith`
+- Schedule: `*/5 * * * *` (every 5 minutes)
 - Headers: `Authorization: Bearer masjidnotify2025cron`
+- **Note:** This replaces the old morning/evening hadith jobs. The endpoint now checks prayer times and sends:
+  - Morning hadith: 15 minutes after Fajr
+  - Evening hadith: 15 minutes after Maghrib
 
-**Job 5: Evening Hadith**
-- Title: `Masjid Notify - Evening Hadith`
-- URL: `https://masjid-notify.vercel.app/api/cron/daily-hadith?time=maghrib`
-- Schedule: `0 16 * * *` (4:00 PM UTC = 6:00 PM SAST)
+**Job 5: Jumu'ah Reminder**
+- Title: `Masjid Notify - Jumu'ah Reminder`
+- URL: `https://masjid-notify.vercel.app/api/cron/jumuah-reminder`
+- Schedule: `*/5 * * * *` (every 5 minutes)
 - Headers: `Authorization: Bearer masjidnotify2025cron`
+- **Note:** Only sends on Fridays, 2 hours before khutbah time
+
+### Migration from Old Cron Configuration
+
+If you have the old cron configuration with separate morning/evening hadith jobs:
+
+| Old Job | Action |
+|---------|--------|
+| `Morning Hadith` (3:30 AM UTC) | **DELETE** |
+| `Evening Hadith` (4:00 PM UTC) | **DELETE** |
+
+Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 
 ---
 
@@ -1473,6 +1577,54 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 
 ## Changelog
 
+### Version 1.7.1 - February 6, 2026
+
+**MAJOR: Dynamic Hadith Timing & Ishraq Fix**
+
+This release changes hadith notifications from fixed UTC times to dynamic prayer-based timing, and fixes Ishraq reminder to a practical time.
+
+#### Dynamic Hadith Timing (BREAKING CHANGE)
+
+Hadith notifications now send **15 minutes after prayer times** instead of at fixed UTC times:
+
+| Hadith | Old (Fixed UTC) | New (Dynamic) |
+|--------|-----------------|---------------|
+| Morning hadith | 3:30 AM UTC (5:30 AM SAST) | **15 min after Fajr** (~6:00 AM in summer, ~7:00 AM in winter) |
+| Evening hadith | 4:00 PM UTC (6:00 PM SAST) | **15 min after Maghrib** (~6:30 PM in summer, ~8:00 PM in winter) |
+
+**Benefits:**
+- Hadith timing follows actual prayer times throughout the year
+- No more out-of-context timing (old evening hadith at 6 PM was before Maghrib in summer)
+- Consistent user experience regardless of season
+
+#### Ishraq Reminder Timing Fixed
+
+Changed from 20 minutes after sunrise (~6:30 AM) to **3 hours after sunrise (~9:00 AM)** so users can actually act on the reminder during work hours.
+
+| Setting | Old Value | New Value |
+|---------|-----------|-----------|
+| `ISHRAQ_MINUTES_AFTER_SUNRISE` | 20 | **180** |
+
+#### cron-job.org Migration Required
+
+**DELETE these old jobs:**
+- Morning Hadith (3:30 AM UTC)
+- Evening Hadith (4:00 PM UTC)
+
+**CREATE this new job:**
+- Daily Hadith - `*/5 * * * *` - `https://masjid-notify.vercel.app/api/cron/daily-hadith`
+
+See [External Cron Setup](#external-cron-setup-cron-joborg) for full configuration.
+
+#### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/app/api/cron/daily-hadith/route.ts` | Completely rewritten to use dynamic prayer-based timing |
+| `src/lib/constants.ts` | Added `HADITH_MINUTES_AFTER_PRAYER = 15`, fixed `ISHRAQ_MINUTES_AFTER_SUNRISE = 180` |
+
+---
+
 ### Version 1.7.0 - February 6, 2026
 
 **MAJOR: Fix Duplicate Reminders & Improve Reliability**
@@ -1497,6 +1649,15 @@ All reminder types now use atomic database locking to prevent duplicates when cr
 | `src/lib/reminder-locks.ts` | Shared utility for atomic reminder locking across all cron jobs |
 | `supabase/migrations/010_unified_reminder_locks.sql` | Ensures lock table exists and is properly configured |
 
+#### Supported Lock Types
+
+The `ReminderType` in `reminder-locks.ts` supports:
+- **Prayers:** `fajr`, `dhuhr`, `asr`, `maghrib`, `isha`
+- **Hadith:** `hadith_morning`, `hadith_evening`
+- **Jumu'ah:** `jumuah`
+- **Nafl:** `tahajjud`, `ishraq`, `awwabin`
+- **Ramadan:** `suhoor`, `suhoor_planning`, `iftar`, `taraweeh`
+
 #### Ishraq Timing Fixed
 
 Changed from 20 minutes after sunrise (~6:30 AM) to 3 hours after sunrise (~9:00 AM) so users can actually act on the reminder during work hours.
@@ -1512,14 +1673,9 @@ Added comprehensive logging to help diagnose STOP/PAUSE/SETTINGS command issues:
 
 Run `supabase/migrations/010_unified_reminder_locks.sql` in Supabase SQL Editor.
 
-#### cron-job.org Configuration Required
+#### cron-job.org Configuration (v1.7.0)
 
-Update these schedules in cron-job.org (Africa/Johannesburg timezone):
-
-| Job | Current | Change To | Result |
-|-----|---------|-----------|--------|
-| Morning Hadith | `30 3 * * *` (3:30 AM) | `0 6 * * *` | 6:00 AM SAST (after Fajr) |
-| Evening Hadith | `0 16 * * *` (4:00 PM) | `0 20 * * *` | 8:00 PM SAST (after Maghrib) |
+> **Note:** This was later superseded by v1.7.1 which uses dynamic prayer-based timing. See the v1.7.1 changelog for the current configuration.
 
 #### Verify WHATSAPP_APP_SECRET
 
@@ -1723,7 +1879,7 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 
 ---
 
-**Document Version:** 1.7.0
-**Last Updated:** February 6, 2026 @ 10:00 SAST
+**Document Version:** 1.7.1
+**Last Updated:** February 6, 2026 @ 16:30 SAST
 **Author:** Claude Code
-**Status:** Production-Ready - WhatsApp templates pending Meta approval
+**Status:** Production-Ready - WhatsApp templates pending Meta approval, Webhook message reception under investigation

@@ -106,6 +106,7 @@ export function Sidebar() {
         size="sm"
         className="fixed top-4 left-4 z-50 md:hidden"
         onClick={() => setMobileOpen(!mobileOpen)}
+        aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </Button>
@@ -115,11 +116,15 @@ export function Sidebar() {
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={closeMobileMenu}
+          onKeyDown={(e) => { if (e.key === "Escape") closeMobileMenu(); }}
         />
       )}
 
       {/* Mobile sidebar */}
       <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex flex-col transition-transform md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"

@@ -103,7 +103,14 @@ export default function AnnouncementsPage() {
   }
 
   if (!mosqueId) {
-    return <div>Mosque not found</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Card className="p-8 text-center max-w-md">
+          <h2 className="text-lg font-semibold text-foreground mb-2">Unable to load announcements</h2>
+          <p className="text-muted-foreground text-sm">Could not connect to the server. Please refresh the page or try again later.</p>
+        </Card>
+      </div>
+    );
   }
 
   return (

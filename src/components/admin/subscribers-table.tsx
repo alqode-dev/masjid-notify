@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Table,
@@ -15,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPhoneForDisplay, formatDateShort } from "@/lib/utils";
 import type { Subscriber } from "@/lib/supabase";
-import { MoreHorizontal, Pause, Play, Trash2 } from "lucide-react";
+import { Pause, Play, Trash2 } from "lucide-react";
 
 interface SubscribersTableProps {
   subscribers: Subscriber[];
@@ -30,8 +29,6 @@ export function SubscribersTable({
   onStatusChange,
   onDelete,
 }: SubscribersTableProps) {
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
-
   if (loading) {
     return (
       <div className="space-y-3">
@@ -80,14 +77,13 @@ export function SubscribersTable({
         <TableBody>
           {subscribers.map((subscriber, index) => {
             const statusInfo = getStatusBadge(subscriber.status);
-            const isExpanded = expandedRow === subscriber.id;
 
             return (
               <motion.tr
                 key={subscriber.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: Math.min(index, 20) * 0.03 }}
                 className="group"
               >
                 <TableCell className="font-medium">

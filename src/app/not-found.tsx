@@ -18,12 +18,6 @@ export default function NotFound() {
           >
             Go Home
           </Link>
-          <Link
-            href="/admin/login"
-            className="inline-flex items-center justify-center px-6 py-3 bg-secondary text-secondary-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors"
-          >
-            Admin Login
-          </Link>
         </div>
         <p className="text-sm text-muted-foreground mt-12">
           Masjid Notify - Prayer Reminders via WhatsApp

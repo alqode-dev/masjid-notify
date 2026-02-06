@@ -30,7 +30,7 @@ export default function AdminLoginPage() {
       });
 
       if (authError) {
-        setError(authError.message);
+        setError("Invalid email or password");
         return;
       }
 
@@ -64,26 +64,32 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative">
+                <label htmlFor="login-email" className="sr-only">Email address</label>
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
+                  id="login-email"
                   type="email"
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
+                  autoComplete="email"
                 />
               </div>
 
               <div className="relative">
+                <label htmlFor="login-password" className="sr-only">Password</label>
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
+                  id="login-password"
                   type="password"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
                   required
+                  autoComplete="current-password"
                 />
               </div>
 

@@ -70,8 +70,6 @@ export default function SubscribersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this subscriber?")) return;
-
     try {
       const response = await fetch(`/api/admin/subscribers?id=${id}`, {
         method: "DELETE",
@@ -112,6 +110,7 @@ export default function SubscribersPage() {
     a.href = url;
     a.download = `subscribers-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const normalizedQuery = searchQuery.replace(/[\s\-+]/g, "");
@@ -146,7 +145,9 @@ export default function SubscribersPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+          <label htmlFor="subscriber-search" className="sr-only">Search by phone number</label>
           <input
+            id="subscriber-search"
             type="text"
             placeholder="Search by phone number..."
             value={searchQuery}

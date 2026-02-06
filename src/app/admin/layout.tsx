@@ -58,7 +58,7 @@ export default function AdminLayout({
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex">
-        <div className="w-64 bg-card border-r border-border p-4">
+        <div className="hidden md:block w-64 bg-card border-r border-border p-4">
           <Skeleton className="h-8 w-32 mb-8" />
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
@@ -66,7 +66,7 @@ export default function AdminLayout({
             ))}
           </div>
         </div>
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-6 md:p-8">
           <Skeleton className="h-8 w-48 mb-4" />
           <Skeleton className="h-64 w-full" />
         </div>

@@ -40,11 +40,19 @@ export function QRCodeDisplay({
 
     const dataUrl = canvas.toDataURL("image/png");
 
+    // Sanitize mosqueName to prevent XSS in the print window
+    const safeName = (mosqueName || "Mosque")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>QR Code - ${mosqueName || "Mosque"}</title>
+          <title>QR Code - ${safeName}</title>
           <style>
             body {
               display: flex;
@@ -71,7 +79,7 @@ export function QRCodeDisplay({
           </style>
         </head>
         <body>
-          <h1>${mosqueName || "Mosque"}</h1>
+          <h1>${safeName}</h1>
           <img src="${dataUrl}" alt="QR Code" />
           <p>Scan to subscribe to WhatsApp updates</p>
         </body>

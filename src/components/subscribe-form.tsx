@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Select } from "./ui/select";
-import { isValidSAPhoneNumber } from "@/lib/utils";
+import { isValidSAPhoneNumber, normalizePhoneNumber } from "@/lib/utils";
 import { REMINDER_OPTIONS } from "@/lib/constants";
 import { CheckCircle, MessageCircle } from "lucide-react";
 
@@ -65,7 +65,7 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone_number: phone,
+          phone_number: normalizePhoneNumber(phone),
           mosque_id: mosqueId,
           reminder_offset: parseInt(reminderOffset, 10),
           pref_daily_prayers: prefDailyPrayers,

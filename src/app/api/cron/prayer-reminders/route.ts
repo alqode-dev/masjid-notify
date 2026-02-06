@@ -67,12 +67,13 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 
       const mosqueName = mosque?.name || "Mosque";
 
-      // Get active subscribers for this mosque
+      // Get active subscribers for this mosque who opted in to announcements
       const { data: subscribers } = await supabaseAdmin
         .from("subscribers")
         .select("*")
         .eq("mosque_id", scheduled.mosque_id)
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("pref_announcements", true);
 
       if (!subscribers || subscribers.length === 0) {
         // No subscribers - mark as sent anyway (nothing to send)

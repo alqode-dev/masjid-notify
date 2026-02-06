@@ -275,7 +275,9 @@ export function MessageTemplates({ onSelectTemplate }: MessageTemplatesProps) {
                         {template.name}
                       </p>
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {template.content.slice(0, 80)}...
+                        {template.content.length > 80
+                          ? template.content.slice(0, 80) + "..."
+                          : template.content}
                       </p>
                     </div>
                   </motion.button>

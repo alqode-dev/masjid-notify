@@ -87,7 +87,7 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
         if (coreError) {
           console.error("Error updating core settings:", coreError);
           return NextResponse.json(
-            { error: `Failed to save settings: ${coreError.message}` },
+            { error: "Failed to save settings" },
             { status: 500 }
           );
         }
@@ -103,7 +103,7 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
 
       console.error("Error updating settings:", error);
       return NextResponse.json(
-        { error: `Failed to save settings: ${error.message}` },
+        { error: "Failed to save settings" },
         { status: 500 }
       );
     }

@@ -35,11 +35,15 @@ export default function QRCodePage() {
     fetchMosque();
   }, []);
 
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(siteUrl);
-    setCopied(true);
-    toast.success("URL copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(siteUrl);
+      setCopied(true);
+      toast.success("URL copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy URL. Please copy it manually.");
+    }
   };
 
   if (loading) {

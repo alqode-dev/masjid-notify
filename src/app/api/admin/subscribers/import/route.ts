@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
+import { normalizePhoneNumber, isValidSAPhoneNumber } from "@/lib/utils";
+
+const MAX_IMPORT_SIZE = 500;
 
 export const POST = withAdminAuth(async (request, { admin }) => {
   try {
@@ -13,14 +16,28 @@ export const POST = withAdminAuth(async (request, { admin }) => {
       );
     }
 
+    if (subscribers.length > MAX_IMPORT_SIZE) {
+      return NextResponse.json(
+        { error: `Import limited to ${MAX_IMPORT_SIZE} subscribers at a time` },
+        { status: 400 }
+      );
+    }
+
     let imported = 0;
     let skipped = 0;
     let errors = 0;
 
     for (const subscriber of subscribers) {
       try {
+        const phoneRaw = typeof subscriber.phone_number === "string" ? subscriber.phone_number : "";
+        if (!phoneRaw || !isValidSAPhoneNumber(phoneRaw)) {
+          skipped++;
+          continue;
+        }
+        const normalizedPhone = normalizePhoneNumber(phoneRaw);
+
         const { error } = await supabaseAdmin.from("subscribers").insert({
-          phone_number: subscriber.phone_number,
+          phone_number: normalizedPhone,
           mosque_id: admin.mosque_id,
           status: "active",
           pref_daily_prayers: subscriber.pref_daily_prayers ?? true,

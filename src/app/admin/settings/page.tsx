@@ -82,12 +82,12 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ramadan_mode: ramadanMode,
-          suhoor_reminder_mins: parseInt(suhoorMins),
-          iftar_reminder_mins: parseInt(iftarMins),
+          suhoor_reminder_mins: parseInt(suhoorMins, 10) || 30,
+          iftar_reminder_mins: parseInt(iftarMins, 10) || 15,
           taraweeh_time: taraweehTime ? taraweehTime + ":00" : null,
           jumuah_adhaan_time: jumuahAdhaan + ":00",
           jumuah_khutbah_time: jumuahKhutbah + ":00",
-          calculation_method: parseInt(calculationMethod),
+          calculation_method: parseInt(calculationMethod, 10) || 3,
           madhab: madhab as "hanafi" | "shafii",
         }),
       });
@@ -122,7 +122,14 @@ export default function SettingsPage() {
   }
 
   if (!mosque) {
-    return <div>Mosque not found</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Card className="p-8 text-center max-w-md">
+          <h2 className="text-lg font-semibold text-foreground mb-2">Unable to load settings</h2>
+          <p className="text-muted-foreground text-sm">Could not connect to the server. Please refresh the page or try again later.</p>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -193,8 +200,10 @@ export default function SettingsPage() {
               </p>
             </div>
             <Switch
+              id="ramadan-mode"
               checked={ramadanMode}
               onCheckedChange={setRamadanMode}
+              aria-label="Ramadan Mode"
             />
           </div>
 

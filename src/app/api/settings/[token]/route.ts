@@ -152,18 +152,24 @@ export async function PUT(
       }
     }
 
+    // Build update object with only provided fields (don't reset unspecified prefs to defaults)
+    const updateData: Record<string, unknown> = {};
+    if (reminder_offset !== undefined) updateData.reminder_offset = reminder_offset;
+    if (pref_daily_prayers !== undefined) updateData.pref_daily_prayers = pref_daily_prayers;
+    if (pref_jumuah !== undefined) updateData.pref_jumuah = pref_jumuah;
+    if (pref_ramadan !== undefined) updateData.pref_ramadan = pref_ramadan;
+    if (pref_nafl_salahs !== undefined) updateData.pref_nafl_salahs = pref_nafl_salahs;
+    if (pref_hadith !== undefined) updateData.pref_hadith = pref_hadith;
+    if (pref_announcements !== undefined) updateData.pref_announcements = pref_announcements;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
     // Update subscriber preferences
     const { error: updateError } = await supabaseAdmin
       .from("subscribers")
-      .update({
-        reminder_offset: reminder_offset ?? 15,
-        pref_daily_prayers: pref_daily_prayers ?? true,
-        pref_jumuah: pref_jumuah ?? true,
-        pref_ramadan: pref_ramadan ?? true,
-        pref_nafl_salahs: pref_nafl_salahs ?? false,
-        pref_hadith: pref_hadith ?? true,
-        pref_announcements: pref_announcements ?? true,
-      })
+      .update(updateData)
       .eq("id", subscriber.id);
 
     if (updateError) {
