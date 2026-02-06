@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 5, 2026 @ 22:00 SAST
-> **Version:** 1.6.3
+> **Last Updated:** February 6, 2026 @ 10:00 SAST
+> **Version:** 1.7.0
 > **Status:** Production-Ready - WhatsApp templates pending Meta approval
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -1473,6 +1473,60 @@ Vercel's free tier only supports daily cron jobs. For real-time prayer reminders
 
 ## Changelog
 
+### Version 1.7.0 - February 6, 2026
+
+**MAJOR: Fix Duplicate Reminders & Improve Reliability**
+
+This release fixes critical duplicate message issues reported by users and improves webhook command handling.
+
+#### Duplicate Reminders Fixed (CRITICAL)
+
+All reminder types now use atomic database locking to prevent duplicates when cron runs overlap:
+
+| Component | Issue | Solution |
+|-----------|-------|----------|
+| **Nafl Reminders** | Tahajjud/Ishraq/Awwabin sent 2x | Added atomic locking via `tryClaimReminderLock()` |
+| **Jumu'ah Reminder** | Sent multiple times on Friday | Added atomic locking (was ZERO protection before!) |
+| **Daily Hadith** | Could send twice | Added atomic locking with `hadith_morning`/`hadith_evening` keys |
+| **Ramadan Reminders** | Suhoor/Iftar/Taraweeh could duplicate | Replaced time-based check with atomic locking |
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/reminder-locks.ts` | Shared utility for atomic reminder locking across all cron jobs |
+| `supabase/migrations/010_unified_reminder_locks.sql` | Ensures lock table exists and is properly configured |
+
+#### Ishraq Timing Fixed
+
+Changed from 20 minutes after sunrise (~6:30 AM) to 3 hours after sunrise (~9:00 AM) so users can actually act on the reminder during work hours.
+
+#### Webhook Command Logging Improved
+
+Added comprehensive logging to help diagnose STOP/PAUSE/SETTINGS command issues:
+- Clear error messages when `WHATSAPP_APP_SECRET` is not configured
+- Success/failure logging for all commands
+- Database update error handling with user feedback
+
+#### Migration Required
+
+Run `supabase/migrations/010_unified_reminder_locks.sql` in Supabase SQL Editor.
+
+#### cron-job.org Configuration Required
+
+Update these schedules in cron-job.org (Africa/Johannesburg timezone):
+
+| Job | Current | Change To | Result |
+|-----|---------|-----------|--------|
+| Morning Hadith | `30 3 * * *` (3:30 AM) | `0 6 * * *` | 6:00 AM SAST (after Fajr) |
+| Evening Hadith | `0 16 * * *` (4:00 PM) | `0 20 * * *` | 8:00 PM SAST (after Maghrib) |
+
+#### Verify WHATSAPP_APP_SECRET
+
+If STOP/SETTINGS/PAUSE commands are not working, check Vercel Dashboard > Settings > Environment Variables and ensure `WHATSAPP_APP_SECRET` is set to your Meta App Secret.
+
+---
+
 ### Version 1.6.3 - February 5, 2026
 
 **CRITICAL: Fix Empty Messages & Prayer Times Cache Tables**
@@ -1669,7 +1723,7 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 
 ---
 
-**Document Version:** 1.6.3
-**Last Updated:** February 5, 2026 @ 22:00 SAST
+**Document Version:** 1.7.0
+**Last Updated:** February 6, 2026 @ 10:00 SAST
 **Author:** Claude Code
 **Status:** Production-Ready - WhatsApp templates pending Meta approval

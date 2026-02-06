@@ -21,30 +21,11 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
-import { TEN_MINUTES_MS, TARAWEEH_REMINDER_MINUTES, SUHOOR_PLANNING_OFFSET_MINUTES } from "@/lib/constants";
+import { TARAWEEH_REMINDER_MINUTES, SUHOOR_PLANNING_OFFSET_MINUTES } from "@/lib/constants";
+import { tryClaimReminderLock } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
-
-// Check if a ramadan reminder was already sent recently (within last 10 minutes)
-// This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
-async function wasRamadanReminderSent(
-  mosqueId: string,
-  reminderType: string
-): Promise<boolean> {
-  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
-
-  const { data } = await supabaseAdmin
-    .from("messages")
-    .select("id")
-    .eq("mosque_id", mosqueId)
-    .eq("type", "ramadan")
-    .gte("sent_at", tenMinutesAgo)
-    .contains("metadata", { reminder_type: reminderType })
-    .limit(1);
-
-  return data !== null && data.length > 0;
-}
 
 // This should run every 5 minutes during Ramadan
 export async function GET(request: NextRequest) {
@@ -113,9 +94,9 @@ export async function GET(request: NextRequest) {
           mosque.timezone
         )
       ) {
-        // Check if already sent to prevent duplicates
-        const alreadySent = await wasRamadanReminderSent(mosque.id, "suhoor");
-        if (!alreadySent) {
+        // ATOMIC LOCK: Claim exclusive right to send suhoor reminder
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor", 0);
+        if (lockAcquired) {
           // Template variables: fajr_time, mosque_name
           const templateVars = [prayerTimes.fajr, mosque.name];
 
@@ -156,9 +137,9 @@ export async function GET(request: NextRequest) {
           mosque.timezone
         )
       ) {
-        // Check if already sent to prevent duplicates
-        const alreadySent = await wasRamadanReminderSent(mosque.id, "iftar");
-        if (!alreadySent) {
+        // ATOMIC LOCK: Claim exclusive right to send iftar reminder
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "iftar", 0);
+        if (lockAcquired) {
           // Template variables: minutes_until, maghrib_time, mosque_name
           const templateVars = [
             String(mosque.iftar_reminder_mins),
@@ -204,9 +185,9 @@ export async function GET(request: NextRequest) {
             mosque.timezone
           )
         ) {
-          // Check if already sent to prevent duplicates
-          const alreadySent = await wasRamadanReminderSent(mosque.id, "taraweeh");
-          if (!alreadySent) {
+          // ATOMIC LOCK: Claim exclusive right to send taraweeh reminder
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "taraweeh", 0);
+          if (lockAcquired) {
             const formattedTime = formatDbTime(mosque.taraweeh_time);
 
             // Template variables: taraweeh_time, mosque_name
@@ -250,8 +231,9 @@ export async function GET(request: NextRequest) {
             mosque.timezone
           )
         ) {
-          const alreadySent = await wasRamadanReminderSent(mosque.id, "suhoor_planning");
-          if (!alreadySent) {
+          // ATOMIC LOCK: Claim exclusive right to send suhoor planning reminder
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor_planning", 0);
+          if (lockAcquired) {
             // Get tomorrow's Fajr time
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);

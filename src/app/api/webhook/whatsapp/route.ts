@@ -13,12 +13,15 @@ import { getWebhookRateLimiter, getClientIP } from "@/lib/ratelimit";
  */
 function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
   if (!signature) {
+    console.error("[webhook] No X-Hub-Signature-256 header received");
     return false;
   }
 
   const appSecret = process.env.WHATSAPP_APP_SECRET;
   if (!appSecret) {
-    console.error("WHATSAPP_APP_SECRET is not configured");
+    console.error("[webhook] CRITICAL: WHATSAPP_APP_SECRET is not configured in environment variables!");
+    console.error("[webhook] Commands (STOP, PAUSE, SETTINGS, etc.) will NOT work until this is fixed.");
+    console.error("[webhook] Set WHATSAPP_APP_SECRET in Vercel Dashboard > Settings > Environment Variables");
     return false;
   }
 
@@ -102,12 +105,14 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature
     const signature = request.headers.get("x-hub-signature-256");
     if (!verifyWebhookSignature(rawBody, signature)) {
-      console.error("Invalid webhook signature");
+      console.error("[webhook] Signature verification failed - command NOT processed");
       return NextResponse.json(
         { error: "Invalid signature" },
         { status: 401 }
       );
     }
+
+    console.log("[webhook] Signature verified successfully");
 
     // Rate limiting check (optional - only if Upstash is configured)
     const rateLimiter = getWebhookRateLimiter();
@@ -168,12 +173,15 @@ export async function POST(request: NextRequest) {
 
     if (!subscriber) {
       // Unknown number, send help message
+      console.log(`[webhook] Unknown phone number: ${normalizedPhone} - not subscribed`);
       await sendWhatsAppMessage(
         from,
         "Hi! You're not currently subscribed to any mosque. Visit our website to subscribe."
       );
       return NextResponse.json({ success: true });
     }
+
+    console.log(`[webhook] Processing command '${text}' from ${normalizedPhone} (status: ${subscriber.status})`);
 
     // Safely extract mosque data with null check
     const mosqueData = subscriber.mosques as { name: string; id: string } | null;
@@ -246,10 +254,21 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleStop(subscriberId: string, phone: string, mosqueName: string) {
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("subscribers")
     .update({ status: "unsubscribed" })
     .eq("id", subscriberId);
+
+  if (error) {
+    console.error("[webhook] STOP command failed to update database:", error.message);
+    await sendWhatsAppMessage(
+      phone,
+      `Sorry, there was an error processing your request. Please try again later.`
+    );
+    return;
+  }
+
+  console.log(`[webhook] STOP: Subscriber ${subscriberId} unsubscribed successfully`);
 
   await sendWhatsAppMessage(
     phone,
@@ -266,7 +285,7 @@ async function handleSettings(subscriberId: string, phone: string, mosqueName: s
   expiresAt.setHours(expiresAt.getHours() + 24);
 
   // Store the token in the database
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("subscribers")
     .update({
       settings_token: token,
@@ -274,7 +293,18 @@ async function handleSettings(subscriberId: string, phone: string, mosqueName: s
     })
     .eq("id", subscriberId);
 
+  if (error) {
+    console.error("[webhook] SETTINGS command failed to update database:", error.message);
+    await sendWhatsAppMessage(
+      phone,
+      `Sorry, there was an error generating your settings link. Please try again later.`
+    );
+    return;
+  }
+
   const settingsUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings/${token}`;
+
+  console.log(`[webhook] SETTINGS: Generated settings link for subscriber ${subscriberId}`);
 
   await sendWhatsAppMessage(
     phone,
@@ -303,13 +333,24 @@ async function handlePause(
   const pauseUntil = new Date();
   pauseUntil.setDate(pauseUntil.getDate() + pauseDays);
 
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("subscribers")
     .update({
       status: "paused",
       pause_until: pauseUntil.toISOString(),
     })
     .eq("id", subscriberId);
+
+  if (error) {
+    console.error("[webhook] PAUSE command failed to update database:", error.message);
+    await sendWhatsAppMessage(
+      phone,
+      `Sorry, there was an error processing your request. Please try again later.`
+    );
+    return;
+  }
+
+  console.log(`[webhook] PAUSE: Subscriber ${subscriberId} paused for ${pauseDays} days until ${pauseUntil.toISOString()}`);
 
   await sendWhatsAppMessage(
     phone,
@@ -318,13 +359,24 @@ async function handlePause(
 }
 
 async function handleResume(subscriberId: string, phone: string, mosqueName: string, currentStatus: string) {
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("subscribers")
     .update({
       status: "active",
       pause_until: null,
     })
     .eq("id", subscriberId);
+
+  if (error) {
+    console.error("[webhook] RESUME/START command failed to update database:", error.message);
+    await sendWhatsAppMessage(
+      phone,
+      `Sorry, there was an error processing your request. Please try again later.`
+    );
+    return;
+  }
+
+  console.log(`[webhook] RESUME: Subscriber ${subscriberId} resumed from status '${currentStatus}'`);
 
   // Send appropriate message based on previous status
   if (currentStatus === "unsubscribed") {

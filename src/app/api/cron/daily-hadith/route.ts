@@ -16,6 +16,7 @@ import {
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import { getTodaysHadith } from "@/lib/hadith-api";
 import type { Mosque, Subscriber } from "@/lib/supabase";
+import { tryClaimReminderLock, ReminderType } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -73,6 +74,15 @@ export async function GET(request: NextRequest) {
     setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
+      // ATOMIC LOCK: Claim exclusive right to send hadith for this mosque today
+      // This prevents duplicate sends if cron runs multiple times
+      const lockKey: ReminderType = timeOfDay === "morning" ? "hadith_morning" : "hadith_evening";
+      const lockAcquired = await tryClaimReminderLock(mosque.id, lockKey, 0);
+      if (!lockAcquired) {
+        // Another cron run already sent hadith for this mosque today
+        continue;
+      }
+
       // Get subscribers who want daily hadith
       const { data: subscribers } = await supabaseAdmin
         .from("subscribers")

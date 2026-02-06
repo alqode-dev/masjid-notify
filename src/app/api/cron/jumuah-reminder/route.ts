@@ -16,6 +16,7 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
+import { tryClaimReminderLock } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -50,6 +51,14 @@ export async function GET(request: NextRequest) {
     for (const mosque of mosques as Mosque[]) {
       // Check if it's Friday in the mosque's timezone
       if (!isFriday(mosque.timezone)) continue;
+
+      // ATOMIC LOCK: Claim exclusive right to send Jumu'ah reminder for this mosque today
+      // This prevents duplicate sends when cron runs multiple times on Friday
+      const lockAcquired = await tryClaimReminderLock(mosque.id, "jumuah", 0);
+      if (!lockAcquired) {
+        // Another cron run already sent Jumu'ah reminder for this mosque today
+        continue;
+      }
 
       // Get subscribers who want Jumu'ah reminders
       const { data: subscribers } = await supabaseAdmin

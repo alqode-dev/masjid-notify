@@ -25,7 +25,7 @@ export const SUHOOR_PLANNING_OFFSET_MINUTES = 90; // Send planning reminder 90 m
 
 // Nafl salah timing (in minutes)
 export const TAHAJJUD_MINUTES_BEFORE_FAJR = 120; // 2 hours before Fajr
-export const ISHRAQ_MINUTES_AFTER_SUNRISE = 20; // 20 mins after sunrise
+export const ISHRAQ_MINUTES_AFTER_SUNRISE = 180; // 3 hours after sunrise (~9 AM when people can pray at work)
 export const AWWABIN_MINUTES_AFTER_MAGHRIB = 15; // 15 mins after Maghrib
 
 // Jamaat timing

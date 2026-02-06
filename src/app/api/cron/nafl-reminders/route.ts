@@ -25,34 +25,14 @@ import {
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import {
-  TEN_MINUTES_MS,
   TAHAJJUD_MINUTES_BEFORE_FAJR,
   ISHRAQ_MINUTES_AFTER_SUNRISE,
   AWWABIN_MINUTES_AFTER_MAGHRIB
 } from "@/lib/constants";
+import { tryClaimReminderLock } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
-
-// Check if a nafl reminder was already sent recently (within last 10 minutes)
-// This prevents duplicates when the 5-minute window overlaps with consecutive cron runs
-async function wasNaflReminderSent(
-  mosqueId: string,
-  reminderType: string
-): Promise<boolean> {
-  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
-
-  const { data } = await supabaseAdmin
-    .from("messages")
-    .select("id")
-    .eq("mosque_id", mosqueId)
-    .eq("type", "nafl")
-    .gte("sent_at", tenMinutesAgo)
-    .contains("metadata", { reminder_type: reminderType })
-    .limit(1);
-
-  return data !== null && data.length > 0;
-}
 
 // This should run every 5 minutes to check for nafl prayer times
 export async function GET(request: NextRequest) {
@@ -114,8 +94,9 @@ export async function GET(request: NextRequest) {
 
       // Check Tahajjud reminder (2 hours before Fajr)
       if (isWithinMinutes(prayerTimes.fajr, TAHAJJUD_MINUTES_BEFORE_FAJR, mosque.timezone)) {
-        const alreadySent = await wasNaflReminderSent(mosque.id, "tahajjud");
-        if (!alreadySent) {
+        // ATOMIC LOCK: Claim exclusive right to send this reminder
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "tahajjud", 0);
+        if (lockAcquired) {
           // Template variables: fajr_time, mosque_name
           const templateVars = [prayerTimes.fajr, mosque.name];
 
@@ -147,8 +128,9 @@ export async function GET(request: NextRequest) {
 
       // Check Ishraq reminder (20 minutes after Sunrise)
       if (isWithinMinutesAfter(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE, mosque.timezone)) {
-        const alreadySent = await wasNaflReminderSent(mosque.id, "ishraq");
-        if (!alreadySent) {
+        // ATOMIC LOCK: Claim exclusive right to send this reminder
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "ishraq", 0);
+        if (lockAcquired) {
           // Template variables: mosque_name
           const templateVars = [mosque.name];
 
@@ -180,8 +162,9 @@ export async function GET(request: NextRequest) {
 
       // Check Awwabin reminder (15 minutes after Maghrib)
       if (isWithinMinutesAfter(prayerTimes.maghrib, AWWABIN_MINUTES_AFTER_MAGHRIB, mosque.timezone)) {
-        const alreadySent = await wasNaflReminderSent(mosque.id, "awwabin");
-        if (!alreadySent) {
+        // ATOMIC LOCK: Claim exclusive right to send this reminder
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "awwabin", 0);
+        if (lockAcquired) {
           // Template variables: mosque_name
           const templateVars = [mosque.name];
 
