@@ -263,6 +263,9 @@ git push origin master
 |-------|--------|------------|
 | ~~Webhook not receiving messages from Meta~~ | ✅ Fixed (v1.8.0) | WABA was not subscribed to app. Fixed by calling POST /v18.0/{WABA_ID}/subscribed_apps. |
 | ~~Webhook signature always failing~~ | ✅ Fixed (v1.8.0) | Trailing `\n` in Vercel env var. Fixed by re-adding clean value + `.trim()` in code. |
+| ~~SETTINGS link broken across lines in WhatsApp~~ | ✅ Fixed (v1.8.0) | `NEXT_PUBLIC_APP_URL` had trailing `\n`, splitting the URL into multiple lines. Fixed all 9 env vars via CLI. |
+| ~~All Vercel env vars had trailing newlines~~ | ✅ Fixed (v1.8.0) | 9 of 11 env vars had `\n` appended when pasted via Vercel UI. Deleted and re-added all via `npx vercel env rm/add`. |
+| ~~Prayer reminders not clickable in WhatsApp~~ | ✅ Fixed (v1.8.0) | `preview_url` was `false` in WhatsApp API call. Changed to `true`. |
 | ~~Prayer/nafl messages not logged in dashboard~~ | ✅ Fixed (v1.8.0) | messages table was missing metadata JSONB column. Fixed via migration 011. |
 
 ### 📋 TODO: Next Steps
@@ -1638,6 +1641,44 @@ This release fixes two critical production issues: WhatsApp webhook commands (ST
 
 **Additional resilience:** Added PGRST204 fallback retry in prayer-reminders and nafl-reminders routes. If the metadata column doesn't exist, the insert is retried without metadata so messages are still logged.
 
+#### Vercel Environment Variables Fixed (CRITICAL)
+
+**9 of 11 environment variables** had invisible trailing `\n` (newline) characters, causing multiple cascading failures:
+
+| Env Var | Impact of `\n` |
+|---------|----------------|
+| `WHATSAPP_APP_SECRET` | HMAC signature mismatch → all webhook commands rejected (401) |
+| `NEXT_PUBLIC_APP_URL` | Settings link URL split across lines → not clickable in WhatsApp |
+| `WHATSAPP_ACCESS_TOKEN` | Could cause WhatsApp API auth failures |
+| `WHATSAPP_PHONE_NUMBER_ID` | Could cause message send failures |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Could cause API failures |
+| `NEXT_PUBLIC_SUPABASE_URL` | Could cause database connection issues |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Could cause auth/query failures |
+| `SUPABASE_SERVICE_ROLE_KEY` | Could cause server-side DB failures |
+| `ALADHAN_API_URL` | Could cause prayer time API failures |
+
+**Root cause:** When pasting values into Vercel's environment variable web UI, a trailing newline is silently appended.
+
+**How to fix (CLI method - prevents newlines):**
+```bash
+# Remove old value
+npx vercel env rm VARIABLE_NAME production -y
+
+# Add clean value (printf prevents trailing newline)
+printf 'clean_value_here' | npx vercel env add VARIABLE_NAME production
+```
+
+**How to detect:**
+```bash
+# Pull env vars and look for \n at end of values
+npx vercel env pull .env.check --environment production
+grep '\\n"' .env.check
+```
+
+**Code-level defense:** Added `.trim()` to `process.env.WHATSAPP_APP_SECRET` and set `preview_url: true` in WhatsApp text messages so URLs are properly rendered as clickable links.
+
+**IMPORTANT:** `NEXT_PUBLIC_` env vars are baked into the build at build time. After fixing them, you must redeploy: `npx vercel --prod`
+
 #### Migration Required
 
 Run `supabase/migrations/011_add_messages_metadata.sql` in Supabase SQL Editor:
@@ -1655,6 +1696,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_metadata ON messages USING gin (metadata
 | `src/app/api/cron/prayer-reminders/route.ts` | Added PGRST204 fallback retry for prayer + scheduled message inserts |
 | `src/app/api/cron/nafl-reminders/route.ts` | Added PGRST204 fallback retry for tahajjud, ishraq, awwabin message inserts |
 | `src/app/api/webhook/whatsapp/route.ts` | Added `.trim()` to `WHATSAPP_APP_SECRET` to prevent trailing whitespace mismatch |
+| `src/lib/whatsapp.ts` | Changed `preview_url: false` to `true` so URLs in messages are clickable in WhatsApp |
 
 ---
 
