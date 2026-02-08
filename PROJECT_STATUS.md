@@ -262,6 +262,7 @@ git push origin master
 | Issue | Status | Workaround |
 |-------|--------|------------|
 | ~~Webhook not receiving messages from Meta~~ | ✅ Fixed (v1.8.0) | WABA was not subscribed to app. Fixed by calling POST /v18.0/{WABA_ID}/subscribed_apps. |
+| ~~Webhook signature always failing~~ | ✅ Fixed (v1.8.0) | Trailing `\n` in Vercel env var. Fixed by re-adding clean value + `.trim()` in code. |
 | ~~Prayer/nafl messages not logged in dashboard~~ | ✅ Fixed (v1.8.0) | messages table was missing metadata JSONB column. Fixed via migration 011. |
 
 ### 📋 TODO: Next Steps
@@ -850,8 +851,20 @@ Look for: "[webhook] Signature verified successfully" or error messages
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | No logs at all | "messages" not subscribed in Meta | Subscribe to "messages" webhook field |
+| No POST requests in Vercel logs | WABA not subscribed to your app | Run: `curl -X POST "https://graph.facebook.com/v18.0/{WABA_ID}/subscribed_apps" -H "Authorization: Bearer {TOKEN}"` |
 | "Signature verification failed" | Wrong WHATSAPP_APP_SECRET | Update env var with correct secret |
+| "Signature verification failed" after correct secret | **Trailing whitespace/newline in env var** (v1.8.0 fix) | The code now `.trim()`s the secret. But also: delete and re-add the env var in Vercel without trailing whitespace |
 | "CRITICAL: WHATSAPP_APP_SECRET is not configured" | Env var missing | Add WHATSAPP_APP_SECRET to Vercel |
+
+**IMPORTANT: Trailing Newline Bug (Fixed in v1.8.0)**
+
+When pasting the App Secret into Vercel's environment variable UI, a trailing newline (`\n`) can be silently appended. This causes EVERY webhook signature verification to fail because the HMAC is computed with `secret\n` instead of `secret`.
+
+How we diagnosed it:
+1. Pulled Vercel env vars locally: `npx vercel env pull .env.check`
+2. Found: `WHATSAPP_APP_SECRET="c426370968ddf41c9adf0c3c5a1d2aae\n"` (note the `\n`)
+3. Fix: Deleted and re-added the env var: `npx vercel env rm WHATSAPP_APP_SECRET production -y` then `printf 'value' | npx vercel env add WHATSAPP_APP_SECRET production`
+4. Code fix: Added `.trim()` to `process.env.WHATSAPP_APP_SECRET?.trim()` so this can never happen again
 
 ---
 
@@ -1606,6 +1619,7 @@ This release fixes two critical production issues: WhatsApp webhook commands (ST
 | **Commands not working (STOP, PAUSE, SETTINGS, HELP)** | WhatsApp Business Account (WABA) was subscribed to "WANotifier App" but NOT to our own "Alqode Masjid Notify" app | Subscribed WABA to app via Graph API: `POST /v18.0/1443752210724410/subscribed_apps` |
 | **No POST requests reaching webhook** | Without WABA subscription, Meta never delivers incoming messages to our webhook endpoint | WABA subscription fixed this - POST requests now appear in Vercel logs |
 | **Signature verification failing** | `WHATSAPP_APP_SECRET` in Vercel must match Meta App Secret exactly | User must verify: Meta > App Dashboard > App Settings > Basic > App Secret matches Vercel env var |
+| **Signature STILL failing after correct secret** | Trailing `\n` (newline) silently appended when pasting into Vercel env var UI | Deleted and re-added env var via CLI: `printf 'secret' \| npx vercel env add`. Also added `.trim()` to code. |
 
 **How WABA subscription works:**
 - The WhatsApp Business Account must be explicitly subscribed to your app via the Graph API
@@ -1640,6 +1654,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_metadata ON messages USING gin (metadata
 | `supabase/migrations/011_add_messages_metadata.sql` | **NEW** - Adds metadata JSONB column to messages table |
 | `src/app/api/cron/prayer-reminders/route.ts` | Added PGRST204 fallback retry for prayer + scheduled message inserts |
 | `src/app/api/cron/nafl-reminders/route.ts` | Added PGRST204 fallback retry for tahajjud, ishraq, awwabin message inserts |
+| `src/app/api/webhook/whatsapp/route.ts` | Added `.trim()` to `WHATSAPP_APP_SECRET` to prevent trailing whitespace mismatch |
 
 ---
 
