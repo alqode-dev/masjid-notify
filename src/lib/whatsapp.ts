@@ -62,7 +62,7 @@ export async function sendWhatsAppMessage(
           to: formattedPhone,
           type: 'text',
           text: {
-            preview_url: false,
+            preview_url: true,
             body: message,
           },
         }),
