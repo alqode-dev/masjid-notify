@@ -118,6 +118,16 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       });
       if (msgError) {
         console.error('[prayer-reminders] Failed to log scheduled message:', msgError.message, msgError.code, msgError.details);
+        // Retry without metadata in case the column doesn't exist yet
+        if (msgError.code === "PGRST204") {
+          await supabaseAdmin.from("messages").insert({
+            mosque_id: scheduled.mosque_id,
+            type: "announcement",
+            content: scheduled.content,
+            sent_to_count: batchResult.successful,
+            status: "sent",
+          });
+        }
       }
 
       // Mark the scheduled message as sent
@@ -369,6 +379,19 @@ export async function GET(request: NextRequest) {
               });
               if (msgError) {
                 console.error('[prayer-reminders] Failed to log message:', msgError.message, msgError.code, msgError.details);
+                // Retry without metadata in case the column doesn't exist yet
+                if (msgError.code === "PGRST204") {
+                  const { error: retryError } = await supabaseAdmin.from("messages").insert({
+                    mosque_id: mosque.id,
+                    type: "prayer",
+                    content: message,
+                    sent_to_count: batchResult.successful,
+                    status: "sent",
+                  });
+                  if (retryError) {
+                    console.error('[prayer-reminders] Retry without metadata also failed:', retryError.message);
+                  }
+                }
               }
             }
           }

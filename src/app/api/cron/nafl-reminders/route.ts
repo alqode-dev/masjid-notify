@@ -122,6 +122,12 @@ export async function GET(request: NextRequest) {
           });
           if (msgError) {
             console.error('[nafl-reminders] Failed to log tahajjud message:', msgError.message, msgError.code, msgError.details);
+            if (msgError.code === "PGRST204") {
+              await supabaseAdmin.from("messages").insert({
+                mosque_id: mosque.id, type: "nafl", content: message,
+                sent_to_count: batchResult.successful, status: "sent",
+              });
+            }
           }
         }
       }
@@ -156,6 +162,12 @@ export async function GET(request: NextRequest) {
           });
           if (ishraqMsgError) {
             console.error('[nafl-reminders] Failed to log ishraq message:', ishraqMsgError.message, ishraqMsgError.code, ishraqMsgError.details);
+            if (ishraqMsgError.code === "PGRST204") {
+              await supabaseAdmin.from("messages").insert({
+                mosque_id: mosque.id, type: "nafl", content: message,
+                sent_to_count: batchResult.successful, status: "sent",
+              });
+            }
           }
         }
       }
@@ -190,6 +202,12 @@ export async function GET(request: NextRequest) {
           });
           if (awwabinMsgError) {
             console.error('[nafl-reminders] Failed to log awwabin message:', awwabinMsgError.message, awwabinMsgError.code, awwabinMsgError.details);
+            if (awwabinMsgError.code === "PGRST204") {
+              await supabaseAdmin.from("messages").insert({
+                mosque_id: mosque.id, type: "nafl", content: message,
+                sent_to_count: batchResult.successful, status: "sent",
+              });
+            }
           }
         }
       }

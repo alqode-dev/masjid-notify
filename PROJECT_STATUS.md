@@ -1,8 +1,8 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 6, 2026 @ 16:30 SAST
-> **Version:** 1.7.1
-> **Status:** Production-Ready - WhatsApp templates pending Meta approval
+> **Last Updated:** February 8, 2026 @ 18:00 SAST
+> **Version:** 1.8.0
+> **Status:** Production - All systems operational
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -240,14 +240,16 @@ git push origin master
 | Admin settings | ✅ Works | Prayer settings save, **cache invalidated on change** |
 | Admin QR code | ✅ Works | Generate and download QR codes |
 | Admin analytics | ✅ Works | Subscriber growth, message types, status breakdown |
-| Database | ✅ Works | All tables created and functional |
-| Cron jobs | ✅ Works | All 5 jobs running, **retry limits** on scheduled messages |
+| Database | ✅ Works | All tables created and functional, **metadata JSONB column added (v1.8.0)** |
+| Cron jobs | ✅ Works | All 5 jobs running, **retry limits** on scheduled messages, **metadata fallback (v1.8.0)** |
 | Prayer times API | ✅ Works | Aladhan API, **timezone-aware**, **NaN-safe parsing**, **midnight wraparound** |
-| Hadith API | ✅ Works | **NEW: jsDelivr CDN** (v1.6.2), 6 authentic collections, **Fisher-Yates shuffle** |
+| Hadith API | ✅ Works | **jsDelivr CDN** (v1.6.2), 6 authentic collections, **Fisher-Yates shuffle** |
 | Rate limiting | ✅ Works | **Secure IP detection** (x-vercel-forwarded-for, rightmost IP) |
-| 404 page | ✅ Works | Branded not-found page |
+| 404 page | ✅ Works | Branded not-found page, **no admin link exposed (v1.7.2)** |
 | Error handling | ✅ Works | Comprehensive logging, **batch update error handling** |
 | Social preview | ✅ Works | **Custom OG image** for WhatsApp/social sharing (v1.6.1) |
+| WhatsApp webhook | ✅ Works | **Fixed (v1.8.0):** WABA subscribed, commands (STOP/PAUSE/SETTINGS/HELP) fully operational |
+| Message logging | ✅ Works | **Fixed (v1.8.0):** metadata column added, all prayer/nafl messages now recorded |
 
 ### ⚠️ Pending Meta Approval
 
@@ -259,7 +261,8 @@ git push origin master
 
 | Issue | Status | Workaround |
 |-------|--------|------------|
-| **Webhook not receiving messages from Meta** | 🔍 Investigating | Commands (STOP, PAUSE, etc.) may not work. Verify: 1) WHATSAPP_APP_SECRET is correct, 2) "messages" webhook field is subscribed in Meta. See [Troubleshooting](#problem-stoppausesettings-commands-not-working). |
+| ~~Webhook not receiving messages from Meta~~ | ✅ Fixed (v1.8.0) | WABA was not subscribed to app. Fixed by calling POST /v18.0/{WABA_ID}/subscribed_apps. |
+| ~~Prayer/nafl messages not logged in dashboard~~ | ✅ Fixed (v1.8.0) | messages table was missing metadata JSONB column. Fixed via migration 011. |
 
 ### 📋 TODO: Next Steps
 
@@ -270,7 +273,7 @@ git push origin master
 5. [ ] Implement number warmup (start slow)
 6. [ ] Test prayer reminder flow end-to-end
 7. [ ] Go live with real users
-8. [ ] **Resolve webhook message reception issue** - Commands (STOP/PAUSE/SETTINGS) may not be working
+8. [x] ~~Resolve webhook message reception issue~~ - Fixed in v1.8.0 (WABA subscribed to app)
 
 ### 📋 Required Database Migrations
 
@@ -278,6 +281,7 @@ git push origin master
 |-----------|---------|--------|
 | **Migration 009** | Fix messages CHECK constraints + prayer_times_cache RLS | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | **Migration 010** | Unified reminder locks for duplicate prevention | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 011** | Add metadata JSONB column to messages table | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | Migration 007 | Adds Ramadan columns to mosques table | Optional - settings page has fallback |
 | Add retry_count | For scheduled message retry tracking | Optional - code handles missing column |
 
@@ -304,17 +308,17 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 6, 2026 | All pages loading correctly, branded 404 page |
-| **Backend API** | ✅ Operational | Feb 6, 2026 | All admin endpoints use secure server-side routes |
-| **Database (Supabase)** | ✅ Connected | Feb 6, 2026 | PostgreSQL with RLS, coordinates correct |
-| **Admin Dashboard** | ✅ Operational | Feb 6, 2026 | All pages functional, accessible |
-| **Admin Settings** | ✅ Operational | Feb 6, 2026 | **Cache invalidated on save** |
-| **WhatsApp Sending** | ✅ Active | Feb 6, 2026 | Account restored, **concurrent sending** |
-| **WhatsApp Webhook** | ⚠️ Partial | Feb 6, 2026 | Signature verification works, but message reception from Meta under investigation. See [Known Issues](#️-known-issues). |
-| **Cron Jobs** | ✅ Running | Feb 6, 2026 | 5 jobs, **atomic locking**, **dynamic timing** |
-| **Hadith API** | ✅ Integrated | Feb 6, 2026 | jsDelivr CDN (6 collections), **dynamic timing** (15 min after Fajr/Maghrib) |
+| **Frontend (Next.js)** | ✅ Operational | Feb 8, 2026 | All pages loading correctly, branded 404 page, XSS-safe QR print |
+| **Backend API** | ✅ Operational | Feb 8, 2026 | All admin endpoints use secure server-side routes |
+| **Database (Supabase)** | ✅ Connected | Feb 8, 2026 | PostgreSQL with RLS, coordinates correct, **metadata column added** |
+| **Admin Dashboard** | ✅ Operational | Feb 8, 2026 | All pages functional, accessible |
+| **Admin Settings** | ✅ Operational | Feb 8, 2026 | **Cache invalidated on save** |
+| **WhatsApp Sending** | ✅ Active | Feb 8, 2026 | Account restored, **concurrent sending** |
+| **WhatsApp Webhook** | ✅ Operational | Feb 8, 2026 | **Fixed (v1.8.0):** WABA subscribed to app, commands (STOP/PAUSE/SETTINGS/HELP) fully working. See [Meta Webhook Configuration](#meta-webhook-configuration). |
+| **Cron Jobs** | ✅ Running | Feb 8, 2026 | 5 jobs, **atomic locking**, **dynamic timing**, **metadata fallback** |
+| **Hadith API** | ✅ Integrated | Feb 8, 2026 | jsDelivr CDN (6 collections), **dynamic timing** (15 min after Fajr/Maghrib) |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
-| **Rate Limiting** | ✅ Secure | Feb 6, 2026 | **IP spoofing protection** |
+| **Rate Limiting** | ✅ Secure | Feb 8, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
 
 ### Active Mosque
@@ -335,11 +339,11 @@ git push origin master
 
 | Metric | Value |
 |--------|-------|
-| **Development Sprint** | January 31 - February 5, 2026 |
+| **Development Sprint** | January 31 - February 8, 2026 |
 | **User Stories Completed** | 24/24 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
-| **Bug Fixes (v1.6.x)** | 37 issues resolved (22 in v1.6.0 + 15 in v1.6.1) |
-| **Total Commits** | 30+ commits |
+| **Bug Fixes (v1.6.x-v1.8.0)** | 80+ issues resolved |
+| **Total Commits** | 35+ commits |
 | **Lines of Code** | ~9,000+ lines |
 | **Build Time** | ~3.5 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
@@ -372,7 +376,7 @@ git push origin master
 
 ## Code Quality & Security
 
-### Security Features (v1.6.0)
+### Security Features (v1.6.0 - v1.7.2)
 
 | Feature | Implementation | File |
 |---------|----------------|------|
@@ -382,6 +386,12 @@ git push origin master
 | **Mosque-scoped operations** | Admins can only access their mosque's data | All admin routes |
 | **Input validation** | Boolean preference validation | `settings/[token]/route.ts:136-153` |
 | **Delete confirmation** | Prevents accidental subscriber deletion | `subscribers-table.tsx:158-170` |
+| **XSS prevention in QR print** | HTML entity escaping in document.write() | qr-code.tsx (v1.7.2) |
+| **Sanitized error messages** | Supabase errors not leaked to client | admin/settings/route.ts (v1.7.2) |
+| **Generic login errors** | Auth details not leaked on failed login | admin/login/page.tsx (v1.7.2) |
+| **No admin link on 404** | Public 404 page does not expose admin URL | not-found.tsx (v1.7.2) |
+| **Import validation** | Phone validation + size limits on import | admin/subscribers/import/route.ts (v1.7.2) |
+| **Status validation** | Status field validated on subscriber PATCH | admin/subscribers/route.ts (v1.7.2) |
 
 ### Code Quality Improvements (v1.6.0)
 
@@ -396,13 +406,18 @@ git push origin master
 | **PostgreSQL error codes** | Uses error codes instead of fragile message matching | `admin/settings/route.ts:57-60` |
 | **Constants extraction** | Magic numbers moved to constants file | `constants.ts` |
 
-### Accessibility Improvements (v1.6.0)
+### Accessibility Improvements (v1.6.0 - v1.7.2)
 
 | Component | Improvement |
 |-----------|-------------|
 | **Checkbox** | Added `id`, `htmlFor`, `aria-describedby` linking |
 | **Subscribers Table** | Added `aria-label` to table and action buttons |
 | **Action Buttons** | Added descriptive `aria-label` attributes |
+| **Login page** | Added form labels and autoComplete attributes (v1.7.2) |
+| **Sidebar** | Added aria-label to hamburger button and mobile nav dialog (v1.7.2) |
+| **Error states** | Added role=alert to error messages (v1.7.2) |
+| **Decorative elements** | Added aria-hidden to decorative icons (v1.7.2) |
+| **Subscriber search** | Added accessible label for search input (v1.7.2) |
 
 ### Constants Defined (`src/lib/constants.ts`)
 
@@ -1260,7 +1275,7 @@ npx playwright test --headed
 | `reminder_offset` | INT | Minutes before prayer |
 | `subscribed_at` | TIMESTAMP | First subscription date |
 
-### Key Table: messages (v1.6.3 - Fixed Constraints)
+### Key Table: messages (v1.8.0 - Added metadata column)
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -1395,6 +1410,7 @@ masjid-notify/
 │       ├── 008_prayer_reminder_locks.sql
 │       ├── 009_fix_messages_constraints.sql  # (v1.6.3) Fix CHECK constraints
 │       └── 010_unified_reminder_locks.sql    # (v1.7.0) Unified atomic locking
+│       ├── 011_add_messages_metadata.sql  # (v1.8.0) Add metadata JSONB column
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
@@ -1536,12 +1552,12 @@ Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 - Each job calls a URL with headers on a schedule
 - We have 5 jobs set up
 
-**Our jobs:**
+**Our jobs (all every 5 minutes since v1.7.1):**
 1. Prayer Reminders - every 5 mins
 2. Ramadan Reminders - every 5 mins
 3. Nafl Reminders - every 5 mins
-4. Morning Hadith - 3:30 AM UTC
-5. Evening Hadith - 4:00 PM UTC
+4. Daily Hadith - every 5 mins (dynamic: sends 15 min after Fajr/Maghrib)
+5. Jumu'ah Reminder - every 5 mins (sends on Fridays, 2 hours before khutbah)
 
 ### GitHub (Code Repository)
 
@@ -1576,6 +1592,106 @@ Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 ---
 
 ## Changelog
+
+### Version 1.8.0 - February 8, 2026
+
+**CRITICAL: Fix Webhook Message Reception & Message Logging**
+
+This release fixes two critical production issues: WhatsApp webhook commands (STOP, PAUSE, SETTINGS, HELP) not working because the WABA was not subscribed to the app, and all prayer/nafl message logging silently failing because the `metadata` JSONB column didn't exist on the `messages` table.
+
+#### WhatsApp Webhook Fixed
+
+| Issue | Root Cause | Solution |
+|-------|------------|----------|
+| **Commands not working (STOP, PAUSE, SETTINGS, HELP)** | WhatsApp Business Account (WABA) was subscribed to "WANotifier App" but NOT to our own "Alqode Masjid Notify" app | Subscribed WABA to app via Graph API: `POST /v18.0/1443752210724410/subscribed_apps` |
+| **No POST requests reaching webhook** | Without WABA subscription, Meta never delivers incoming messages to our webhook endpoint | WABA subscription fixed this - POST requests now appear in Vercel logs |
+| **Signature verification failing** | `WHATSAPP_APP_SECRET` in Vercel must match Meta App Secret exactly | User must verify: Meta > App Dashboard > App Settings > Basic > App Secret matches Vercel env var |
+
+**How WABA subscription works:**
+- The WhatsApp Business Account must be explicitly subscribed to your app via the Graph API
+- This is separate from webhook URL verification (which only proves your server can respond)
+- Without this subscription, Meta will not deliver any incoming messages to your webhook
+- Command: `curl -X POST "https://graph.facebook.com/v18.0/{WABA_ID}/subscribed_apps" -H "Authorization: Bearer {ACCESS_TOKEN}"`
+
+#### Message Logging Fixed
+
+| Issue | Root Cause | Solution |
+|-------|------------|----------|
+| **Prayer messages not logged in dashboard** | `messages` table was missing `metadata` JSONB column | Created migration 011 to add the column |
+| **Nafl messages not logged** | Same - all inserts with `metadata` field failed with PGRST204 | Same migration fix |
+| **Scheduled message logging failing** | Same root cause | Same migration fix |
+| **Database evidence** | `prayer_reminder_locks` had entries for ALL prayers but `messages` table had ZERO entries | Confirms messages were sent to WhatsApp but DB logging failed |
+
+**Additional resilience:** Added PGRST204 fallback retry in prayer-reminders and nafl-reminders routes. If the metadata column doesn't exist, the insert is retried without metadata so messages are still logged.
+
+#### Migration Required
+
+Run `supabase/migrations/011_add_messages_metadata.sql` in Supabase SQL Editor:
+
+```sql
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_metadata ON messages USING gin (metadata);
+```
+
+#### Files Changed
+
+| File | Change |
+|------|--------|
+| `supabase/migrations/011_add_messages_metadata.sql` | **NEW** - Adds metadata JSONB column to messages table |
+| `src/app/api/cron/prayer-reminders/route.ts` | Added PGRST204 fallback retry for prayer + scheduled message inserts |
+| `src/app/api/cron/nafl-reminders/route.ts` | Added PGRST204 fallback retry for tahajjud, ishraq, awwabin message inserts |
+
+---
+
+### Version 1.7.2 - February 6, 2026
+
+**Comprehensive Codebase Audit - Security, Accessibility & Bug Fixes**
+
+This release addresses 40+ issues identified through a thorough codebase audit, covering security vulnerabilities, accessibility gaps, CSS bugs, and code quality improvements across 22 files.
+
+#### Security Fixes
+
+| Issue | Fix | File |
+|-------|-----|------|
+| **XSS in QR print** | HTML entity escaping in `document.write()` | `qr-code.tsx` |
+| **Supabase errors leaked to client** | Sanitized error messages in settings API | `admin/settings/route.ts` |
+| **Auth details leaked on failed login** | Generic "Invalid credentials" error message | `admin/login/page.tsx` |
+| **Admin URL exposed on 404 page** | Removed admin link from public 404 page | `not-found.tsx` |
+| **Import missing validation** | Phone validation + size limits on CSV import | `admin/subscribers/import/route.ts` |
+| **Status field not validated** | Status validated on subscriber PATCH | `admin/subscribers/route.ts` |
+
+#### Accessibility Fixes
+
+| Issue | Fix | File |
+|-------|-----|------|
+| **Login form missing labels** | Added form labels and autoComplete attributes | `admin/login/page.tsx` |
+| **Sidebar missing ARIA** | Added aria-label to hamburger button and mobile nav | `sidebar.tsx` |
+| **Error states not announced** | Added role=alert to error messages | Multiple files |
+| **Decorative icons read aloud** | Added aria-hidden to decorative icons | Multiple files |
+| **Search input missing label** | Added accessible label for subscriber search | `subscribers-table.tsx` |
+
+#### CSS & UI Fixes
+
+| Issue | Fix | File |
+|-------|-----|------|
+| **`hsl(oklch(...))` invalid** | Use `var(--css-var)` directly (Tailwind CSS 4 uses oklch) | Multiple files |
+| **Framer Motion 25s delay** | Capped animation delay with `Math.min()` for large lists | `subscribers-table.tsx` |
+| **`URL.createObjectURL()` leak** | Added `revokeObjectURL()` cleanup | `qr-code.tsx` |
+| **Clipboard API unhandled rejection** | Added await + catch to `navigator.clipboard.writeText()` | Multiple files |
+
+#### Code Quality Fixes
+
+| Issue | Fix | File |
+|-------|-----|------|
+| **`parseInt("")` returns NaN** | Added fallback: `parseInt(val, 10) \|\| default` | Multiple files |
+| **`??` defaults reset fields** | Use conditional object building for updates | `admin/settings/route.ts` |
+| **Missing mosque null checks** | Added early return on null mosque data | Multiple cron routes |
+
+#### Files Changed (22 files)
+
+See git commit `8b022a8` for full diff.
+
+---
 
 ### Version 1.7.1 - February 6, 2026
 
@@ -1879,7 +1995,7 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 
 ---
 
-**Document Version:** 1.7.1
-**Last Updated:** February 6, 2026 @ 16:30 SAST
+**Document Version:** 1.8.0
+**Last Updated:** February 8, 2026 @ 18:00 SAST
 **Author:** Claude Code
-**Status:** Production-Ready - WhatsApp templates pending Meta approval, Webhook message reception under investigation
+**Status:** Production-Ready - WhatsApp templates pending Meta approval, Webhook WABA subscription fixed (v1.8.0), Message logging fixed (v1.8.0)
