@@ -17,7 +17,7 @@ function verifyWebhookSignature(rawBody: string, signature: string | null): bool
     return false;
   }
 
-  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  const appSecret = process.env.WHATSAPP_APP_SECRET?.trim();
   if (!appSecret) {
     console.error("[webhook] CRITICAL: WHATSAPP_APP_SECRET is not configured in environment variables!");
     console.error("[webhook] Commands (STOP, PAUSE, SETTINGS, etc.) will NOT work until this is fixed.");
