@@ -1,6 +1,6 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 8, 2026 @ 18:00 SAST
+> **Last Updated:** February 9, 2026 @ 00:30 SAST
 > **Version:** 1.8.0
 > **Status:** Production - All systems operational
 > **Production URL:** https://masjid-notify.vercel.app
@@ -312,17 +312,17 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 8, 2026 | All pages loading correctly, branded 404 page, XSS-safe QR print |
-| **Backend API** | ✅ Operational | Feb 8, 2026 | All admin endpoints use secure server-side routes |
-| **Database (Supabase)** | ✅ Connected | Feb 8, 2026 | PostgreSQL with RLS, coordinates correct, **metadata column added** |
-| **Admin Dashboard** | ✅ Operational | Feb 8, 2026 | All pages functional, accessible |
-| **Admin Settings** | ✅ Operational | Feb 8, 2026 | **Cache invalidated on save** |
-| **WhatsApp Sending** | ✅ Active | Feb 8, 2026 | Account restored, **concurrent sending** |
-| **WhatsApp Webhook** | ✅ Operational | Feb 8, 2026 | **Fixed (v1.8.0):** WABA subscribed to app, commands (STOP/PAUSE/SETTINGS/HELP) fully working. See [Meta Webhook Configuration](#meta-webhook-configuration). |
-| **Cron Jobs** | ✅ Running | Feb 8, 2026 | 5 jobs, **atomic locking**, **dynamic timing**, **metadata fallback** |
-| **Hadith API** | ✅ Integrated | Feb 8, 2026 | jsDelivr CDN (6 collections), **dynamic timing** (15 min after Fajr/Maghrib) |
+| **Frontend (Next.js)** | ✅ Operational | Feb 9, 2026 | All pages loading correctly, branded 404 page, XSS-safe QR print |
+| **Backend API** | ✅ Operational | Feb 9, 2026 | All admin endpoints use secure server-side routes |
+| **Database (Supabase)** | ✅ Connected | Feb 9, 2026 | PostgreSQL with RLS, coordinates correct, **metadata column added** |
+| **Admin Dashboard** | ✅ Operational | Feb 9, 2026 | All pages functional, accessible |
+| **Admin Settings** | ✅ Operational | Feb 9, 2026 | **Cache invalidated on save** |
+| **WhatsApp Sending** | ✅ Active | Feb 9, 2026 | Account restored, **concurrent sending**, `preview_url: true` |
+| **WhatsApp Webhook** | ✅ Operational | Feb 9, 2026 | **Fixed (v1.8.0):** WABA subscribed to app, all 6 commands working (STOP/START/RESUME/PAUSE/SETTINGS/HELP). See [Meta Webhook Configuration](#meta-webhook-configuration). |
+| **Cron Jobs** | ✅ Running | Feb 9, 2026 | 5 jobs, **atomic locking**, **dynamic timing**, **metadata fallback** |
+| **Hadith API** | ✅ Integrated | Feb 9, 2026 | jsDelivr CDN (6 collections), **dynamic timing** (15 min after Fajr/Maghrib) |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
-| **Rate Limiting** | ✅ Secure | Feb 8, 2026 | **IP spoofing protection** |
+| **Rate Limiting** | ✅ Secure | Feb 9, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
 
 ### Active Mosque
@@ -343,11 +343,11 @@ git push origin master
 
 | Metric | Value |
 |--------|-------|
-| **Development Sprint** | January 31 - February 8, 2026 |
+| **Development Sprint** | January 31 - February 9, 2026 |
 | **User Stories Completed** | 24/24 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
 | **Bug Fixes (v1.6.x-v1.8.0)** | 80+ issues resolved |
-| **Total Commits** | 35+ commits |
+| **Total Commits** | 79 commits |
 | **Lines of Code** | ~9,000+ lines |
 | **Build Time** | ~3.5 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
@@ -375,12 +375,15 @@ git push origin master
 - ✅ **Branded 404 page**
 - ✅ **Dynamic hadith timing** (follows prayer times, not fixed UTC)
 - ✅ **Atomic reminder locking** (prevents duplicate messages)
+- ✅ **WhatsApp webhook commands** (STOP/START/RESUME/PAUSE/SETTINGS/HELP all verified working)
+- ✅ **User settings via WhatsApp** (24h token-based link to preference page)
+- ✅ **Env var `.trim()` defense** (prevents trailing newline issues)
 
 ---
 
 ## Code Quality & Security
 
-### Security Features (v1.6.0 - v1.7.2)
+### Security Features (v1.6.0 - v1.8.0)
 
 | Feature | Implementation | File |
 |---------|----------------|------|
@@ -396,6 +399,8 @@ git push origin master
 | **No admin link on 404** | Public 404 page does not expose admin URL | not-found.tsx (v1.7.2) |
 | **Import validation** | Phone validation + size limits on import | admin/subscribers/import/route.ts (v1.7.2) |
 | **Status validation** | Status field validated on subscriber PATCH | admin/subscribers/route.ts (v1.7.2) |
+| **Env var `.trim()` defense** | Prevents trailing whitespace/newline in app secret | webhook/whatsapp/route.ts (v1.8.0) |
+| **PGRST204 fallback retry** | Message logging survives missing metadata column | prayer-reminders, nafl-reminders (v1.8.0) |
 
 ### Code Quality Improvements (v1.6.0)
 
@@ -1273,6 +1278,7 @@ npx playwright test --headed
 | `daily_hadith_log` | Tracks sent hadiths | ✅ |
 | `prayer_times_cache` | API response cache (with INSERT/UPDATE policies) | ✅ |
 | `scheduled_messages` | Scheduled announcements | ✅ |
+| `prayer_reminder_locks` | Atomic dedup locks for all reminder types (v1.7.0) | ✅ |
 
 ### Key Table: subscribers
 
@@ -1289,6 +1295,10 @@ npx playwright test --headed
 | `pref_hadith` | BOOLEAN | Daily hadith opt-in |
 | `pref_announcements` | BOOLEAN | Announcements opt-in |
 | `reminder_offset` | INT | Minutes before prayer |
+| `settings_token` | TEXT | 32-char token for SETTINGS command preference link |
+| `settings_token_expires` | TIMESTAMP | Token expiry (24h from generation) |
+| `pause_until` | TIMESTAMP | When PAUSE expires (null if not paused) |
+| `last_message_at` | TIMESTAMP | Last successful message delivery |
 | `subscribed_at` | TIMESTAMP | First subscription date |
 
 ### Key Table: messages (v1.8.0 - Added metadata column)
@@ -1304,6 +1314,19 @@ npx playwright test --headed
 | `sent_by` | UUID | Admin who sent (null for automated) |
 | `status` | TEXT | **pending / sent / failed / received** |
 | `metadata` | JSONB | Additional data (prayer name, hadith source, etc.) |
+
+### Key Table: prayer_reminder_locks (v1.7.0)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `mosque_id` | UUID | Foreign key to mosques |
+| `prayer_key` | TEXT | Reminder type (fajr, dhuhr, hadith_morning, jumuah, tahajjud, suhoor, etc.) |
+| `reminder_date` | DATE | Date of the reminder |
+| `reminder_offset` | INT | Subscriber's offset in minutes |
+| `created_at` | TIMESTAMP | Lock creation time |
+
+**UNIQUE constraint:** `(mosque_id, prayer_key, reminder_date, reminder_offset)` - prevents duplicate sends via atomic INSERT.
 
 ### Key Table: scheduled_messages
 
@@ -1341,6 +1364,7 @@ masjid-notify/
 │   │   │   ├── qr-code/page.tsx        # QR generator
 │   │   │   └── settings/page.tsx       # Mosque settings
 │   │   │
+│   │   ├── settings/[token]/page.tsx    # User notification preferences (24h token access via SETTINGS command)
 │   │   ├── privacy/page.tsx            # Privacy policy
 │   │   ├── terms/page.tsx              # Terms of service
 │   │   ├── data-deletion/page.tsx      # Data deletion instructions
@@ -1425,8 +1449,8 @@ masjid-notify/
 │       ├── 007_add_ramadan_columns.sql
 │       ├── 008_prayer_reminder_locks.sql
 │       ├── 009_fix_messages_constraints.sql  # (v1.6.3) Fix CHECK constraints
-│       └── 010_unified_reminder_locks.sql    # (v1.7.0) Unified atomic locking
-│       ├── 011_add_messages_metadata.sql  # (v1.8.0) Add metadata JSONB column
+│       ├── 010_unified_reminder_locks.sql    # (v1.7.0) Unified atomic locking
+│       └── 011_add_messages_metadata.sql     # (v1.8.0) Add metadata JSONB column
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
@@ -2053,6 +2077,6 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 ---
 
 **Document Version:** 1.8.0
-**Last Updated:** February 8, 2026 @ 18:00 SAST
+**Last Updated:** February 9, 2026 @ 00:30 SAST
 **Author:** Claude Code
-**Status:** Production-Ready - WhatsApp templates pending Meta approval, Webhook WABA subscription fixed (v1.8.0), Message logging fixed (v1.8.0)
+**Status:** Production-Ready - All webhook commands verified working, WhatsApp templates pending Meta approval, Vercel env vars cleaned (v1.8.0)
