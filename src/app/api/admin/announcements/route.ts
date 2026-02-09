@@ -1,21 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin, type Subscriber } from "@/lib/supabase";
 import { ANNOUNCEMENT_TEMPLATE } from "@/lib/whatsapp";
-import { verifyAdminAuth } from "@/lib/auth";
-import { previewTemplate } from "@/lib/whatsapp-templates";
+import { withAdminAuth } from "@/lib/auth";
 import { sendTemplatesConcurrently } from "@/lib/message-sender";
 
-export async function POST(request: NextRequest) {
-  try {
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth();
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
+const MAX_CONTENT_LENGTH = 4096;
 
+export const POST = withAdminAuth(async (request, { admin }) => {
+  try {
     const body = await request.json();
     const { mosque_id, content } = body;
 
@@ -26,8 +18,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof content !== "string" || content.length > MAX_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: `Content must be a string of ${MAX_CONTENT_LENGTH} characters or fewer` },
+        { status: 400 }
+      );
+    }
+
     // Verify admin has access to this mosque
-    if (authResult.admin.mosque_id !== mosque_id) {
+    if (admin.mosque_id !== mosque_id) {
       return NextResponse.json(
         { error: "Unauthorized: You do not have access to this mosque" },
         { status: 403 }
@@ -49,7 +48,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get active subscribers with announcements preference
-    // Select full subscriber object for sendTemplatesConcurrently
     const { data: subscribers, error: subscribersError } = await supabaseAdmin
       .from("subscribers")
       .select("*")
@@ -85,9 +83,6 @@ export async function POST(request: NextRequest) {
     const successCount = batchResult.successful;
     const failCount = batchResult.failed;
 
-    // Generate message content for logging (preview with actual values)
-    const message = previewTemplate(ANNOUNCEMENT_TEMPLATE, templateVars);
-
     // Log the message
     await supabaseAdmin.from("messages").insert({
       mosque_id,
@@ -114,4 +109,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

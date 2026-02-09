@@ -58,6 +58,21 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 
   for (const scheduled of scheduledMessages as ScheduledMessage[]) {
     try {
+      // Atomically claim the scheduled message to prevent duplicate sends
+      // Uses optimistic locking: update status to 'sending' only if still 'pending'
+      const { data: claimed, error: claimError } = await supabaseAdmin
+        .from("scheduled_messages")
+        .update({ status: "sending" as string })
+        .eq("id", scheduled.id)
+        .eq("status", "pending")
+        .select("id")
+        .single();
+
+      if (claimError || !claimed) {
+        // Another cron instance already claimed this message - skip
+        continue;
+      }
+
       // Get mosque details for the announcement message format
       const { data: mosque } = await supabaseAdmin
         .from("mosques")
@@ -95,9 +110,6 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
         templateVars,
         logger
       );
-
-      // Generate message content for logging (preview with actual values)
-      const message = previewTemplate(ANNOUNCEMENT_TEMPLATE, templateVars);
 
       // Batch update last_message_at for successful sends
       const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
@@ -165,10 +177,10 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
           mosqueId: scheduled.mosque_id,
         });
       } else {
-        // Increment retry count for next attempt
+        // Reset status back to pending and increment retry count for next attempt
         await supabaseAdmin
           .from("scheduled_messages")
-          .update({ retry_count: currentRetries })
+          .update({ status: "pending", retry_count: currentRetries })
           .eq("id", scheduled.id);
       }
 
@@ -259,6 +271,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Auto-resume subscribers whose pause period has expired
+    const { data: resumed, error: resumeError } = await supabaseAdmin
+      .from("subscribers")
+      .update({ status: "active", pause_until: null })
+      .eq("status", "paused")
+      .lte("pause_until", new Date().toISOString())
+      .select("id");
+
+    if (resumeError) {
+      logCronError(logger, "Failed to auto-resume paused subscribers", { error: resumeError });
+    } else if (resumed && resumed.length > 0) {
+      setCronMetadata(logger, { autoResumed: resumed.length });
+    }
+
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
@@ -283,7 +309,8 @@ export async function GET(request: NextRequest) {
         mosque.calculation_method,
         mosque.madhab,
         undefined, // Use today's date
-        mosque.id  // Enable caching for this mosque
+        mosque.id, // Enable caching for this mosque
+        mosque.timezone // Use mosque timezone for date calculation
       );
 
       if (!prayerTimes) {

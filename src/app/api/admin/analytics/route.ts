@@ -9,6 +9,7 @@ const MESSAGE_TYPE_COLORS: Record<string, string> = {
   ramadan: "#ec4899",
   welcome: "#10b981",
   jumuah: "#3b82f6",
+  nafl: "#6366f1",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,7 +23,7 @@ export const GET = withAdminAuth(async (request, { admin }) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Fetch subscribers from last 30 days
+    // Fetch subscribers from last 30 days (only the column we need)
     const { data: subscribers } = await supabaseAdmin
       .from("subscribers")
       .select("subscribed_at")
@@ -65,11 +66,12 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       };
     });
 
-    // Fetch message types breakdown
+    // Fetch message types breakdown - only select needed columns
     const { data: messages } = await supabaseAdmin
       .from("messages")
       .select("type, sent_to_count")
-      .eq("mosque_id", admin.mosque_id);
+      .eq("mosque_id", admin.mosque_id)
+      .neq("type", "webhook_command");
 
     const typeCounts = new Map<string, number>();
     messages?.forEach((msg) => {
@@ -85,29 +87,25 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       })
     );
 
-    // Fetch status breakdown
-    const statusCounts: Record<string, number> = {
-      active: 0,
-      paused: 0,
-      unsubscribed: 0,
-    };
+    // Fetch status breakdown using individual counts (no full row fetch)
+    const statuses = ["active", "paused", "unsubscribed"] as const;
+    const statusBreakdown: { name: string; value: number; color: string }[] = [];
 
-    const { data: allSubscribers } = await supabaseAdmin
-      .from("subscribers")
-      .select("status")
-      .eq("mosque_id", admin.mosque_id);
+    for (const status of statuses) {
+      const { count } = await supabaseAdmin
+        .from("subscribers")
+        .select("*", { count: "exact", head: true })
+        .eq("mosque_id", admin.mosque_id)
+        .eq("status", status);
 
-    allSubscribers?.forEach((sub) => {
-      statusCounts[sub.status] = (statusCounts[sub.status] || 0) + 1;
-    });
-
-    const statusBreakdown = Object.entries(statusCounts)
-      .filter(([, value]) => value > 0)
-      .map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value,
-        color: STATUS_COLORS[name] || "#6b7280",
-      }));
+      if (count && count > 0) {
+        statusBreakdown.push({
+          name: status.charAt(0).toUpperCase() + status.slice(1),
+          value: count,
+          color: STATUS_COLORS[status] || "#6b7280",
+        });
+      }
+    }
 
     return NextResponse.json({
       subscriberGrowth,

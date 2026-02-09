@@ -166,10 +166,14 @@ export async function PUT(
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    // Update subscriber preferences
+    // Update subscriber preferences and invalidate the token (one-time use)
     const { error: updateError } = await supabaseAdmin
       .from("subscribers")
-      .update(updateData)
+      .update({
+        ...updateData,
+        settings_token: null,
+        settings_token_expires: null,
+      })
       .eq("id", subscriber.id);
 
     if (updateError) {

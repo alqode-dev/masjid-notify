@@ -22,12 +22,10 @@ export default function AdminLayout({
 
     const checkAuth = async () => {
       const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (!session && !pathname.includes("/admin/login")) {
-        router.replace("/admin/login");
-      } else if (session) {
+      if (user) {
         setAuthenticated(true);
       }
       setLoading(false);
@@ -37,8 +35,8 @@ export default function AdminLayout({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" && !pathname.includes("/admin/login")) {
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
         router.replace("/admin/login");
       } else if (event === "SIGNED_IN") {
         setAuthenticated(true);
@@ -48,7 +46,9 @@ export default function AdminLayout({
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, pathname]);
+    // Only run once on mount - middleware handles route-level auth
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Show login page without sidebar
   if (pathname.includes("/admin/login")) {

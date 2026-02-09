@@ -1,23 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { verifyAdminAuth } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 
 // DELETE - Cancel a scheduled message
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAdminAuth(async (request, { admin }) => {
   try {
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth();
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { id } = await params;
+    // Extract ID from URL path
+    const url = new URL(request.url);
+    const id = url.pathname.split("/").pop();
 
     if (!id) {
       return NextResponse.json(
@@ -41,7 +31,7 @@ export async function DELETE(
     }
 
     // Verify admin has access to this mosque
-    if (message.mosque_id !== authResult.admin.mosque_id) {
+    if (message.mosque_id !== admin.mosque_id) {
       return NextResponse.json(
         { error: "Unauthorized: You do not have access to this message" },
         { status: 403 }
@@ -81,4 +71,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

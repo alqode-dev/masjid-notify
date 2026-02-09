@@ -74,7 +74,8 @@ export async function GET(request: NextRequest) {
         mosque.calculation_method,
         mosque.madhab,
         undefined, // Use today's date
-        mosque.id // Enable caching for this mosque
+        mosque.id, // Enable caching for this mosque
+        mosque.timezone // Use mosque timezone for date calculation
       );
 
       if (!prayerTimes) {

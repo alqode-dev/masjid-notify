@@ -16,7 +16,8 @@ import {
   SUHOOR_PLANNING_TEMPLATE,
 } from "./whatsapp-templates";
 
-const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0'
+const WHATSAPP_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v21.0'
+const WHATSAPP_API_URL = `https://graph.facebook.com/${WHATSAPP_API_VERSION}`
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!
 
@@ -185,98 +186,3 @@ export {
   SUHOOR_PLANNING_TEMPLATE,
 };
 
-// Welcome message for new subscribers
-export function getWelcomeMessage(mosqueName: string): string {
-  return `Assalamu Alaikum! 🕌
-
-You're now subscribed to ${mosqueName} updates.
-
-You'll receive:
-• Prayer time reminders
-• Jumu'ah notifications
-• Important announcements
-
-Reply STOP to unsubscribe
-Reply SETTINGS to change preferences
-Reply HELP for support
-
-JazakAllah Khair for connecting with us!`
-}
-
-// Prayer reminder message
-export function getPrayerReminderMessage(
-  prayerName: string,
-  prayerTime: string,
-  mosqueName: string
-): string {
-  const emoji = prayerName === 'Fajr' ? '🌅' :
-                prayerName === 'Maghrib' ? '🌆' : '🕌'
-
-  return `${emoji} ${prayerName} Reminder
-
-${prayerName} begins at ${prayerTime}
-
-${mosqueName}`
-}
-
-// Jumu'ah reminder message
-export function getJumuahReminderMessage(
-  adhaan: string,
-  khutbah: string,
-  mosqueName: string
-): string {
-  return `🕌 Jumu'ah Mubarak!
-
-First Adhaan: ${adhaan}
-Khutbah begins: ${khutbah}
-
-${mosqueName}`
-}
-
-// Announcement message
-export function getAnnouncementMessage(
-  content: string,
-  mosqueName: string
-): string {
-  return `📢 ${mosqueName}
-
-${content}`
-}
-
-// Suhoor reminder (Ramadan)
-export function getSuhoorReminderMessage(
-  fajrTime: string,
-  mosqueName: string
-): string {
-  return `🌙 Suhoor Reminder
-
-Suhoor ends at ${fajrTime}
-Eat something, even if just a date and water.
-
-${mosqueName}`
-}
-
-// Iftar reminder (Ramadan)
-export function getIftarReminderMessage(
-  maghribTime: string,
-  minutesUntil: number,
-  mosqueName: string
-): string {
-  return `🌅 Iftar in ${minutesUntil} minutes
-
-Maghrib at ${maghribTime}
-
-${mosqueName}`
-}
-
-// Taraweeh reminder (Ramadan)
-export function getTaraweehReminderMessage(
-  taraweehTime: string,
-  mosqueName: string
-): string {
-  return `🌙 Taraweeh Reminder
-
-Taraweeh begins at ${taraweehTime}
-
-Join us for the night prayers at ${mosqueName}`
-}

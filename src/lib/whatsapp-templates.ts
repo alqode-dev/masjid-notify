@@ -32,10 +32,6 @@
  * After approval, use sendWhatsAppTemplate() from whatsapp.ts with the template name.
  */
 
-// Environment variable for template namespace (set in Vercel/production)
-// This is your WhatsApp Business Account ID used as namespace for templates
-export const TEMPLATE_NAMESPACE = process.env.WHATSAPP_TEMPLATE_NAMESPACE || "";
-
 /**
  * Template definition interface
  */
@@ -371,7 +367,7 @@ export function previewTemplate(
   let preview = template.body;
 
   useValues.forEach((value, index) => {
-    preview = preview.replace(`{{${index + 1}}}`, value);
+    preview = preview.replaceAll(`{{${index + 1}}}`, value);
   });
 
   return preview;

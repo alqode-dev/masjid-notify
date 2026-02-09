@@ -56,7 +56,7 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
           >
             <MapPin className="w-4 h-4" />
             <span className="text-sm underline-offset-2 hover:underline">
-              Rondebosch East, {mosque.city}
+              {mosque.city}, {mosque.country}
             </span>
           </a>
 

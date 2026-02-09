@@ -71,7 +71,8 @@ export async function GET(request: NextRequest) {
         mosque.calculation_method,
         mosque.madhab,
         undefined, // Use today's date
-        mosque.id // Enable caching for this mosque
+        mosque.id, // Enable caching for this mosque
+        mosque.timezone // Use mosque timezone for date calculation
       );
 
       if (!prayerTimes) {
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Check Ishraq reminder (20 minutes after Sunrise)
+      // Check Ishraq reminder (ISHRAQ_MINUTES_AFTER_SUNRISE after Sunrise)
       if (isWithinMinutesAfter(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE, mosque.timezone)) {
         // ATOMIC LOCK: Claim exclusive right to send this reminder
         const lockAcquired = await tryClaimReminderLock(mosque.id, "ishraq", 0);

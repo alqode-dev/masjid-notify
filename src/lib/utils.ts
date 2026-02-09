@@ -13,22 +13,6 @@ export function isValidSAPhoneNumber(phone: string): boolean {
   return SA_PHONE_REGEX.test(cleaned);
 }
 
-export function formatPhoneNumber(phone: string): string {
-  // Remove all non-digit characters except +
-  let cleaned = phone.replace(/[^\d+]/g, "");
-
-  // Handle different formats and normalize to +27 format
-  if (cleaned.startsWith("0")) {
-    cleaned = "+27" + cleaned.slice(1);
-  } else if (cleaned.startsWith("27") && !cleaned.startsWith("+27")) {
-    cleaned = "+" + cleaned;
-  } else if (!cleaned.startsWith("+27")) {
-    cleaned = "+27" + cleaned;
-  }
-
-  return cleaned;
-}
-
 /**
  * Normalize phone number to +27 format for consistent storage and lookup.
  * Handles +27, 27, and 0 prefixes consistently.
@@ -60,6 +44,9 @@ export function normalizePhoneNumber(phone: string): string {
 
   return cleaned;
 }
+
+// Alias for backwards compatibility - use normalizePhoneNumber for new code
+export const formatPhoneNumber = normalizePhoneNumber;
 
 export function formatPhoneForDisplay(phone: string): string {
   const cleaned = formatPhoneNumber(phone);
@@ -113,13 +100,20 @@ export function getRelativeTime(date: Date): string {
 }
 
 // Generate a random token for subscriber settings links
+// Uses rejection sampling to eliminate modulo bias
 export function generateToken(length: number = 32): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const charsLen = chars.length; // 62
+  const maxValid = 256 - (256 % charsLen); // 252 - reject values >= this
   let result = "";
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < length; i++) {
-    result += chars[array[i] % chars.length];
+  while (result.length < length) {
+    const array = new Uint8Array(length - result.length + 10); // Extra to handle rejections
+    crypto.getRandomValues(array);
+    for (let i = 0; i < array.length && result.length < length; i++) {
+      if (array[i] < maxValid) {
+        result += chars[array[i] % charsLen];
+      }
+    }
   }
   return result;
 }

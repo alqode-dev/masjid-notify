@@ -30,17 +30,15 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       .eq("mosque_id", admin.mosque_id)
       .eq("status", "active");
 
-    // Get message counts using admin's mosque_id
-    const { data: totalMessagesData, error: msgError, count: messageRowCount } = await supabaseAdmin
+    // Get total message count - only fetch the column we need to sum
+    const { data: totalMessagesData, error: msgError } = await supabaseAdmin
       .from("messages")
-      .select("sent_to_count", { count: "exact" })
+      .select("sent_to_count")
       .eq("mosque_id", admin.mosque_id);
 
     if (msgError) {
       console.error("Error fetching messages for stats:", msgError);
     }
-
-    console.log(`[stats] mosque_id=${admin.mosque_id}, message rows=${messageRowCount}, data=`, JSON.stringify(totalMessagesData));
 
     const totalMessages = (totalMessagesData ?? []).reduce(
       (sum, msg) => sum + (msg.sent_to_count || 0),

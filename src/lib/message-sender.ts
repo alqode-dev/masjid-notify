@@ -162,23 +162,29 @@ export function getSuccessfulSubscriberIds(results: SendResult[]): string[] {
  *
  * @param subscriberIds - Array of subscriber IDs to update
  */
+const UPDATE_BATCH_SIZE = 100;
+
 export async function batchUpdateLastMessageAt(
   subscriberIds: string[]
 ): Promise<void> {
   if (subscriberIds.length === 0) return;
 
-  // Supabase doesn't support UPDATE ... WHERE id IN (...) directly,
-  // but we can use .in() filter
-  const { error } = await supabaseAdmin
-    .from("subscribers")
-    .update({ last_message_at: new Date().toISOString() })
-    .in("id", subscriberIds);
+  const now = new Date().toISOString();
 
-  if (error) {
-    console.error("Failed to batch update last_message_at:", error.message, {
-      subscriberCount: subscriberIds.length,
-      code: error.code,
-    });
-    // Don't throw - this is a non-critical update for tracking purposes
+  // Process in batches to avoid overly large IN() clauses
+  for (let i = 0; i < subscriberIds.length; i += UPDATE_BATCH_SIZE) {
+    const batch = subscriberIds.slice(i, i + UPDATE_BATCH_SIZE);
+    const { error } = await supabaseAdmin
+      .from("subscribers")
+      .update({ last_message_at: now })
+      .in("id", batch);
+
+    if (error) {
+      console.error("Failed to batch update last_message_at:", error.message, {
+        subscriberCount: batch.length,
+        code: error.code,
+      });
+      // Don't throw - this is a non-critical update for tracking purposes
+    }
   }
 }

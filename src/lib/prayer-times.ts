@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase'
-import { MINUTES_IN_DAY, MINUTES_HALF_DAY, CRON_WINDOW_MINUTES, JAMAAT_DELAY_MINUTES } from './constants'
+import { MINUTES_IN_DAY, MINUTES_HALF_DAY, CRON_WINDOW_MINUTES, JAMAAT_DELAY_MINUTES, TAHAJJUD_MINUTES_BEFORE_FAJR, ISHRAQ_MINUTES_AFTER_SUNRISE, AWWABIN_MINUTES_AFTER_MAGHRIB } from './constants'
 
 const ALADHAN_API_URL = process.env.ALADHAN_API_URL || 'https://api.aladhan.com/v1'
 
@@ -75,7 +75,21 @@ export const MADHAB = {
 } as const
 
 // Get date string in YYYY-MM-DD format for cache key
-function getDateString(date: Date): string {
+// Uses timezone-aware formatting to avoid wrong date near midnight
+function getDateString(date: Date, timezone?: string): string {
+  if (timezone) {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+      return formatter.format(date) // Returns YYYY-MM-DD in en-CA locale
+    } catch {
+      // Fall through to UTC if timezone is invalid
+    }
+  }
   return date.toISOString().split('T')[0]
 }
 
@@ -172,11 +186,12 @@ export async function getPrayerTimes(
   method: number = 3, // Default: Muslim World League
   madhab: 'hanafi' | 'shafii' = 'hanafi',
   date?: Date,
-  mosqueId?: string
+  mosqueId?: string,
+  timezone?: string
 ): Promise<PrayerTimes | null> {
   try {
     const targetDate = date || new Date()
-    const dateStr = getDateString(targetDate)
+    const dateStr = getDateString(targetDate, timezone)
 
     // Check cache if mosqueId is provided
     if (mosqueId) {
@@ -210,44 +225,6 @@ export async function getPrayerTimes(
   } catch (error) {
     console.error('Error fetching prayer times:', error)
     return null
-  }
-}
-
-// Get prayer times for a month (useful for displaying calendars)
-export async function getMonthlyPrayerTimes(
-  latitude: number,
-  longitude: number,
-  month: number,
-  year: number,
-  method: number = 3,
-  madhab: 'hanafi' | 'shafii' = 'hanafi'
-): Promise<PrayerTimes[]> {
-  try {
-    const url = `${ALADHAN_API_URL}/calendar/${year}/${month}?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${MADHAB[madhab]}`
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    if (data.code !== 200) {
-      console.error('Aladhan API error:', data)
-      return []
-    }
-
-    return data.data.map((day: { timings: PrayerTimings; date: AladhanResponse['data']['date'] }) => ({
-      fajr: formatTime(day.timings.Fajr),
-      sunrise: formatTime(day.timings.Sunrise),
-      dhuhr: formatTime(day.timings.Dhuhr),
-      asr: formatTime(day.timings.Asr),
-      maghrib: formatTime(day.timings.Maghrib),
-      isha: formatTime(day.timings.Isha),
-      imsak: formatTime(day.timings.Imsak),
-      date: day.date.gregorian.date,
-      hijriDate: day.date.hijri.date,
-      hijriMonth: day.date.hijri.month.en,
-    }))
-  } catch (error) {
-    console.error('Error fetching monthly prayer times:', error)
-    return []
   }
 }
 
@@ -399,10 +376,8 @@ export function formatDbTime(time: string): string {
 }
 
 /**
- * Calculate nafl salah times based on prayer times
- * - Tahajjud: 2 hours before Fajr (last third of the night)
- * - Ishraq: 20 minutes after Sunrise
- * - Awwabin: 15 minutes after Maghrib
+ * Calculate nafl salah times based on prayer times.
+ * Uses constants from constants.ts as the single source of truth.
  */
 export function calculateNaflTimes(prayerTimes: PrayerTimes): {
   tahajjud: string;
@@ -410,9 +385,9 @@ export function calculateNaflTimes(prayerTimes: PrayerTimes): {
   awwabin: string;
 } {
   return {
-    tahajjud: applyOffset(prayerTimes.fajr, -120), // 2 hours before Fajr
-    ishraq: applyOffset(prayerTimes.sunrise, 20), // 20 mins after Sunrise
-    awwabin: applyOffset(prayerTimes.maghrib, 15), // 15 mins after Maghrib
+    tahajjud: applyOffset(prayerTimes.fajr, -TAHAJJUD_MINUTES_BEFORE_FAJR),
+    ishraq: applyOffset(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE),
+    awwabin: applyOffset(prayerTimes.maghrib, AWWABIN_MINUTES_AFTER_MAGHRIB),
   };
 }
 

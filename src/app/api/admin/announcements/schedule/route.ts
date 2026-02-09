@@ -1,18 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { verifyAdminAuth } from "@/lib/auth";
+import { withAdminAuth } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+const MAX_CONTENT_LENGTH = 4096;
+
+export const POST = withAdminAuth(async (request, { admin }) => {
   try {
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth();
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
     const body = await request.json();
     const { mosque_id, content, scheduled_at } = body;
 
@@ -23,8 +16,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof content !== "string" || content.length > MAX_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: `Content must be a string of ${MAX_CONTENT_LENGTH} characters or fewer` },
+        { status: 400 }
+      );
+    }
+
     // Verify admin has access to this mosque
-    if (authResult.admin.mosque_id !== mosque_id) {
+    if (admin.mosque_id !== mosque_id) {
       return NextResponse.json(
         { error: "Unauthorized: You do not have access to this mosque" },
         { status: 403 }
@@ -34,9 +34,9 @@ export async function POST(request: NextRequest) {
     // Validate scheduled_at is in the future
     const scheduledDate = new Date(scheduled_at);
     const now = new Date();
-    if (scheduledDate <= now) {
+    if (isNaN(scheduledDate.getTime()) || scheduledDate <= now) {
       return NextResponse.json(
-        { error: "Scheduled time must be in the future" },
+        { error: "Scheduled time must be a valid date in the future" },
         { status: 400 }
       );
     }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         content,
         scheduled_at,
         status: "pending",
-        created_by: authResult.admin.user_id,
+        created_by: admin.user_id,
       })
       .select()
       .single();
@@ -73,25 +73,16 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // GET - List pending scheduled messages for the mosque
-export async function GET() {
+export const GET = withAdminAuth(async (request, { admin }) => {
   try {
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth();
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
     // Get pending scheduled messages for this mosque
     const { data, error } = await supabaseAdmin
       .from("scheduled_messages")
       .select("*")
-      .eq("mosque_id", authResult.admin.mosque_id)
+      .eq("mosque_id", admin.mosque_id)
       .eq("status", "pending")
       .order("scheduled_at", { ascending: true });
 
@@ -114,4 +105,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
