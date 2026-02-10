@@ -20,7 +20,7 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
-import { TEN_MINUTES_MS } from "@/lib/constants";
+import { tryClaimReminderLock, type ReminderType } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -28,8 +28,8 @@ export const dynamic = "force-dynamic";
 // Maximum retry attempts before marking a scheduled message as permanently failed
 const MAX_SCHEDULED_MESSAGE_RETRIES = 5;
 
-// Process scheduled messages that are due for sending
-// Called from the main cron handler to check for any pending scheduled messages
+// Process scheduled messages that are due for sending.
+// Runs AFTER core prayer reminders to avoid blocking the primary function.
 async function processScheduledMessages(logger: CronLogContext): Promise<{
   processed: number;
   successful: number;
@@ -58,27 +58,12 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 
   for (const scheduled of scheduledMessages as ScheduledMessage[]) {
     try {
-      // Atomically claim the scheduled message to prevent duplicate sends
-      // Uses optimistic locking: update status to 'sending' only if still 'pending'
-      const { data: claimed, error: claimError } = await supabaseAdmin
-        .from("scheduled_messages")
-        .update({ status: "sending" as string })
-        .eq("id", scheduled.id)
-        .eq("status", "pending")
-        .select("id")
-        .single();
-
-      if (claimError || !claimed) {
-        // Another cron instance already claimed this message - skip
-        continue;
-      }
-
       // Get mosque details for the announcement message format
       const { data: mosque } = await supabaseAdmin
         .from("mosques")
         .select("name")
         .eq("id", scheduled.mosque_id)
-        .single();
+        .maybeSingle();
 
       const mosqueName = mosque?.name || "Mosque";
 
@@ -130,15 +115,17 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       });
       if (msgError) {
         console.error('[prayer-reminders] Failed to log scheduled message:', msgError.message, msgError.code, msgError.details);
-        // Retry without metadata in case the column doesn't exist yet
         if (msgError.code === "PGRST204") {
-          await supabaseAdmin.from("messages").insert({
+          const { error: retryError } = await supabaseAdmin.from("messages").insert({
             mosque_id: scheduled.mosque_id,
             type: "announcement",
             content: scheduled.content,
             sent_to_count: batchResult.successful,
             status: "sent",
           });
+          if (retryError) {
+            console.error('[prayer-reminders] Retry without metadata also failed:', retryError.message);
+          }
         }
       }
 
@@ -151,7 +138,7 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       successful++;
     } catch (err) {
       // Handle individual failure without stopping the batch
-      const currentRetries = (scheduled.retry_count ?? 0) + 1;
+      const currentRetries = ((scheduled.retry_count as number) || 0) + 1;
 
       logCronError(logger, "Failed to process scheduled message", {
         scheduledMessageId: scheduled.id,
@@ -163,25 +150,15 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 
       // Update retry count or mark as failed if max retries exceeded
       if (currentRetries >= MAX_SCHEDULED_MESSAGE_RETRIES) {
-        // Max retries exceeded - mark as permanently failed
         await supabaseAdmin
           .from("scheduled_messages")
-          .update({
-            status: "failed",
-            retry_count: currentRetries,
-          })
+          .update({ status: "failed" })
           .eq("id", scheduled.id);
 
         logCronError(logger, "Scheduled message permanently failed after max retries", {
           scheduledMessageId: scheduled.id,
           mosqueId: scheduled.mosque_id,
         });
-      } else {
-        // Reset status back to pending and increment retry count for next attempt
-        await supabaseAdmin
-          .from("scheduled_messages")
-          .update({ status: "pending", retry_count: currentRetries })
-          .eq("id", scheduled.id);
       }
 
       failed++;
@@ -195,60 +172,24 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
   };
 }
 
-/**
- * Attempt to claim exclusive lock for sending a prayer reminder.
- * Uses database UNIQUE constraint for atomic, race-condition-proof locking.
- *
- * How it works:
- * 1. Try to INSERT a lock record
- * 2. If INSERT succeeds → we have the lock, proceed to send
- * 3. If INSERT fails (duplicate key) → another cron run already claimed it, skip
- *
- * This is the ONLY way to prevent duplicates with concurrent serverless functions.
- *
- * @returns true if lock acquired (should send), false if already claimed (skip)
- */
-async function tryClaimReminderLock(
-  mosqueId: string,
-  prayerKey: string,
-  offset: number
-): Promise<boolean> {
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+// Auto-resume subscribers whose pause period has expired.
+// Isolated function so failures don't affect prayer reminders.
+async function autoResumeSubscribers(logger: CronLogContext): Promise<void> {
+  const { data: resumed, error: resumeError } = await supabaseAdmin
+    .from("subscribers")
+    .update({ status: "active", pause_until: null })
+    .eq("status", "paused")
+    .lte("pause_until", new Date().toISOString())
+    .select("id");
 
-  const { error } = await supabaseAdmin.from("prayer_reminder_locks").insert({
-    mosque_id: mosqueId,
-    prayer_key: prayerKey,
-    reminder_date: today,
-    reminder_offset: offset,
-  });
-
-  if (error) {
-    // Duplicate key error (23505) means another cron run already claimed this slot
-    if (error.code === "23505") {
-      return false; // Lock already claimed - skip sending
-    }
-    // Log other errors but don't block sending (fail open for now)
-    console.error("[prayer-reminders] Lock claim error:", error.message, error.code);
-    // Fall through to legacy check as backup
-  } else {
-    return true; // Lock acquired - proceed to send
+  if (resumeError) {
+    logCronError(logger, "Failed to auto-resume paused subscribers", { error: resumeError });
+  } else if (resumed && resumed.length > 0) {
+    setCronMetadata(logger, { autoResumed: resumed.length });
   }
-
-  // Fallback: If lock table doesn't exist yet, use legacy time-based check
-  const tenMinutesAgo = new Date(Date.now() - TEN_MINUTES_MS).toISOString();
-  const { data } = await supabaseAdmin
-    .from("messages")
-    .select("id")
-    .eq("mosque_id", mosqueId)
-    .eq("type", "prayer")
-    .gte("sent_at", tenMinutesAgo)
-    .contains("metadata", { prayer: prayerKey, offset })
-    .limit(1);
-
-  return data === null || data.length === 0;
 }
 
-// This endpoint should be called every 5 minutes by Vercel Cron
+// This endpoint should be called every 5 minutes by cron-job.org
 export async function GET(request: NextRequest) {
   // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
@@ -259,31 +200,9 @@ export async function GET(request: NextRequest) {
   const logger = createCronLogger("prayer-reminders");
 
   try {
-    // Process any due scheduled messages first
-    const scheduledResult = await processScheduledMessages(logger);
-    if (scheduledResult.processed > 0) {
-      setCronMetadata(logger, {
-        scheduledMessages: {
-          processed: scheduledResult.processed,
-          successful: scheduledResult.successful,
-          failed: scheduledResult.failed,
-        },
-      });
-    }
-
-    // Auto-resume subscribers whose pause period has expired
-    const { data: resumed, error: resumeError } = await supabaseAdmin
-      .from("subscribers")
-      .update({ status: "active", pause_until: null })
-      .eq("status", "paused")
-      .lte("pause_until", new Date().toISOString())
-      .select("id");
-
-    if (resumeError) {
-      logCronError(logger, "Failed to auto-resume paused subscribers", { error: resumeError });
-    } else if (resumed && resumed.length > 0) {
-      setCronMetadata(logger, { autoResumed: resumed.length });
-    }
+    // =========================================================
+    // CORE: Prayer Reminders — this MUST run, it's the primary function
+    // =========================================================
 
     // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
@@ -366,7 +285,7 @@ export async function GET(request: NextRequest) {
             // Uses database UNIQUE constraint - impossible to race
             const lockAcquired = await tryClaimReminderLock(
               mosque.id,
-              prayer.key,
+              prayer.key as ReminderType,
               offset
             );
             if (!lockAcquired) {
@@ -406,7 +325,6 @@ export async function GET(request: NextRequest) {
               });
               if (msgError) {
                 console.error('[prayer-reminders] Failed to log message:', msgError.message, msgError.code, msgError.details);
-                // Retry without metadata in case the column doesn't exist yet
                 if (msgError.code === "PGRST204") {
                   const { error: retryError } = await supabaseAdmin.from("messages").insert({
                     mosque_id: mosque.id,
@@ -424,6 +342,34 @@ export async function GET(request: NextRequest) {
           }
         }
       }
+    }
+
+    // =========================================================
+    // AUXILIARY: These run AFTER prayer reminders, in isolated try-catches.
+    // If they fail, prayer reminders have already been sent.
+    // =========================================================
+
+    // Process any due scheduled messages
+    try {
+      const scheduledResult = await processScheduledMessages(logger);
+      if (scheduledResult.processed > 0) {
+        setCronMetadata(logger, {
+          scheduledMessages: {
+            processed: scheduledResult.processed,
+            successful: scheduledResult.successful,
+            failed: scheduledResult.failed,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[prayer-reminders] processScheduledMessages failed:", err instanceof Error ? err.message : String(err));
+    }
+
+    // Auto-resume paused subscribers
+    try {
+      await autoResumeSubscribers(logger);
+    } catch (err) {
+      console.error("[prayer-reminders] autoResumeSubscribers failed:", err instanceof Error ? err.message : String(err));
     }
 
     const result = finalizeCronLog(logger);
