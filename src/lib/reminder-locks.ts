@@ -30,21 +30,45 @@ export type ReminderType =
   | "taraweeh";
 
 /**
+ * Get today's date string in a specific timezone (YYYY-MM-DD).
+ * Uses Intl.DateTimeFormat for correct timezone-aware date.
+ */
+function getDateInTimezone(timezone?: string): string {
+  const now = new Date();
+  if (timezone) {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(now); // en-CA locale returns YYYY-MM-DD
+    } catch {
+      // Fall through to UTC if timezone is invalid
+    }
+  }
+  return now.toISOString().split("T")[0];
+}
+
+/**
  * Attempt to claim exclusive lock for sending a reminder.
  * Uses database UNIQUE constraint for atomic, race-condition-proof locking.
  *
  * @param mosqueId - The mosque ID
  * @param reminderKey - Type of reminder (e.g., "tahajjud", "ishraq", "jumuah")
  * @param offset - Reminder offset in minutes (use 0 for reminders without offsets)
+ * @param timezone - Mosque timezone for correct date calculation (e.g., "Africa/Johannesburg")
  * @returns true if lock acquired (should send), false if already claimed (skip)
  */
 export async function tryClaimReminderLock(
   mosqueId: string,
   reminderKey: ReminderType,
-  offset: number = 0
+  offset: number = 0,
+  timezone?: string
 ): Promise<boolean> {
   const supabaseAdmin = getSupabaseAdmin();
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const today = getDateInTimezone(timezone);
 
   try {
     const { error } = await supabaseAdmin.from("prayer_reminder_locks").insert({
@@ -93,11 +117,13 @@ export async function tryClaimReminderLock(
  * Clean up old locks to prevent table bloat.
  * Should be called periodically (e.g., once per day).
  */
-export async function cleanupOldLocks(daysToKeep: number = 2): Promise<number> {
+export async function cleanupOldLocks(daysToKeep: number = 2, timezone?: string): Promise<number> {
   const supabaseAdmin = getSupabaseAdmin();
 
   try {
-    const cutoffDate = new Date();
+    // Use timezone-aware date for consistent cleanup
+    const todayStr = getDateInTimezone(timezone);
+    const cutoffDate = new Date(todayStr + "T00:00:00Z");
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
     const cutoff = cutoffDate.toISOString().split("T")[0];
 

@@ -143,11 +143,23 @@ async function fetchPrayerTimesFromAPI(
   longitude: number,
   method: number,
   madhab: 'hanafi' | 'shafii',
-  targetDate: Date
+  targetDate: Date,
+  timezone?: string
 ): Promise<PrayerTimes | null> {
-  const day = targetDate.getDate()
-  const month = targetDate.getMonth() + 1
-  const year = targetDate.getFullYear()
+  // Use timezone-aware date to match cache key date
+  // Without this, near midnight the API could fetch wrong day's times
+  let day: number, month: number, year: number
+  if (timezone) {
+    const dateStr = getDateString(targetDate, timezone) // YYYY-MM-DD
+    const [y, m, d] = dateStr.split('-').map(Number)
+    day = d
+    month = m
+    year = y
+  } else {
+    day = targetDate.getDate()
+    month = targetDate.getMonth() + 1
+    year = targetDate.getFullYear()
+  }
 
   const url = `${ALADHAN_API_URL}/timings/${day}-${month}-${year}?latitude=${latitude}&longitude=${longitude}&method=${method}&school=${MADHAB[madhab]}`
 
@@ -201,13 +213,14 @@ export async function getPrayerTimes(
       }
     }
 
-    // Fetch from API
+    // Fetch from API (pass timezone for correct date calculation)
     const prayerTimes = await fetchPrayerTimesFromAPI(
       latitude,
       longitude,
       method,
       madhab,
-      targetDate
+      targetDate,
+      timezone
     )
 
     if (!prayerTimes) {
@@ -293,6 +306,7 @@ function getNowInTimezone(timezone: string): number {
     hour: 'numeric',
     minute: 'numeric',
     hour12: false,
+    hourCycle: 'h23', // Explicit: midnight = 0 (not 24). Some V8/ICU versions default to h24.
   })
   const parts = formatter.formatToParts(now)
   const hours = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
@@ -333,10 +347,15 @@ export function isWithinMinutes(
   const prayerMinutes = parseTimeToMinutes(prayerTime)
   if (prayerMinutes === null) return false
 
-  const reminderMinutes = prayerMinutes - minutesBefore
+  // Normalize to 0-1439 range to handle midnight wraparound correctly
+  // e.g., prayer at 1:00 AM (60 min) with 120 min offset → -60 → 1380 (11:00 PM)
+  let reminderMinutes = prayerMinutes - minutesBefore
+  while (reminderMinutes < 0) reminderMinutes += MINUTES_IN_DAY
+  while (reminderMinutes >= MINUTES_IN_DAY) reminderMinutes -= MINUTES_IN_DAY
+
   let diff = Math.abs(nowMinutes - reminderMinutes)
 
-  // Handle midnight wraparound (e.g., Tahajjud at 3 AM, reminder at 11:50 PM)
+  // Handle midnight wraparound (e.g., now=23:58, reminder=00:02 → diff should be 4, not 1436)
   if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 
   return diff <= CRON_WINDOW_MINUTES // Window matches cron interval
@@ -353,7 +372,11 @@ export function isTimeWithinMinutesBefore(
   const targetMinutes = parseTimeToMinutes(time)
   if (targetMinutes === null) return false
 
-  const reminderMinutes = targetMinutes - minutesBefore
+  // Normalize to 0-1439 range for correct midnight wraparound
+  let reminderMinutes = targetMinutes - minutesBefore
+  while (reminderMinutes < 0) reminderMinutes += MINUTES_IN_DAY
+  while (reminderMinutes >= MINUTES_IN_DAY) reminderMinutes -= MINUTES_IN_DAY
+
   let diff = Math.abs(nowMinutes - reminderMinutes)
   if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 
@@ -404,7 +427,10 @@ export function isWithinMinutesAfter(
   const prayerMinutes = parseTimeToMinutes(prayerTime)
   if (prayerMinutes === null) return false
 
-  const targetMinutes = prayerMinutes + minutesAfter
+  // Normalize to 0-1439 range for correct midnight wraparound
+  let targetMinutes = prayerMinutes + minutesAfter
+  while (targetMinutes >= MINUTES_IN_DAY) targetMinutes -= MINUTES_IN_DAY
+
   let diff = Math.abs(nowMinutes - targetMinutes)
   if (diff > MINUTES_HALF_DAY) diff = MINUTES_IN_DAY - diff
 

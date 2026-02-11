@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         )
       ) {
         // ATOMIC LOCK: Claim exclusive right to send suhoor reminder
-        const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor", 0);
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor", 0, mosque.timezone);
         if (lockAcquired) {
           // Template variables: fajr_time, mosque_name
           const templateVars = [prayerTimes.fajr, mosque.name];
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         )
       ) {
         // ATOMIC LOCK: Claim exclusive right to send iftar reminder
-        const lockAcquired = await tryClaimReminderLock(mosque.id, "iftar", 0);
+        const lockAcquired = await tryClaimReminderLock(mosque.id, "iftar", 0, mosque.timezone);
         if (lockAcquired) {
           // Template variables: minutes_until, maghrib_time, mosque_name
           const templateVars = [
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
           )
         ) {
           // ATOMIC LOCK: Claim exclusive right to send taraweeh reminder
-          const lockAcquired = await tryClaimReminderLock(mosque.id, "taraweeh", 0);
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "taraweeh", 0, mosque.timezone);
           if (lockAcquired) {
             const formattedTime = formatDbTime(mosque.taraweeh_time);
 
@@ -233,7 +233,7 @@ export async function GET(request: NextRequest) {
           )
         ) {
           // ATOMIC LOCK: Claim exclusive right to send suhoor planning reminder
-          const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor_planning", 0);
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor_planning", 0, mosque.timezone);
           if (lockAcquired) {
             // Get tomorrow's Fajr time
             const tomorrow = new Date();

@@ -20,7 +20,7 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
-import { tryClaimReminderLock, type ReminderType } from "@/lib/reminder-locks";
+import { tryClaimReminderLock, cleanupOldLocks, type ReminderType } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -251,6 +251,16 @@ export async function GET(request: NextRequest) {
         { key: "isha", name: "Isha", time: getJamaatTime(prayerTimes.isha, "isha") },
       ];
 
+      // Log prayer times for diagnostic visibility
+      console.log(`[prayer-reminders] ${mosque.name} prayer times:`, {
+        fajr: prayerTimes.fajr,
+        dhuhr: prayerTimes.dhuhr,
+        asr: prayerTimes.asr,
+        maghrib: prayerTimes.maghrib,
+        isha: prayerTimes.isha,
+        jamaatTimes: prayers.map(p => `${p.name}=${p.time}`).join(', '),
+      });
+
       // Get subscribers for this mosque
       const { data: subscribers } = await supabaseAdmin
         .from("subscribers")
@@ -258,7 +268,12 @@ export async function GET(request: NextRequest) {
         .eq("mosque_id", mosque.id)
         .eq("status", "active");
 
-      if (!subscribers || subscribers.length === 0) continue;
+      if (!subscribers || subscribers.length === 0) {
+        console.log(`[prayer-reminders] No active subscribers for ${mosque.name}`);
+        continue;
+      }
+
+      console.log(`[prayer-reminders] ${subscribers.length} active subscribers for ${mosque.name}`);
 
       for (const prayer of prayers) {
         // Get subscribers who want this prayer reminder
@@ -280,17 +295,25 @@ export async function GET(request: NextRequest) {
         }
 
         for (const [offset, subs] of offsetGroups) {
-          if (isWithinMinutes(prayer.time, offset, mosque.timezone)) {
+          const timeMatch = isWithinMinutes(prayer.time, offset, mosque.timezone);
+          // Log every prayer check so we can diagnose timing issues
+          console.log(`[prayer-reminders] ${prayer.name} offset=${offset}: jamaat=${prayer.time}, match=${timeMatch}`);
+
+          if (timeMatch) {
             // ATOMIC LOCK: Claim exclusive right to send this reminder
             // Uses database UNIQUE constraint - impossible to race
             const lockAcquired = await tryClaimReminderLock(
               mosque.id,
               prayer.key as ReminderType,
-              offset
+              offset,
+              mosque.timezone
             );
             if (!lockAcquired) {
+              console.log(`[prayer-reminders] Lock already claimed for ${prayer.name} offset=${offset}`);
               continue; // Another cron run already claimed this - skip
             }
+
+            console.log(`[prayer-reminders] Sending ${prayer.name} reminder to ${subs.length} subscribers`);
 
             // Template variables: prayer_name, prayer_time, mosque_name
             const templateVars = [prayer.name, prayer.time, mosque.name];
@@ -302,6 +325,8 @@ export async function GET(request: NextRequest) {
               templateVars,
               logger
             );
+
+            console.log(`[prayer-reminders] ${prayer.name} result: ${batchResult.successful}/${batchResult.total} sent, ${batchResult.failed} failed`);
 
             // Generate message content for logging (preview with actual values)
             const message = previewTemplate(PRAYER_REMINDER_TEMPLATE, templateVars);
@@ -325,18 +350,6 @@ export async function GET(request: NextRequest) {
               });
               if (msgError) {
                 console.error('[prayer-reminders] Failed to log message:', msgError.message, msgError.code, msgError.details);
-                if (msgError.code === "PGRST204") {
-                  const { error: retryError } = await supabaseAdmin.from("messages").insert({
-                    mosque_id: mosque.id,
-                    type: "prayer",
-                    content: message,
-                    sent_to_count: batchResult.successful,
-                    status: "sent",
-                  });
-                  if (retryError) {
-                    console.error('[prayer-reminders] Retry without metadata also failed:', retryError.message);
-                  }
-                }
               }
             }
           }
@@ -370,6 +383,14 @@ export async function GET(request: NextRequest) {
       await autoResumeSubscribers(logger);
     } catch (err) {
       console.error("[prayer-reminders] autoResumeSubscribers failed:", err instanceof Error ? err.message : String(err));
+    }
+
+    // Clean up old reminder locks to prevent table bloat
+    try {
+      const firstMosque = mosques[0] as Mosque | undefined;
+      await cleanupOldLocks(2, firstMosque?.timezone);
+    } catch (err) {
+      console.error("[prayer-reminders] cleanupOldLocks failed:", err instanceof Error ? err.message : String(err));
     }
 
     const result = finalizeCronLog(logger);

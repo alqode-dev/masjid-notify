@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
       // ATOMIC LOCK: Claim exclusive right to send Jumu'ah reminder for this mosque today
       // This prevents duplicate sends when cron runs multiple times on Friday
-      const lockAcquired = await tryClaimReminderLock(mosque.id, "jumuah", 0);
+      const lockAcquired = await tryClaimReminderLock(mosque.id, "jumuah", 0, mosque.timezone);
       if (!lockAcquired) {
         // Another cron run already sent Jumu'ah reminder for this mosque today
         continue;

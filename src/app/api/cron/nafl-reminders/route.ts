@@ -91,126 +91,113 @@ export async function GET(request: NextRequest) {
         .eq("status", "active")
         .eq("pref_nafl_salahs", true);
 
-      if (!subscribers || subscribers.length === 0) continue;
+      if (!subscribers || subscribers.length === 0) {
+        console.log(`[nafl-reminders] No active nafl subscribers for ${mosque.name}`);
+        continue;
+      }
+
+      console.log(`[nafl-reminders] ${mosque.name}: ${subscribers.length} nafl subscribers, fajr=${prayerTimes.fajr}, sunrise=${prayerTimes.sunrise}, maghrib=${prayerTimes.maghrib}`);
+
+      // Each nafl prayer type is in its own try-catch to prevent cascade failures.
+      // If Tahajjud fails, Ishraq and Awwabin MUST still be checked.
 
       // Check Tahajjud reminder (2 hours before Fajr)
-      if (isWithinMinutes(prayerTimes.fajr, TAHAJJUD_MINUTES_BEFORE_FAJR, mosque.timezone)) {
-        // ATOMIC LOCK: Claim exclusive right to send this reminder
-        const lockAcquired = await tryClaimReminderLock(mosque.id, "tahajjud", 0);
-        if (lockAcquired) {
-          // Template variables: fajr_time, mosque_name
-          const templateVars = [prayerTimes.fajr, mosque.name];
-
-          const batchResult = await sendTemplatesConcurrently(
-            subscribers as Subscriber[],
-            TAHAJJUD_REMINDER_TEMPLATE,
-            templateVars,
-            logger
-          );
-
-          const message = previewTemplate(TAHAJJUD_REMINDER_TEMPLATE, templateVars);
-
-          const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
-          await batchUpdateLastMessageAt(successfulIds);
-
-          const { error: msgError } = await supabaseAdmin.from("messages").insert({
-            mosque_id: mosque.id,
-            type: "nafl",
-            content: message,
-            sent_to_count: batchResult.successful,
-            status: "sent",
-            metadata: { reminder_type: "tahajjud" },
-          });
-          if (msgError) {
-            console.error('[nafl-reminders] Failed to log tahajjud message:', msgError.message, msgError.code, msgError.details);
-            if (msgError.code === "PGRST204") {
-              await supabaseAdmin.from("messages").insert({
-                mosque_id: mosque.id, type: "nafl", content: message,
-                sent_to_count: batchResult.successful, status: "sent",
-              });
+      try {
+        if (isWithinMinutes(prayerTimes.fajr, TAHAJJUD_MINUTES_BEFORE_FAJR, mosque.timezone)) {
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "tahajjud", 0, mosque.timezone);
+          if (lockAcquired) {
+            const templateVars = [prayerTimes.fajr, mosque.name];
+            const batchResult = await sendTemplatesConcurrently(
+              subscribers as Subscriber[],
+              TAHAJJUD_REMINDER_TEMPLATE,
+              templateVars,
+              logger
+            );
+            const message = previewTemplate(TAHAJJUD_REMINDER_TEMPLATE, templateVars);
+            const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+            await batchUpdateLastMessageAt(successfulIds);
+            const { error: msgError } = await supabaseAdmin.from("messages").insert({
+              mosque_id: mosque.id,
+              type: "nafl",
+              content: message,
+              sent_to_count: batchResult.successful,
+              status: "sent",
+              metadata: { reminder_type: "tahajjud" },
+            });
+            if (msgError) {
+              console.error('[nafl-reminders] Failed to log tahajjud message:', msgError.message, msgError.code, msgError.details);
             }
+            console.log(`[nafl-reminders] Tahajjud sent to ${batchResult.successful}/${batchResult.total} subscribers at ${mosque.name}`);
           }
         }
+      } catch (err) {
+        console.error("[nafl-reminders] Tahajjud block failed:", err instanceof Error ? err.message : String(err));
       }
 
       // Check Ishraq reminder (ISHRAQ_MINUTES_AFTER_SUNRISE after Sunrise)
-      if (isWithinMinutesAfter(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE, mosque.timezone)) {
-        // ATOMIC LOCK: Claim exclusive right to send this reminder
-        const lockAcquired = await tryClaimReminderLock(mosque.id, "ishraq", 0);
-        if (lockAcquired) {
-          // Template variables: mosque_name
-          const templateVars = [mosque.name];
-
-          const batchResult = await sendTemplatesConcurrently(
-            subscribers as Subscriber[],
-            ISHRAQ_REMINDER_TEMPLATE,
-            templateVars,
-            logger
-          );
-
-          const message = previewTemplate(ISHRAQ_REMINDER_TEMPLATE, templateVars);
-
-          const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
-          await batchUpdateLastMessageAt(successfulIds);
-
-          const { error: ishraqMsgError } = await supabaseAdmin.from("messages").insert({
-            mosque_id: mosque.id,
-            type: "nafl",
-            content: message,
-            sent_to_count: batchResult.successful,
-            status: "sent",
-            metadata: { reminder_type: "ishraq" },
-          });
-          if (ishraqMsgError) {
-            console.error('[nafl-reminders] Failed to log ishraq message:', ishraqMsgError.message, ishraqMsgError.code, ishraqMsgError.details);
-            if (ishraqMsgError.code === "PGRST204") {
-              await supabaseAdmin.from("messages").insert({
-                mosque_id: mosque.id, type: "nafl", content: message,
-                sent_to_count: batchResult.successful, status: "sent",
-              });
+      try {
+        if (isWithinMinutesAfter(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE, mosque.timezone)) {
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "ishraq", 0, mosque.timezone);
+          if (lockAcquired) {
+            const templateVars = [mosque.name];
+            const batchResult = await sendTemplatesConcurrently(
+              subscribers as Subscriber[],
+              ISHRAQ_REMINDER_TEMPLATE,
+              templateVars,
+              logger
+            );
+            const message = previewTemplate(ISHRAQ_REMINDER_TEMPLATE, templateVars);
+            const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+            await batchUpdateLastMessageAt(successfulIds);
+            const { error: ishraqMsgError } = await supabaseAdmin.from("messages").insert({
+              mosque_id: mosque.id,
+              type: "nafl",
+              content: message,
+              sent_to_count: batchResult.successful,
+              status: "sent",
+              metadata: { reminder_type: "ishraq" },
+            });
+            if (ishraqMsgError) {
+              console.error('[nafl-reminders] Failed to log ishraq message:', ishraqMsgError.message, ishraqMsgError.code, ishraqMsgError.details);
             }
+            console.log(`[nafl-reminders] Ishraq sent to ${batchResult.successful}/${batchResult.total} subscribers at ${mosque.name}`);
           }
         }
+      } catch (err) {
+        console.error("[nafl-reminders] Ishraq block failed:", err instanceof Error ? err.message : String(err));
       }
 
       // Check Awwabin reminder (15 minutes after Maghrib)
-      if (isWithinMinutesAfter(prayerTimes.maghrib, AWWABIN_MINUTES_AFTER_MAGHRIB, mosque.timezone)) {
-        // ATOMIC LOCK: Claim exclusive right to send this reminder
-        const lockAcquired = await tryClaimReminderLock(mosque.id, "awwabin", 0);
-        if (lockAcquired) {
-          // Template variables: mosque_name
-          const templateVars = [mosque.name];
-
-          const batchResult = await sendTemplatesConcurrently(
-            subscribers as Subscriber[],
-            AWWABIN_REMINDER_TEMPLATE,
-            templateVars,
-            logger
-          );
-
-          const message = previewTemplate(AWWABIN_REMINDER_TEMPLATE, templateVars);
-
-          const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
-          await batchUpdateLastMessageAt(successfulIds);
-
-          const { error: awwabinMsgError } = await supabaseAdmin.from("messages").insert({
-            mosque_id: mosque.id,
-            type: "nafl",
-            content: message,
-            sent_to_count: batchResult.successful,
-            status: "sent",
-            metadata: { reminder_type: "awwabin" },
-          });
-          if (awwabinMsgError) {
-            console.error('[nafl-reminders] Failed to log awwabin message:', awwabinMsgError.message, awwabinMsgError.code, awwabinMsgError.details);
-            if (awwabinMsgError.code === "PGRST204") {
-              await supabaseAdmin.from("messages").insert({
-                mosque_id: mosque.id, type: "nafl", content: message,
-                sent_to_count: batchResult.successful, status: "sent",
-              });
+      try {
+        if (isWithinMinutesAfter(prayerTimes.maghrib, AWWABIN_MINUTES_AFTER_MAGHRIB, mosque.timezone)) {
+          const lockAcquired = await tryClaimReminderLock(mosque.id, "awwabin", 0, mosque.timezone);
+          if (lockAcquired) {
+            const templateVars = [mosque.name];
+            const batchResult = await sendTemplatesConcurrently(
+              subscribers as Subscriber[],
+              AWWABIN_REMINDER_TEMPLATE,
+              templateVars,
+              logger
+            );
+            const message = previewTemplate(AWWABIN_REMINDER_TEMPLATE, templateVars);
+            const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
+            await batchUpdateLastMessageAt(successfulIds);
+            const { error: awwabinMsgError } = await supabaseAdmin.from("messages").insert({
+              mosque_id: mosque.id,
+              type: "nafl",
+              content: message,
+              sent_to_count: batchResult.successful,
+              status: "sent",
+              metadata: { reminder_type: "awwabin" },
+            });
+            if (awwabinMsgError) {
+              console.error('[nafl-reminders] Failed to log awwabin message:', awwabinMsgError.message, awwabinMsgError.code, awwabinMsgError.details);
             }
+            console.log(`[nafl-reminders] Awwabin sent to ${batchResult.successful}/${batchResult.total} subscribers at ${mosque.name}`);
           }
         }
+      } catch (err) {
+        console.error("[nafl-reminders] Awwabin block failed:", err instanceof Error ? err.message : String(err));
       }
     }
 

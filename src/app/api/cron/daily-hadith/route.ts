@@ -86,14 +86,18 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
+      const morningMatch = isWithinMinutesAfter(prayerTimes.fajr, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone);
+      const eveningMatch = isWithinMinutesAfter(prayerTimes.maghrib, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone);
+      console.log(`[daily-hadith] ${mosque.name}: fajr=${prayerTimes.fajr} morningMatch=${morningMatch}, maghrib=${prayerTimes.maghrib} eveningMatch=${eveningMatch}`);
+
       // Check if it's time for morning hadith (15 minutes after Fajr)
-      if (isWithinMinutesAfter(prayerTimes.fajr, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone)) {
+      if (morningMatch) {
         const sent = await sendHadithIfNotAlreadySent(mosque, "morning", logger);
         totalSent += sent;
       }
 
       // Check if it's time for evening hadith (15 minutes after Maghrib)
-      if (isWithinMinutesAfter(prayerTimes.maghrib, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone)) {
+      if (eveningMatch) {
         const sent = await sendHadithIfNotAlreadySent(mosque, "evening", logger);
         totalSent += sent;
       }
@@ -128,7 +132,7 @@ async function sendHadithIfNotAlreadySent(
 ): Promise<number> {
   // ATOMIC LOCK: Claim exclusive right to send hadith for this mosque today
   const lockKey: ReminderType = timeOfDay === "morning" ? "hadith_morning" : "hadith_evening";
-  const lockAcquired = await tryClaimReminderLock(mosque.id, lockKey, 0);
+  const lockAcquired = await tryClaimReminderLock(mosque.id, lockKey, 0, mosque.timezone);
   if (!lockAcquired) {
     // Another cron run already sent hadith for this mosque today
     return 0;
