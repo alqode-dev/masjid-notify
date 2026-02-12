@@ -20,6 +20,10 @@ export function Footer() {
           <Link href="/data-deletion" className="hover:text-primary transition-colors">
             Data Deletion
           </Link>
+          <span className="text-border" aria-hidden="true">|</span>
+          <Link href="/listen" className="hover:text-primary transition-colors">
+            Audio Library
+          </Link>
         </div>
         <p className="text-sm text-muted-foreground">
           Powered by{" "}

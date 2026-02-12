@@ -143,6 +143,32 @@ export type ScheduledMessage = {
   retry_count?: number; // Added for retry limiting (defaults to 0 if column doesn't exist)
 };
 
+export type AudioCollection = {
+  id: string;
+  mosque_id: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AudioFile = {
+  id: string;
+  collection_id: string;
+  mosque_id: string;
+  title: string;
+  speaker: string | null;
+  file_path: string;
+  file_url: string;
+  file_size: number | null;
+  duration: number | null;
+  file_type: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 // Client-side Supabase client (for use in React components)
 export function createClientSupabase() {
   // Use the constants that are inlined at build time

@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   QrCode,
+  Headphones,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin/subscribers", label: "Subscribers", icon: Users },
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/qr-code", label: "QR Code", icon: QrCode },
+  { href: "/admin/audio", label: "Audio Library", icon: Headphones },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
