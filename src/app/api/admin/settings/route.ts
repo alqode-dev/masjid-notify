@@ -62,10 +62,25 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
       taraweeh_time: body.taraweeh_time,
     };
 
+    // Eid + custom prayer times fields (migration 013)
+    const extendedFields: Record<string, unknown> = {
+      eid_mode: body.eid_mode ?? "off",
+      eid_salah_time: body.eid_salah_time ?? null,
+      custom_prayer_times: body.custom_prayer_times ?? null,
+    };
+
+    // Mutual exclusion: Eid and Ramadan can't both be active
+    if (extendedFields.eid_mode !== "off") {
+      ramadanFields.ramadan_mode = false;
+    }
+    if (ramadanFields.ramadan_mode === true) {
+      extendedFields.eid_mode = "off";
+    }
+
     // Try saving all fields first
     const { error } = await supabaseAdmin
       .from("mosques")
-      .update({ ...coreUpdate, ...ramadanFields })
+      .update({ ...coreUpdate, ...ramadanFields, ...extendedFields })
       .eq("id", admin.mosque_id);
 
     if (error) {

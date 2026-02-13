@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
-  getPrayerTimes,
+  getMosquePrayerTimes,
   isWithinMinutes,
   isWithinMinutesAfter,
   getJamaatTime,
@@ -72,15 +72,7 @@ export async function GET(request: NextRequest) {
       const localDate = dateFormatter.format(now);
 
       // Prayer times
-      const prayerTimes = await getPrayerTimes(
-        mosque.latitude,
-        mosque.longitude,
-        mosque.calculation_method,
-        mosque.madhab,
-        undefined,
-        mosque.id,
-        mosque.timezone
-      );
+      const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
         diagnostics.push({

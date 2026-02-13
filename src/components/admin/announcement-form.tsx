@@ -119,7 +119,7 @@ export function AnnouncementForm({
     }
   };
 
-  const formattedPreview = `📢 ${mosqueName}\n\n${content}`;
+  const formattedPreview = `Announcement from ${mosqueName}:\n\n${content}\n\nReply STOP to unsubscribe.`;
 
   return (
     <div className="space-y-4">
@@ -147,6 +147,9 @@ export function AnnouncementForm({
           className="resize-none"
           maxLength={1000}
         />
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Sent as: &quot;Announcement from {mosqueName}: [your message] / Reply STOP to unsubscribe&quot; &mdash; the header and footer are added automatically.
+        </p>
         <div className="flex justify-between mt-1.5">
           <p className="text-xs text-muted-foreground">
             {content.length}/1000 characters

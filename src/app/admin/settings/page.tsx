@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { Mosque } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Save, Moon, Clock } from "lucide-react";
+import { Save, Moon, Clock, Star } from "lucide-react";
 
 const CALCULATION_METHODS = [
   { value: "1", label: "University of Islamic Sciences, Karachi" },
@@ -18,6 +18,13 @@ const CALCULATION_METHODS = [
   { value: "3", label: "Muslim World League" },
   { value: "4", label: "Umm Al-Qura University, Makkah" },
   { value: "5", label: "Egyptian General Authority of Survey" },
+  { value: "99", label: "Custom / Masjid Times" },
+];
+
+const EID_OPTIONS = [
+  { value: "off", label: "Off" },
+  { value: "eid_ul_fitr", label: "Eid ul-Fitr" },
+  { value: "eid_ul_adha", label: "Eid ul-Adha" },
 ];
 
 const MADHAB_OPTIONS = [
@@ -39,6 +46,14 @@ export default function SettingsPage() {
   const [jumuahKhutbah, setJumuahKhutbah] = useState("13:00");
   const [calculationMethod, setCalculationMethod] = useState("3");
   const [madhab, setMadhab] = useState("hanafi");
+  const [eidMode, setEidMode] = useState("off");
+  const [eidSalahTime, setEidSalahTime] = useState("");
+  const [customFajr, setCustomFajr] = useState("");
+  const [customSunrise, setCustomSunrise] = useState("");
+  const [customDhuhr, setCustomDhuhr] = useState("");
+  const [customAsr, setCustomAsr] = useState("");
+  const [customMaghrib, setCustomMaghrib] = useState("");
+  const [customIsha, setCustomIsha] = useState("");
 
   useEffect(() => {
     const fetchMosque = async () => {
@@ -61,6 +76,17 @@ export default function SettingsPage() {
         setJumuahKhutbah(mosqueData.jumuah_khutbah_time ? mosqueData.jumuah_khutbah_time.slice(0, 5) : "13:00");
         setCalculationMethod((mosqueData.calculation_method ?? 3).toString());
         setMadhab(mosqueData.madhab ?? "hanafi");
+        setEidMode(mosqueData.eid_mode ?? "off");
+        setEidSalahTime(mosqueData.eid_salah_time ? mosqueData.eid_salah_time.slice(0, 5) : "");
+        if (mosqueData.custom_prayer_times) {
+          const cpt = mosqueData.custom_prayer_times;
+          setCustomFajr(cpt.fajr || "");
+          setCustomSunrise(cpt.sunrise || "");
+          setCustomDhuhr(cpt.dhuhr || "");
+          setCustomAsr(cpt.asr || "");
+          setCustomMaghrib(cpt.maghrib || "");
+          setCustomIsha(cpt.isha || "");
+        }
       } catch (error) {
         console.error("Error in fetchMosque:", error);
       } finally {
@@ -89,6 +115,16 @@ export default function SettingsPage() {
           jumuah_khutbah_time: jumuahKhutbah + ":00",
           calculation_method: parseInt(calculationMethod, 10) || 3,
           madhab: madhab as "hanafi" | "shafii",
+          eid_mode: eidMode,
+          eid_salah_time: eidSalahTime ? eidSalahTime + ":00" : null,
+          custom_prayer_times: calculationMethod === "99" ? {
+            fajr: customFajr,
+            sunrise: customSunrise,
+            dhuhr: customDhuhr,
+            asr: customAsr,
+            maghrib: customMaghrib,
+            isha: customIsha,
+          } : null,
         }),
       });
 
@@ -165,6 +201,23 @@ export default function SettingsPage() {
             options={MADHAB_OPTIONS}
           />
 
+          {calculationMethod === "99" && (
+            <div className="space-y-3 p-4 rounded-xl bg-muted/50">
+              <p className="text-sm font-medium text-foreground">Custom Prayer Times (24h format)</p>
+              <p className="text-xs text-muted-foreground">
+                Enter the times your mosque committee has agreed on for this month
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Input label="Fajr" type="time" value={customFajr} onChange={(e) => setCustomFajr(e.target.value)} />
+                <Input label="Sunrise" type="time" value={customSunrise} onChange={(e) => setCustomSunrise(e.target.value)} />
+                <Input label="Dhuhr" type="time" value={customDhuhr} onChange={(e) => setCustomDhuhr(e.target.value)} />
+                <Input label="Asr" type="time" value={customAsr} onChange={(e) => setCustomAsr(e.target.value)} />
+                <Input label="Maghrib" type="time" value={customMaghrib} onChange={(e) => setCustomMaghrib(e.target.value)} />
+                <Input label="Isha" type="time" value={customIsha} onChange={(e) => setCustomIsha(e.target.value)} />
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Jumu'ah Adhaan"
@@ -202,7 +255,10 @@ export default function SettingsPage() {
             <Switch
               id="ramadan-mode"
               checked={ramadanMode}
-              onCheckedChange={setRamadanMode}
+              onCheckedChange={(checked) => {
+                setRamadanMode(checked);
+                if (checked) setEidMode("off");
+              }}
               aria-label="Ramadan Mode"
             />
           </div>
@@ -238,6 +294,39 @@ export default function SettingsPage() {
                 Set the Taraweeh start time to send reminders 30 minutes before. Leave empty to disable Taraweeh reminders.
               </p>
             </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Eid Settings */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Star className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">
+            Eid Settings
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          <Select
+            label="Eid Mode"
+            value={eidMode}
+            onChange={(e) => {
+              const val = e.target.value;
+              setEidMode(val);
+              if (val !== "off") setRamadanMode(false);
+            }}
+            options={EID_OPTIONS}
+          />
+
+          {eidMode !== "off" && (
+            <Input
+              label="Eid Salah Time"
+              type="time"
+              value={eidSalahTime}
+              onChange={(e) => setEidSalahTime(e.target.value)}
+              hint="Set the Eid salah time to display on the landing page"
+            />
           )}
         </div>
       </Card>

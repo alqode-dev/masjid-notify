@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getPrayerTimes, isWithinMinutes, getJamaatTime } from "@/lib/prayer-times";
+import { getMosquePrayerTimes, isWithinMinutes, getJamaatTime } from "@/lib/prayer-times";
 import {
   PRAYER_REMINDER_TEMPLATE,
   ANNOUNCEMENT_TEMPLATE,
@@ -222,15 +222,7 @@ export async function GET(request: NextRequest) {
 
     for (const mosque of mosques as Mosque[]) {
       // Get today's prayer times for this mosque (with caching)
-      const prayerTimes = await getPrayerTimes(
-        mosque.latitude,
-        mosque.longitude,
-        mosque.calculation_method,
-        mosque.madhab,
-        undefined, // Use today's date
-        mosque.id, // Enable caching for this mosque
-        mosque.timezone // Use mosque timezone for date calculation
-      );
+      const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
         logCronError(logger, "Failed to get prayer times", {

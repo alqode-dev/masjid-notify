@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase'
+import { supabaseAdmin, type Mosque } from './supabase'
 import { MINUTES_IN_DAY, MINUTES_HALF_DAY, CRON_WINDOW_MINUTES, JAMAAT_DELAY_MINUTES, TAHAJJUD_MINUTES_BEFORE_FAJR, ISHRAQ_MINUTES_AFTER_SUNRISE, AWWABIN_MINUTES_AFTER_MAGHRIB } from './constants'
 
 const ALADHAN_API_URL = process.env.ALADHAN_API_URL || 'https://api.aladhan.com/v1'
@@ -239,6 +239,100 @@ export async function getPrayerTimes(
     console.error('Error fetching prayer times:', error)
     return null
   }
+}
+
+/**
+ * Convert 24h time "HH:MM" to 12h format "H:MM AM/PM"
+ */
+function format24to12(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number)
+  if (isNaN(hours) || isNaN(minutes)) return time24
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = hours % 12 || 12
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+}
+
+/**
+ * Fetch just the Hijri date for a given Gregorian date from Aladhan API.
+ */
+async function fetchHijriDate(timezone?: string): Promise<{ date: string; hijriDate: string; hijriMonth: string }> {
+  const now = new Date()
+  const dateStr = getDateString(now, timezone)
+  const [y, m, d] = dateStr.split('-')
+
+  try {
+    const res = await fetch(`${ALADHAN_API_URL}/gpiDate/${d}-${m}-${y}`)
+    const data = await res.json()
+    if (data.code === 200) {
+      return {
+        date: data.data.gregorian.date,
+        hijriDate: data.data.hijri.date,
+        hijriMonth: data.data.hijri.month.en,
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch Hijri date:', e)
+  }
+
+  // Fallback: use formatted date without Hijri
+  return { date: dateStr, hijriDate: '', hijriMonth: '' }
+}
+
+/**
+ * Get prayer times for a mosque, supporting both API-based and custom/masjid times.
+ *
+ * When calculation_method === 99 and custom_prayer_times is set, returns the
+ * admin-entered times directly instead of calling the Aladhan API.
+ *
+ * This is the recommended function for all callers (cron jobs, landing page).
+ */
+export async function getMosquePrayerTimes(
+  mosque: Pick<Mosque, 'id' | 'latitude' | 'longitude' | 'calculation_method' | 'madhab' | 'timezone' | 'custom_prayer_times'>,
+  date?: Date
+): Promise<PrayerTimes | null> {
+  // Custom / Masjid Times mode
+  if (mosque.calculation_method === 99 && mosque.custom_prayer_times) {
+    const custom = mosque.custom_prayer_times
+    const targetDate = date || new Date()
+    const dateStr = getDateString(targetDate, mosque.timezone)
+
+    // Check cache first (custom times are cached just like API times)
+    const cached = await getCachedPrayerTimes(mosque.id, dateStr)
+    if (cached) return cached
+
+    // Fetch Hijri date from Aladhan (lightweight call, no prayer calc needed)
+    const dateInfo = await fetchHijriDate(mosque.timezone)
+
+    const prayerTimes: PrayerTimes = {
+      fajr: format24to12(custom.fajr),
+      sunrise: format24to12(custom.sunrise),
+      dhuhr: format24to12(custom.dhuhr),
+      asr: format24to12(custom.asr),
+      maghrib: format24to12(custom.maghrib),
+      isha: format24to12(custom.isha),
+      imsak: format24to12(custom.fajr), // Imsak = Fajr for custom times
+      date: dateInfo.date,
+      hijriDate: dateInfo.hijriDate,
+      hijriMonth: dateInfo.hijriMonth,
+    }
+
+    // Cache the result
+    const { date: _date, ...timesToCache } = prayerTimes
+    await cachePrayerTimes(mosque.id, dateStr, timesToCache)
+
+    return prayerTimes
+  }
+
+  // Standard API-based times
+  return getPrayerTimes(
+    mosque.latitude,
+    mosque.longitude,
+    mosque.calculation_method,
+    mosque.madhab,
+    date,
+    mosque.id,
+    mosque.timezone
+  )
 }
 
 // Format time to 12-hour format

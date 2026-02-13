@@ -15,7 +15,7 @@ import {
 } from "@/lib/message-sender";
 import { previewTemplate } from "@/lib/whatsapp-templates";
 import { getTodaysHadith } from "@/lib/hadith-api";
-import { getPrayerTimes, isWithinMinutesAfter } from "@/lib/prayer-times";
+import { getMosquePrayerTimes, isWithinMinutesAfter } from "@/lib/prayer-times";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { tryClaimReminderLock, ReminderType } from "@/lib/reminder-locks";
 
@@ -68,15 +68,7 @@ export async function GET(request: NextRequest) {
 
     for (const mosque of mosques as Mosque[]) {
       // Get prayer times for this mosque (with caching)
-      const prayerTimes = await getPrayerTimes(
-        mosque.latitude,
-        mosque.longitude,
-        mosque.calculation_method,
-        mosque.madhab,
-        undefined, // Use today's date
-        mosque.id, // Enable caching for this mosque
-        mosque.timezone // Use mosque timezone for date calculation
-      );
+      const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
         logCronError(logger, "Failed to get prayer times for hadith", {

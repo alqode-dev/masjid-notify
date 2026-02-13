@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { getPrayerTimes } from "@/lib/prayer-times";
+import { getMosquePrayerTimes } from "@/lib/prayer-times";
 import { LandingPage } from "./landing-page";
 import { DEFAULT_MOSQUE_SLUG } from "@/lib/constants";
 
@@ -22,19 +22,15 @@ async function getMosqueData() {
 }
 
 async function getPrayerTimesData(mosque: {
+  id: string;
   latitude: number;
   longitude: number;
   calculation_method: number;
   madhab: "hanafi" | "shafii";
+  timezone: string;
+  custom_prayer_times: { fajr: string; sunrise: string; dhuhr: string; asr: string; maghrib: string; isha: string } | null;
 }) {
-  const prayerTimes = await getPrayerTimes(
-    mosque.latitude,
-    mosque.longitude,
-    mosque.calculation_method,
-    mosque.madhab
-  );
-
-  return prayerTimes;
+  return getMosquePrayerTimes(mosque);
 }
 
 export default async function Home() {

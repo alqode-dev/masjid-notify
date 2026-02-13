@@ -8,6 +8,8 @@ import { Footer } from "@/components/footer";
 import { QRCodeMini } from "@/components/qr-code";
 import { MapPin, Bell, QrCode, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { NextSalahCountdown } from "@/components/next-salah-countdown";
+import { formatDbTime } from "@/lib/prayer-times";
 import type { Mosque } from "@/lib/supabase";
 import type { PrayerTimes } from "@/lib/prayer-times";
 
@@ -72,6 +74,24 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
             </motion.div>
           )}
 
+          {mosque.eid_mode && mosque.eid_mode !== "off" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-4 flex flex-col items-center gap-1"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-foreground rounded-full text-sm font-medium">
+                <span className="text-lg">{mosque.eid_mode === "eid_ul_fitr" ? "🌙" : "🐑"}</span>
+                Eid Mubarak
+              </div>
+              {mosque.eid_salah_time && (
+                <p className="text-xs text-muted-foreground">
+                  Eid Salah at {formatDbTime(mosque.eid_salah_time)}
+                </p>
+              )}
+            </motion.div>
+          )}
+
           {/* QR Code - Hidden on mobile, visible on desktop */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -106,6 +126,7 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
               <Bell className="w-5 h-5 text-primary" />
               Today&apos;s Prayer Times
             </h2>
+            {prayerTimes && <NextSalahCountdown prayerTimes={prayerTimes} />}
             <PrayerTimesDisplay prayerTimes={prayerTimes} />
           </Card>
         </motion.div>

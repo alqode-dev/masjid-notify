@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
-  getPrayerTimes,
+  getMosquePrayerTimes,
   isWithinMinutes,
   isWithinMinutesAfter,
 } from "@/lib/prayer-times";
@@ -65,15 +65,7 @@ export async function GET(request: NextRequest) {
 
     for (const mosque of mosques as Mosque[]) {
       // Get prayer times for today (with caching)
-      const prayerTimes = await getPrayerTimes(
-        mosque.latitude,
-        mosque.longitude,
-        mosque.calculation_method,
-        mosque.madhab,
-        undefined, // Use today's date
-        mosque.id, // Enable caching for this mosque
-        mosque.timezone // Use mosque timezone for date calculation
-      );
+      const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
         logCronError(logger, "Failed to get prayer times", {

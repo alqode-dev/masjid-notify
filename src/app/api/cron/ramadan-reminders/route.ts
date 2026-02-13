@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getPrayerTimes, isWithinMinutes, isWithinMinutesAfter, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
+import { getMosquePrayerTimes, isWithinMinutes, isWithinMinutesAfter, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
 import {
   SUHOOR_REMINDER_TEMPLATE,
   IFTAR_REMINDER_TEMPLATE,
@@ -59,15 +59,7 @@ export async function GET(request: NextRequest) {
 
     for (const mosque of mosques as Mosque[]) {
       // Get prayer times for Suhoor (Fajr) and Iftar (Maghrib) - with caching
-      const prayerTimes = await getPrayerTimes(
-        mosque.latitude,
-        mosque.longitude,
-        mosque.calculation_method,
-        mosque.madhab,
-        undefined, // Use today's date
-        mosque.id, // Enable caching for this mosque
-        mosque.timezone // Use mosque timezone for date calculation
-      );
+      const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
         logCronError(logger, "Failed to get prayer times", {
@@ -238,15 +230,7 @@ export async function GET(request: NextRequest) {
             // Get tomorrow's Fajr time
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowPrayerTimes = await getPrayerTimes(
-              mosque.latitude,
-              mosque.longitude,
-              mosque.calculation_method,
-              mosque.madhab,
-              tomorrow,
-              mosque.id,
-              mosque.timezone
-            );
+            const tomorrowPrayerTimes = await getMosquePrayerTimes(mosque, tomorrow);
 
             if (tomorrowPrayerTimes) {
               // Template variables: fajr_time, mosque_name
