@@ -228,20 +228,20 @@ export default function AudioPage() {
                 className="p-4 cursor-pointer hover:border-primary/50 transition-colors group relative"
                 onClick={() => handleSelectCollection(collection)}
               >
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                <div className="absolute top-2 right-2 flex gap-1 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleEditCollection(collection); }}
-                    className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                    className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                     title="Edit folder"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteCollection(collection); }}
-                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                     title="Delete folder"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
                 <FolderOpen className="w-10 h-10 text-primary mb-3" />
@@ -292,7 +292,7 @@ export default function AudioPage() {
             {files.length} file{files.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => handleEditCollection(selectedCollection)}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Folder
@@ -393,21 +393,21 @@ export default function AudioPage() {
                           {formatDuration(file.duration)}
                         </td>
                         <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleEditFile(file)}
-                              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                              className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                               title="Edit"
                             >
-                              <Pencil className="w-4 h-4" />
+                              <Pencil className="w-5 h-5" />
                             </button>
                             <button
                               onClick={() => handleDeleteFile(file)}
                               disabled={deletingId === file.id}
-                              className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                              className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                               title="Delete"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           </div>
                         </td>

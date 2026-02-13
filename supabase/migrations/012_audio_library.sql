@@ -72,4 +72,6 @@ END $$;
 --   Name: audio
 --   Public: true
 --   File size limit: 500MB (524288000 bytes)
---   Allowed MIME types: audio/mpeg, audio/mp4, audio/x-m4a, audio/aac
+--   Allowed MIME types: all audio/* (or remove restriction entirely)
+--     If restricting, include at minimum: audio/mpeg, audio/mp4, audio/x-m4a, audio/aac,
+--     audio/ogg, audio/opus, audio/wav, audio/x-wav, audio/webm

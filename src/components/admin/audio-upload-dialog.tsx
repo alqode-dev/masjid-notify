@@ -52,9 +52,10 @@ export function AudioUploadDialog({
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
 
-    const allowedTypes = ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/aac"];
-    if (!allowedTypes.includes(selectedFile.type)) {
-      toast.error("Please select an MP3, M4A, or AAC file");
+    // Check if it's an audio file - be permissive since browsers report different MIME types
+    // for the same format (e.g. .mpeg can be audio/mpeg or audio/x-mpeg)
+    if (selectedFile.type && !selectedFile.type.startsWith("audio/")) {
+      toast.error("Please select an audio file");
       return;
     }
 
@@ -225,13 +226,13 @@ export function AudioUploadDialog({
                   Click to select audio file
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  MP3, M4A, or AAC (max 500MB)
+                  MP3, M4A, MPEG, and other audio formats (max 500MB)
                 </p>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,.mp3,.m4a,.aac"
+                accept="audio/*,.mp3,.m4a,.aac,.mpeg,.ogg,.opus,.wav"
                 onChange={handleFileSelect}
                 className="hidden"
               />

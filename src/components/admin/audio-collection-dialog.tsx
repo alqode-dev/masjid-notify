@@ -78,7 +78,7 @@ export function AudioCollectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Folder" : "New Folder"}</DialogTitle>
           <DialogDescription>

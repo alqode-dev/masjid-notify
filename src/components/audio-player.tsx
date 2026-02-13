@@ -126,7 +126,7 @@ export function AudioPlayer({
 
       {/* Progress bar */}
       <div className="mb-3">
-        <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden mb-1">
+        <div className="relative w-full h-3 bg-muted rounded-full overflow-hidden mb-1">
           <div
             className="absolute left-0 top-0 h-full bg-primary rounded-full transition-[width] duration-200"
             style={{ width: `${progressPercent}%` }}
@@ -137,7 +137,7 @@ export function AudioPlayer({
             max={duration || 0}
             value={currentTime}
             onChange={handleSeek}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            className="absolute inset-0 w-full h-8 opacity-0 cursor-pointer -top-2.5"
             aria-label="Seek audio position"
           />
         </div>
@@ -151,16 +151,16 @@ export function AudioPlayer({
       <div className="flex items-center justify-center gap-3">
         <button
           onClick={toggleMute}
-          className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+          className="p-3 text-muted-foreground hover:text-foreground transition-colors"
           aria-label={muted ? "Unmute" : "Mute"}
         >
-          {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
 
         {hasPrevious && (
           <button
             onClick={onPrevious}
-            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="p-3 text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Previous track"
           >
             <SkipBack className="w-5 h-5" />
@@ -182,7 +182,7 @@ export function AudioPlayer({
         {hasNext && (
           <button
             onClick={onNext}
-            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="p-3 text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Next track"
           >
             <SkipForward className="w-5 h-5" />
@@ -190,7 +190,7 @@ export function AudioPlayer({
         )}
 
         {/* Spacer to balance mute button */}
-        <div className="w-8" />
+        <div className="w-11" />
       </div>
     </div>
   );

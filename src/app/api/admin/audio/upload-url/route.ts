@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
 import { randomUUID } from "crypto";
 
-const ALLOWED_MIME_TYPES = ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/aac"];
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
 // POST: Generate a signed upload URL for direct browser→Supabase upload
@@ -19,9 +18,9 @@ export const POST = withAdminAuth(async (request, { admin }) => {
       );
     }
 
-    if (!fileType || !ALLOWED_MIME_TYPES.includes(fileType)) {
+    if (!fileType || !fileType.startsWith("audio/")) {
       return NextResponse.json(
-        { error: "Invalid file type. Allowed: MP3, M4A, AAC" },
+        { error: "Invalid file type. Please upload an audio file" },
         { status: 400 }
       );
     }

@@ -188,7 +188,7 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
           <p className="text-sm text-muted-foreground">No files in this collection yet</p>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 pb-24">
           {files.map((file, index) => {
             const isActive = currentTrack?.id === file.id;
 

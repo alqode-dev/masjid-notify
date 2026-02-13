@@ -6,7 +6,7 @@ import { SubscribeForm } from "@/components/subscribe-form";
 import { PrayerTimesDisplay } from "@/components/prayer-times";
 import { Footer } from "@/components/footer";
 import { QRCodeMini } from "@/components/qr-code";
-import { MapPin, Bell, QrCode } from "lucide-react";
+import { MapPin, Bell, QrCode, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { Mosque } from "@/lib/supabase";
 import type { PrayerTimes } from "@/lib/prayer-times";
@@ -157,10 +157,14 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
             <Link href="/listen">
               <motion.div
                 whileHover={{ y: -2 }}
-                className="p-4 rounded-xl bg-card/50 border border-border/30 text-center h-full"
+                whileTap={{ scale: 0.98 }}
+                className="p-4 rounded-xl bg-primary/5 border border-primary/30 text-center h-full relative group"
               >
                 <span className="text-2xl mb-2 block">🎧</span>
-                <h3 className="font-semibold text-foreground text-sm mb-1">Audio Library</h3>
+                <h3 className="font-semibold text-foreground text-sm mb-1 flex items-center justify-center gap-1">
+                  Audio Library
+                  <ArrowRight className="w-3.5 h-3.5 text-primary opacity-70 group-hover:translate-x-0.5 transition-transform" />
+                </h3>
                 <p className="text-xs text-muted-foreground">
                   Listen to lectures, tafsir, and more
                 </p>
