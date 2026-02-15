@@ -291,19 +291,16 @@ export async function getMosquePrayerTimes(
   date?: Date
 ): Promise<PrayerTimes | null> {
   // Custom / Masjid Times mode
+  // Skip prayer cache entirely — custom times come straight from the mosque
+  // config and are trivial to construct. This avoids stale cache entries from
+  // a previous calculation method being returned after switching to custom.
   if (mosque.calculation_method === 99 && mosque.custom_prayer_times) {
     const custom = mosque.custom_prayer_times
-    const targetDate = date || new Date()
-    const dateStr = getDateString(targetDate, mosque.timezone)
-
-    // Check cache first (custom times are cached just like API times)
-    const cached = await getCachedPrayerTimes(mosque.id, dateStr)
-    if (cached) return cached
 
     // Fetch Hijri date from Aladhan (lightweight call, no prayer calc needed)
     const dateInfo = await fetchHijriDate(mosque.timezone)
 
-    const prayerTimes: PrayerTimes = {
+    return {
       fajr: format24to12(custom.fajr),
       sunrise: format24to12(custom.sunrise),
       dhuhr: format24to12(custom.dhuhr),
@@ -315,12 +312,6 @@ export async function getMosquePrayerTimes(
       hijriDate: dateInfo.hijriDate,
       hijriMonth: dateInfo.hijriMonth,
     }
-
-    // Cache the result
-    const { date: _date, ...timesToCache } = prayerTimes
-    await cachePrayerTimes(mosque.id, dateStr, timesToCache)
-
-    return prayerTimes
   }
 
   // Standard API-based times

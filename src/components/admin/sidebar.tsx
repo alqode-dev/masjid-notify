@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
+  UsersRound,
   Megaphone,
   Settings,
   LogOut,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/qr-code", label: "QR Code", icon: QrCode },
   { href: "/admin/audio", label: "Audio Library", icon: Headphones },
+  { href: "/admin/team", label: "Team", icon: UsersRound },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
