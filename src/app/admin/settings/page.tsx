@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [calculationMethod, setCalculationMethod] = useState("3");
   const [madhab, setMadhab] = useState("hanafi");
   const [eidMode, setEidMode] = useState("off");
+  const [eidKhutbahTime, setEidKhutbahTime] = useState("");
   const [eidSalahTime, setEidSalahTime] = useState("");
   const [customFajr, setCustomFajr] = useState("");
   const [customSunrise, setCustomSunrise] = useState("");
@@ -77,6 +78,7 @@ export default function SettingsPage() {
         setCalculationMethod((mosqueData.calculation_method ?? 3).toString());
         setMadhab(mosqueData.madhab ?? "hanafi");
         setEidMode(mosqueData.eid_mode ?? "off");
+        setEidKhutbahTime(mosqueData.eid_khutbah_time ? mosqueData.eid_khutbah_time.slice(0, 5) : "");
         setEidSalahTime(mosqueData.eid_salah_time ? mosqueData.eid_salah_time.slice(0, 5) : "");
         if (mosqueData.custom_prayer_times) {
           const cpt = mosqueData.custom_prayer_times;
@@ -116,6 +118,7 @@ export default function SettingsPage() {
           calculation_method: parseInt(calculationMethod, 10) || 3,
           madhab: madhab as "hanafi" | "shafii",
           eid_mode: eidMode,
+          eid_khutbah_time: eidKhutbahTime ? eidKhutbahTime + ":00" : null,
           eid_salah_time: eidSalahTime ? eidSalahTime + ":00" : null,
           custom_prayer_times: calculationMethod === "99" ? {
             fajr: customFajr,
@@ -320,13 +323,20 @@ export default function SettingsPage() {
           />
 
           {eidMode !== "off" && (
-            <Input
-              label="Eid Salah Time"
-              type="time"
-              value={eidSalahTime}
-              onChange={(e) => setEidSalahTime(e.target.value)}
-              hint="Set the Eid salah time to display on the landing page"
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Eid Khutbah Time"
+                type="time"
+                value={eidKhutbahTime}
+                onChange={(e) => setEidKhutbahTime(e.target.value)}
+              />
+              <Input
+                label="Eid Salah Time"
+                type="time"
+                value={eidSalahTime}
+                onChange={(e) => setEidSalahTime(e.target.value)}
+              />
+            </div>
           )}
         </div>
       </Card>

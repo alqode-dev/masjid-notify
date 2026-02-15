@@ -62,9 +62,21 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
       taraweeh_time: body.taraweeh_time,
     };
 
+    // Validate custom prayer times when method is 99 (Custom / Masjid Times)
+    if (body.calculation_method === 99) {
+      const cpt = body.custom_prayer_times;
+      if (!cpt || !cpt.fajr || !cpt.sunrise || !cpt.dhuhr || !cpt.asr || !cpt.maghrib || !cpt.isha) {
+        return NextResponse.json(
+          { error: "All 6 prayer times are required when using Custom / Masjid Times mode" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Eid + custom prayer times fields (migration 013)
     const extendedFields: Record<string, unknown> = {
       eid_mode: body.eid_mode ?? "off",
+      eid_khutbah_time: body.eid_khutbah_time ?? null,
       eid_salah_time: body.eid_salah_time ?? null,
       custom_prayer_times: body.custom_prayer_times ?? null,
     };

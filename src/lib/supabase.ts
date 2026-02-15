@@ -44,6 +44,7 @@ export type Mosque = {
   iftar_reminder_mins: number;
   taraweeh_time: string | null;
   eid_mode: 'off' | 'eid_ul_fitr' | 'eid_ul_adha';
+  eid_khutbah_time: string | null;
   eid_salah_time: string | null;
   custom_prayer_times: {
     fajr: string;

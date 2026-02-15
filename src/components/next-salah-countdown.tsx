@@ -81,7 +81,7 @@ export function NextSalahCountdown({ prayerTimes }: NextSalahCountdownProps) {
   if (!next) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-full bg-primary/10 text-primary text-sm font-medium mx-auto w-fit mb-3">
+    <div className="flex items-center gap-2 py-1.5 px-3 rounded-full bg-primary/10 text-primary text-sm font-medium">
       <Clock className="w-3.5 h-3.5" />
       <span>Next: {next.name} in {formatCountdown(next.diffMs)}</span>
     </div>

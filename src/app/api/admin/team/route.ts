@@ -108,10 +108,8 @@ export const POST = withAdminAuth(async (request, { admin }) => {
 
     if (authError || !authData.user) {
       console.error("Error creating auth user:", authError);
-      const message =
-        authError?.message === "A user with this email address has already been registered"
-          ? "A user with this email already exists in the auth system"
-          : "Failed to create user account";
+      // Surface the actual Supabase Auth error to help diagnose
+      const message = authError?.message || "Failed to create user account";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -130,6 +128,7 @@ export const POST = withAdminAuth(async (request, { admin }) => {
 
     if (insertError) {
       console.error("Error inserting admin row:", insertError);
+      const insertMsg = insertError.message || "Failed to create team member";
       // Cleanup: delete the auth user we just created
       try {
         await supabase.auth.admin.deleteUser(authData.user.id);
@@ -137,7 +136,7 @@ export const POST = withAdminAuth(async (request, { admin }) => {
         console.error("Failed to cleanup auth user after insert failure:", cleanupError);
       }
       return NextResponse.json(
-        { error: "Failed to create team member" },
+        { error: insertMsg },
         { status: 500 }
       );
     }

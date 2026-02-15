@@ -297,28 +297,38 @@ export async function getMosquePrayerTimes(
   if (mosque.calculation_method === 99 && mosque.custom_prayer_times) {
     const custom = mosque.custom_prayer_times
 
-    // Fetch Hijri date from Aladhan (lightweight call, no prayer calc needed)
-    const dateInfo = await fetchHijriDate(mosque.timezone)
+    // Validate that all custom time fields are non-empty
+    const allFilled = custom.fajr && custom.sunrise && custom.dhuhr &&
+      custom.asr && custom.maghrib && custom.isha
+    if (allFilled) {
+      // Fetch Hijri date from Aladhan (lightweight call, no prayer calc needed)
+      const dateInfo = await fetchHijriDate(mosque.timezone)
 
-    return {
-      fajr: format24to12(custom.fajr),
-      sunrise: format24to12(custom.sunrise),
-      dhuhr: format24to12(custom.dhuhr),
-      asr: format24to12(custom.asr),
-      maghrib: format24to12(custom.maghrib),
-      isha: format24to12(custom.isha),
-      imsak: format24to12(custom.fajr), // Imsak = Fajr for custom times
-      date: dateInfo.date,
-      hijriDate: dateInfo.hijriDate,
-      hijriMonth: dateInfo.hijriMonth,
+      return {
+        fajr: format24to12(custom.fajr),
+        sunrise: format24to12(custom.sunrise),
+        dhuhr: format24to12(custom.dhuhr),
+        asr: format24to12(custom.asr),
+        maghrib: format24to12(custom.maghrib),
+        isha: format24to12(custom.isha),
+        imsak: format24to12(custom.fajr), // Imsak = Fajr for custom times
+        date: dateInfo.date,
+        hijriDate: dateInfo.hijriDate,
+        hijriMonth: dateInfo.hijriMonth,
+      }
     }
+    console.warn('Custom prayer times incomplete, falling back to API method 3. Fields:', custom)
   }
+
+  // Safety: method 99 is not a valid Aladhan API method.
+  // Fall back to Muslim World League (3) if custom times were not usable.
+  const apiMethod = mosque.calculation_method === 99 ? 3 : mosque.calculation_method
 
   // Standard API-based times
   return getPrayerTimes(
     mosque.latitude,
     mosque.longitude,
-    mosque.calculation_method,
+    apiMethod,
     mosque.madhab,
     date,
     mosque.id,

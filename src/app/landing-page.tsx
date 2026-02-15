@@ -9,7 +9,7 @@ import { QRCodeMini } from "@/components/qr-code";
 import { MapPin, Bell, QrCode, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { NextSalahCountdown } from "@/components/next-salah-countdown";
-import { formatDbTime } from "@/lib/prayer-times";
+import { formatDbTime } from "@/lib/time-format";
 import type { Mosque } from "@/lib/supabase";
 import type { PrayerTimes } from "@/lib/prayer-times";
 
@@ -84,9 +84,11 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
                 <span className="text-lg">{mosque.eid_mode === "eid_ul_fitr" ? "🌙" : "🐑"}</span>
                 Eid Mubarak
               </div>
-              {mosque.eid_salah_time && (
+              {(mosque.eid_khutbah_time || mosque.eid_salah_time) && (
                 <p className="text-xs text-muted-foreground">
-                  Eid Salah at {formatDbTime(mosque.eid_salah_time)}
+                  {mosque.eid_khutbah_time && `Khutbah at ${formatDbTime(mosque.eid_khutbah_time)}`}
+                  {mosque.eid_khutbah_time && mosque.eid_salah_time && " · "}
+                  {mosque.eid_salah_time && `Salah at ${formatDbTime(mosque.eid_salah_time)}`}
                 </p>
               )}
             </motion.div>
@@ -122,11 +124,13 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
           className="w-full max-w-2xl mb-8"
         >
           <Card className="p-4 md:p-6 bg-card/80 backdrop-blur-sm border-border/50">
-            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-primary" />
-              Today&apos;s Prayer Times
-            </h2>
-            {prayerTimes && <NextSalahCountdown prayerTimes={prayerTimes} />}
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Bell className="w-5 h-5 text-primary" />
+                Today&apos;s Prayer Times
+              </h2>
+              {prayerTimes && <NextSalahCountdown prayerTimes={prayerTimes} />}
+            </div>
             <PrayerTimesDisplay prayerTimes={prayerTimes} />
           </Card>
         </motion.div>
