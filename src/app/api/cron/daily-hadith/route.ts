@@ -18,12 +18,10 @@ import { getTodaysHadith } from "@/lib/hadith-api";
 import { getMosquePrayerTimes, isWithinMinutesAfter } from "@/lib/prayer-times";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { tryClaimReminderLock, ReminderType } from "@/lib/reminder-locks";
+import { HADITH_MINUTES_AFTER_PRAYER } from "@/lib/constants";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
-
-// How many minutes after Fajr/Maghrib to send the hadith
-const HADITH_MINUTES_AFTER_PRAYER = 15;
 
 /**
  * Daily Hadith Cron Job

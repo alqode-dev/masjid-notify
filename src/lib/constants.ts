@@ -28,6 +28,9 @@ export const TAHAJJUD_MINUTES_BEFORE_FAJR = 120; // 2 hours before Fajr
 export const ISHRAQ_MINUTES_AFTER_SUNRISE = 20; // 20 minutes after sunrise (Ishraq time per Sunnah)
 export const AWWABIN_MINUTES_AFTER_MAGHRIB = 15; // 15 mins after Maghrib
 
+// Hadith timing (in minutes)
+export const HADITH_MINUTES_AFTER_PRAYER = 15; // Send hadith 15 mins after Fajr/Maghrib
+
 // Jamaat timing
 // Jamaat (congregation prayer) starts 15 minutes after Adhan for all prayers EXCEPT Maghrib
 // Maghrib Jamaat starts immediately with Adhan (no delay)

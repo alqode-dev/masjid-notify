@@ -152,13 +152,19 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       if (currentRetries >= MAX_SCHEDULED_MESSAGE_RETRIES) {
         await supabaseAdmin
           .from("scheduled_messages")
-          .update({ status: "failed" })
+          .update({ status: "failed", retry_count: currentRetries })
           .eq("id", scheduled.id);
 
         logCronError(logger, "Scheduled message permanently failed after max retries", {
           scheduledMessageId: scheduled.id,
           mosqueId: scheduled.mosque_id,
         });
+      } else {
+        // Save incremented retry count so retries are actually tracked
+        await supabaseAdmin
+          .from("scheduled_messages")
+          .update({ retry_count: currentRetries })
+          .eq("id", scheduled.id);
       }
 
       failed++;

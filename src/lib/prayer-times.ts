@@ -294,7 +294,8 @@ export async function getMosquePrayerTimes(
   // Skip prayer cache entirely — custom times come straight from the mosque
   // config and are trivial to construct. This avoids stale cache entries from
   // a previous calculation method being returned after switching to custom.
-  if (mosque.calculation_method === 99 && mosque.custom_prayer_times) {
+  const calcMethod = Number(mosque.calculation_method)
+  if (calcMethod === 99 && mosque.custom_prayer_times) {
     const custom = mosque.custom_prayer_times
 
     // Validate that all custom time fields are non-empty
@@ -322,7 +323,7 @@ export async function getMosquePrayerTimes(
 
   // Safety: method 99 is not a valid Aladhan API method.
   // Fall back to Muslim World League (3) if custom times were not usable.
-  const apiMethod = mosque.calculation_method === 99 ? 3 : mosque.calculation_method
+  const apiMethod = calcMethod === 99 ? 3 : calcMethod
 
   // Standard API-based times
   return getPrayerTimes(
