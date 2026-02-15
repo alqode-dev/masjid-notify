@@ -331,7 +331,7 @@ export default function TeamPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {new Date(member.created_at).toLocaleDateString()}
+                        {new Date(member.created_at).toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" })}
                       </td>
                       {isOwner && (
                         <td className="px-4 py-3 text-right">

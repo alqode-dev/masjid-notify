@@ -391,6 +391,22 @@ export async function GET(request: NextRequest) {
       console.error("[prayer-reminders] cleanupOldLocks failed:", err instanceof Error ? err.message : String(err));
     }
 
+    // Clean up old prayer times cache entries (older than 7 days)
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 7);
+      const cutoffStr = cutoff.toISOString().split("T")[0];
+      const { error: cacheCleanErr } = await supabaseAdmin
+        .from("prayer_times_cache")
+        .delete()
+        .lt("date", cutoffStr);
+      if (cacheCleanErr) {
+        console.error("[prayer-reminders] prayer cache cleanup failed:", cacheCleanErr.message);
+      }
+    } catch (err) {
+      console.error("[prayer-reminders] prayer cache cleanup failed:", err instanceof Error ? err.message : String(err));
+    }
+
     const result = finalizeCronLog(logger);
 
     return NextResponse.json({

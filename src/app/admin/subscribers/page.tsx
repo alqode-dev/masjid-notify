@@ -93,7 +93,7 @@ export default function SubscribersPage() {
       ...subscribers.map((s) => [
         s.phone_number,
         s.status,
-        new Date(s.subscribed_at).toLocaleDateString(),
+        new Date(s.subscribed_at).toLocaleDateString("en-ZA"),
         s.pref_daily_prayers ? "Yes" : "No",
         s.pref_jumuah ? "Yes" : "No",
         s.pref_ramadan ? "Yes" : "No",

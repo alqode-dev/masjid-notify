@@ -354,7 +354,7 @@ async function handlePause(
 
   await sendWhatsAppMessage(
     phone,
-    `Notifications paused for ${pauseDays} days.\n\nThey will resume on ${pauseUntil.toLocaleDateString()}.\n\nReply RESUME to start receiving them again.\n\n${mosqueName}`
+    `Notifications paused for ${pauseDays} days.\n\nThey will resume on ${pauseUntil.toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" })}.\n\nReply RESUME to start receiving them again.\n\n${mosqueName}`
   );
 }
 

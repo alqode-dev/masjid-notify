@@ -246,10 +246,26 @@ export async function getUniqueHadith(
  * @param timeOfDay - 'morning' for Fajr hadith, 'evening' for Maghrib hadith
  */
 export async function getTodaysHadith(
-  timeOfDay: "morning" | "evening" = "morning"
+  timeOfDay: "morning" | "evening" = "morning",
+  timezone?: string
 ): Promise<HadithData | null> {
   const supabase = getSupabaseAdmin();
-  const today = new Date().toISOString().split("T")[0];
+  // Use timezone-aware date to avoid wrong day near midnight (e.g., SAST is UTC+2)
+  let today: string;
+  if (timezone) {
+    try {
+      today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+    } catch {
+      today = new Date().toISOString().split("T")[0];
+    }
+  } else {
+    today = new Date().toISOString().split("T")[0];
+  }
 
   // Check if we already have today's hadith cached for this time of day
   const { data: cached, error: cacheError } = await supabase

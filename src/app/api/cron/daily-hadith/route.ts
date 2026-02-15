@@ -129,7 +129,7 @@ async function sendHadithIfNotAlreadySent(
   }
 
   // Get today's hadith from the external API
-  const hadith = await getTodaysHadith(timeOfDay);
+  const hadith = await getTodaysHadith(timeOfDay, mosque.timezone);
 
   if (!hadith) {
     logCronError(logger, `Failed to fetch ${timeOfDay} hadith from external API`, {
