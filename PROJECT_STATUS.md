@@ -1,8 +1,8 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 10, 2026 @ 01:00 SAST
-> **Version:** 1.9.1
-> **Status:** Production - Hotfix applied (prayer-reminders production outage fixed)
+> **Last Updated:** February 15, 2026 @ 14:00 SAST
+> **Version:** 2.0.0
+> **Status:** Production - Major feature release (Audio Library, Custom Prayer Times, Eid Mode, Team Management)
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -20,6 +20,7 @@
 | **GitHub Repo** | https://github.com/alqode-dev/masjid-notify |
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
+| **Audio Library** | https://masjid-notify.vercel.app/listen |
 
 ---
 
@@ -252,6 +253,12 @@ git push origin master
 | Social preview | ✅ Works | **Custom OG image** for WhatsApp/social sharing (v1.6.1) |
 | WhatsApp webhook | ✅ Works | **Fixed (v1.8.0):** WABA subscribed, commands (STOP/PAUSE/SETTINGS/HELP) fully operational |
 | Message logging | ✅ Works | **Fixed (v1.8.0):** metadata column added, all prayer/nafl messages now recorded |
+| Audio Library | ✅ Works | Upload, manage, stream Islamic lectures/Quran recitations via Supabase Storage, public `/listen` page |
+| Custom Prayer Times | ✅ Works | calculation_method=99 mode for manual prayer time entry, bypasses Aladhan API and cache |
+| Eid Mode | ✅ Works | Admin can enable Eid mode with Khutbah + Salah times, displayed on landing page |
+| Next Salah Countdown | ✅ Works | Live countdown timer on landing page showing time until next prayer |
+| Admin Team Management | ✅ Works | Owner can add/remove team members with roles (admin/announcer), creates Supabase Auth users |
+| Cron Diagnostics | ✅ Works | Real-time diagnostic endpoint `/api/cron/diagnostics` for debugging cron timing |
 
 ### ⚠️ Pending Meta Approval
 
@@ -289,6 +296,10 @@ git push origin master
 | **Migration 009** | Fix messages CHECK constraints + prayer_times_cache RLS | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | **Migration 010** | Unified reminder locks for duplicate prevention | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | **Migration 011** | Add metadata JSONB column to messages table | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 012** | Audio collections and files tables for Audio Library | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 013** | Eid mode columns on mosques table | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 014** | Add eid_khutbah_time column to mosques table | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 015** | Make password_hash nullable for team member creation | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | Migration 007 | Adds Ramadan columns to mosques table | Optional - settings page has fallback |
 | Add retry_count | For scheduled message retry tracking | Optional - code handles missing column |
 
@@ -303,6 +314,23 @@ git push origin master
 - Uses UNIQUE constraint on `(mosque_id, prayer_key, reminder_date, reminder_offset)`
 - Supports all reminder types: prayers, hadith_morning, hadith_evening, jumuah, nafl types, ramadan types
 
+**Migration 012 Details:**
+- Creates `audio_collections` table (id, mosque_id, title, description, display_order)
+- Creates `audio_files` table (id, collection_id, title, file_path, file_size, duration_seconds, display_order)
+- Enables Supabase Storage for audio files in `audio-files` bucket
+
+**Migration 013 Details:**
+- Adds `eid_mode` BOOLEAN DEFAULT FALSE to mosques table
+- Adds `eid_salah_time` TIME column to mosques table
+
+**Migration 014 Details:**
+- Adds `eid_khutbah_time` TIME column to mosques table
+- Separates Khutbah time from Salah time for Eid display
+
+**Migration 015 Details:**
+- Alters `admins.password_hash` column to be nullable
+- Required for team member creation via Supabase Auth (password stored in auth.users, not admins table)
+
 ---
 
 # PART 2: CURRENT STATUS
@@ -315,15 +343,18 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 10, 2026 | All pages loading correctly, branded 404 page, XSS-safe QR print |
-| **Backend API** | ✅ Operational | Feb 10, 2026 | All admin endpoints use secure server-side routes |
-| **Database (Supabase)** | ✅ Connected | Feb 10, 2026 | PostgreSQL with RLS, coordinates correct, **metadata column added** |
-| **Admin Dashboard** | ✅ Operational | Feb 10, 2026 | All pages functional, accessible, **middleware-protected** |
-| **Admin Settings** | ✅ Operational | Feb 10, 2026 | **Cache invalidated on save**, **one-time tokens** |
-| **WhatsApp Sending** | ✅ Active | Feb 10, 2026 | Account restored, **concurrent sending**, `preview_url: true` |
+| **Frontend (Next.js)** | ✅ Operational | Feb 15, 2026 | All pages loading, Audio Library, Next Salah countdown, Eid mode, Team management |
+| **Backend API** | ✅ Operational | Feb 15, 2026 | All admin endpoints use secure server-side routes, audio + team APIs added |
+| **Database (Supabase)** | ✅ Connected | Feb 15, 2026 | PostgreSQL with RLS, audio tables, eid columns, 15 migrations applied |
+| **Admin Dashboard** | ✅ Operational | Feb 15, 2026 | All pages functional, accessible, **middleware-protected**, Audio + Team pages added |
+| **Admin Settings** | ✅ Operational | Feb 15, 2026 | Custom prayer times, Eid mode, **cache invalidated on save**, **one-time tokens** |
+| **WhatsApp Sending** | ✅ Active | Feb 15, 2026 | Account restored, **concurrent sending**, `preview_url: true` |
 | **WhatsApp Webhook** | ✅ Operational | Feb 10, 2026 | **Fixed (v1.8.0):** WABA subscribed to app, all 6 commands working (STOP/START/RESUME/PAUSE/SETTINGS/HELP). See [Meta Webhook Configuration](#meta-webhook-configuration). |
-| **Cron Jobs** | ✅ Running | Feb 10, 2026 | 5 jobs, **atomic locking**, **core-first architecture (v1.9.1)**, **dynamic timing**, **metadata fallback** |
-| **Hadith API** | ✅ Integrated | Feb 9, 2026 | jsDelivr CDN (6 collections), **dynamic timing** (15 min after Fajr/Maghrib) |
+| **Cron Jobs** | ✅ Running | Feb 15, 2026 | 5 jobs, **atomic locking**, **timezone-aware (v2.0.0)**, **core-first architecture**, **dynamic timing**, **cache cleanup** |
+| **Hadith API** | ✅ Integrated | Feb 15, 2026 | jsDelivr CDN (6 collections), **dynamic timing**, **timezone-aware caching (v2.0.0)** |
+| **Audio Library** | ✅ Operational | Feb 15, 2026 | Supabase Storage integration, public streaming page `/listen` |
+| **Team Management** | ✅ Operational | Feb 15, 2026 | Owner-only add/delete admin team members with role-based access |
+| **Cron Diagnostics** | ✅ Operational | Feb 15, 2026 | `/api/cron/diagnostics` endpoint for real-time debugging |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
 | **Rate Limiting** | ✅ Secure | Feb 9, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
@@ -346,13 +377,13 @@ git push origin master
 
 | Metric | Value |
 |--------|-------|
-| **Development Sprint** | January 31 - February 10, 2026 |
-| **User Stories Completed** | 24/24 (100%) |
+| **Development Sprint** | January 31 - February 15, 2026 |
+| **User Stories Completed** | 30/30 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
-| **Bug Fixes (v1.6.x-v1.8.0)** | 80+ issues resolved |
-| **Total Commits** | 81 commits |
-| **Lines of Code** | ~9,000+ lines |
-| **Build Time** | ~3.5 seconds (Turbopack) |
+| **Bug Fixes (v1.6.x-v2.0.0)** | 95+ issues resolved |
+| **Total Commits** | 90+ commits |
+| **Lines of Code** | ~12,000+ lines |
+| **Build Time** | ~4.7 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
 
 ### Key Achievements
@@ -384,12 +415,20 @@ git push origin master
 - ✅ **Core-first cron architecture** (prayer reminders always execute first, auxiliary features isolated)
 - ✅ **Shared reminder lock utility** (all 5 cron routes use same `tryClaimReminderLock`)
 - ✅ **Production incident recovery** (v1.9.1 hotfix for prayer-reminders outage)
+- ✅ **Audio Library** (upload, manage, stream Islamic lectures and Quran recitations)
+- ✅ **Custom Prayer Times** (manual time entry mode, bypasses API for mosque-set times)
+- ✅ **Eid Mode** (special landing page display with Khutbah and Salah times)
+- ✅ **Next Salah Countdown** (live countdown timer on landing page)
+- ✅ **Admin Team Management** (owner can add/remove admins with role-based permissions)
+- ✅ **Cron Reliability Fix** (7 critical timezone handling bugs fixed)
+- ✅ **Diagnostic Endpoint** (real-time cron timing and mosque configuration debugging)
+- ✅ **Prayer cache auto-cleanup** (entries older than 7 days cleaned up automatically)
 
 ---
 
 ## Code Quality & Security
 
-### Security Features (v1.6.0 - v1.8.0)
+### Security Features (v1.6.0 - v2.0.0)
 
 | Feature | Implementation | File |
 |---------|----------------|------|
@@ -417,7 +456,7 @@ git push origin master
 | **WhatsApp API version configurable** | `WHATSAPP_API_VERSION` env var prevents breakage on Meta sunsets | whatsapp.ts (v1.9.0) |
 | **Consistent admin auth** | All admin routes standardized to `withAdminAuth` wrapper | All admin routes (v1.9.0) |
 
-### Code Quality Improvements (v1.6.0 - v1.9.1)
+### Code Quality Improvements (v1.6.0 - v2.0.0)
 
 | Improvement | Description | Files |
 |-------------|-------------|-------|
@@ -475,6 +514,9 @@ export const AWWABIN_MINUTES_AFTER_MAGHRIB = 15;    // 15 mins after Maghrib
 
 // Hadith timing (dynamically follows prayer times)
 export const HADITH_MINUTES_AFTER_PRAYER = 15;      // 15 mins after Fajr/Maghrib
+
+// Jamaat timing
+export const JAMAAT_DELAY_MINUTES = 15;              // 15 mins after Adhaan for congregation (except Maghrib)
 
 // Subscriber preferences
 export const VALID_REMINDER_OFFSETS = [5, 10, 15, 30] as const;
@@ -1149,7 +1191,9 @@ npx playwright test --headed
 | **Subscribers** | `/admin/subscribers` | View, search, filter, export subscribers |
 | **Announcements** | `/admin/announcements` | Send immediate or scheduled messages |
 | **QR Code** | `/admin/qr-code` | Generate and download QR codes |
-| **Settings** | `/admin/settings` | Mosque configuration, prayer times, Ramadan mode |
+| **Settings** | `/admin/settings` | Mosque configuration, prayer times, Ramadan mode, Eid mode, custom times |
+| **Audio Library** | `/admin/audio` | Upload and manage Islamic lectures, Quran recitations |
+| **Team** | `/admin/team` | Manage admin team members (owner-only) |
 
 ### Admin Capabilities
 
@@ -1163,6 +1207,10 @@ npx playwright test --headed
 - Set Jumu'ah times
 - Enable/disable Ramadan mode
 - Configure Taraweeh time
+- Upload and manage audio collections and files
+- Add/remove admin team members with roles (owner-only)
+- Set custom prayer times (calculation_method=99 mode)
+- Enable Eid mode with Khutbah and Salah times
 
 ---
 
@@ -1198,7 +1246,7 @@ npx playwright test --headed
 
 ## All Features
 
-### Core Features (18 Total)
+### Core Features (25 Total)
 
 | # | Feature | Status | Description |
 |---|---------|--------|-------------|
@@ -1221,6 +1269,12 @@ npx playwright test --headed
 | 17 | Jumu'ah Reminder | ✅ Live | Friday morning reminder |
 | 18 | Analytics Charts | ✅ Live | Subscriber growth, message breakdown |
 | 19 | 404 Page | ✅ Live | **Branded not-found page** (v1.6.0) |
+| 20 | Audio Library | ✅ Live | Upload, manage, stream Islamic lectures/Quran, public `/listen` page (v2.0.0) |
+| 21 | Custom Prayer Times | ✅ Live | Manual prayer time entry mode (calculation_method=99) (v2.0.0) |
+| 22 | Eid Mode | ✅ Live | Eid Khutbah + Salah time display on landing page (v2.0.0) |
+| 23 | Next Salah Countdown | ✅ Live | Live countdown timer to next prayer on landing page (v2.0.0) |
+| 24 | Admin Team Management | ✅ Live | Owner can add/remove admins with role-based access (v2.0.0) |
+| 25 | Cron Diagnostics | ✅ Live | Real-time diagnostic endpoint for debugging (v2.0.0) |
 
 ### Subscriber Preferences (6 Options)
 
@@ -1256,6 +1310,8 @@ npx playwright test --headed
 | `POST` | `/api/webhook/whatsapp` | WhatsApp webhook |
 | `GET` | `/api/settings/[token]` | Get user preferences |
 | `PUT` | `/api/settings/[token]` | Update user preferences |
+| `GET` | `/api/audio` | List public audio collections |
+| `GET` | `/api/audio/[collectionId]` | Get audio files in collection |
 
 ### Admin Endpoints (Requires Auth via `withAdminAuth`)
 
@@ -1274,6 +1330,12 @@ npx playwright test --headed
 | `POST` | `/api/admin/announcements/schedule` | Create scheduled message |
 | `DELETE` | `/api/admin/announcements/schedule/[id]` | Cancel scheduled message |
 | `GET` | `/api/admin/analytics` | Analytics data (subscriber growth, message types, status) |
+| `GET/POST` | `/api/admin/audio/collections` | Manage audio collections |
+| `DELETE` | `/api/admin/audio/collections/[id]` | Delete audio collection |
+| `GET/POST` | `/api/admin/audio/files` | Manage audio files |
+| `DELETE` | `/api/admin/audio/files/[id]` | Delete audio file |
+| `POST` | `/api/admin/audio/upload-url` | Get signed upload URL for Supabase Storage |
+| `GET/POST/DELETE` | `/api/admin/team` | Manage admin team members (owner-only) |
 
 ### Cron Endpoints (Requires CRON_SECRET)
 
@@ -1284,6 +1346,7 @@ npx playwright test --headed
 | `GET` | `/api/cron/jumuah-reminder` | Every 5 mins | Friday reminder (checks if 2 hours before khutbah) |
 | `GET` | `/api/cron/ramadan-reminders` | Every 5 mins | Suhoor/Iftar/Taraweeh |
 | `GET` | `/api/cron/nafl-reminders` | Every 5 mins | Tahajjud/Ishraq/Awwabin |
+| `GET` | `/api/cron/diagnostics` | Any time | Real-time diagnostic info for debugging cron timing |
 
 > **Note:** As of v1.7.1, all cron jobs run every 5 minutes and use **dynamic prayer-time-based scheduling**. Fixed UTC times are no longer used. Each job checks the current time against mosque prayer times and only sends when appropriate.
 >
@@ -1305,6 +1368,8 @@ npx playwright test --headed
 | `prayer_times_cache` | API response cache (with INSERT/UPDATE policies) | ✅ |
 | `scheduled_messages` | Scheduled announcements | ✅ |
 | `prayer_reminder_locks` | Atomic dedup locks for all reminder types (v1.7.0) | ✅ |
+| `audio_collections` | Audio content organization (v2.0.0) | ✅ |
+| `audio_files` | Audio file metadata (v2.0.0) | ✅ |
 
 ### Key Table: subscribers
 
@@ -1388,15 +1453,19 @@ masjid-notify/
 │   │   │   ├── subscribers/page.tsx    # Subscriber management
 │   │   │   ├── announcements/page.tsx  # Message composer
 │   │   │   ├── qr-code/page.tsx        # QR generator
-│   │   │   └── settings/page.tsx       # Mosque settings
+│   │   │   ├── settings/page.tsx       # Mosque settings (custom times, Eid mode)
+│   │   │   ├── audio/page.tsx          # Audio Library management
+│   │   │   └── team/page.tsx           # Team management (owner-only)
 │   │   │
 │   │   ├── settings/[token]/page.tsx    # User notification preferences (24h token access via SETTINGS command)
 │   │   ├── privacy/page.tsx            # Privacy policy
 │   │   ├── terms/page.tsx              # Terms of service
 │   │   ├── data-deletion/page.tsx      # Data deletion instructions
+│   │   ├── listen/page.tsx             # Public audio streaming page
 │   │   │
 │   │   └── api/
 │   │       ├── subscribe/route.ts      # Subscription endpoint
+│   │       ├── audio/                  # Public audio collections + files API
 │   │       │
 │   │       ├── admin/
 │   │       │   ├── stats/route.ts          # Dashboard stats
@@ -1408,13 +1477,19 @@ masjid-notify/
 │   │       │       ├── route.ts            # Send announcement (concurrent)
 │   │       │       ├── data/route.ts       # Announcements page data
 │   │       │       └── schedule/           # Scheduled messages
+│   │       │   ├── audio/
+│   │       │   │   ├── collections/        # Audio collections CRUD + [id] delete
+│   │       │   │   ├── files/              # Audio files CRUD + [id] delete
+│   │       │   │   └── upload-url/         # Signed upload URL
+│   │       │   └── team/route.ts           # Team management (owner-only)
 │   │       │
 │   │       ├── cron/
 │   │       │   ├── prayer-reminders/route.ts    # Prayer reminders (core-first, shared locks, retry limits) (v1.9.1)
 │   │       │   ├── daily-hadith/route.ts
 │   │       │   ├── jumuah-reminder/route.ts
 │   │       │   ├── ramadan-reminders/route.ts   # Uses isWithinMinutesAfter
-│   │       │   └── nafl-reminders/route.ts
+│   │       │   ├── nafl-reminders/route.ts
+│   │       │   └── diagnostics/route.ts       # Diagnostic endpoint
 │   │       │
 │   │       ├── settings/[token]/route.ts        # User preferences (validation)
 │   │       │
@@ -1425,6 +1500,7 @@ masjid-notify/
 │   │   │   └── checkbox.tsx            # Accessible checkbox (v1.6.0)
 │   │   ├── footer.tsx                  # "Powered by Alqode"
 │   │   ├── prayer-times.tsx
+│   │   ├── next-salah-countdown.tsx    # Live countdown to next prayer
 │   │   ├── qr-code.tsx
 │   │   ├── subscribe-form.tsx
 │   │   └── admin/
@@ -1447,6 +1523,7 @@ masjid-notify/
 │       ├── auth.ts                     # Auth utilities (constant-time comparison)
 │       ├── constants.ts                # Time constants (v1.6.0, updated v1.7.1)
 │       ├── reminder-locks.ts           # Atomic reminder locking utility (v1.7.0)
+│       ├── time-format.ts              # Client-safe time formatting utilities (v2.0.0)
 │       ├── logger.ts                   # Structured logging
 │       └── utils.ts                    # Helpers
 │
@@ -1476,7 +1553,11 @@ masjid-notify/
 │       ├── 008_prayer_reminder_locks.sql
 │       ├── 009_fix_messages_constraints.sql  # (v1.6.3) Fix CHECK constraints
 │       ├── 010_unified_reminder_locks.sql    # (v1.7.0) Unified atomic locking
-│       └── 011_add_messages_metadata.sql     # (v1.8.0) Add metadata JSONB column
+│       ├── 011_add_messages_metadata.sql     # (v1.8.0) Add metadata JSONB column
+│       ├── 012_add_audio_tables.sql         # (v2.0.0) Audio collections and files tables
+│       ├── 013_add_eid_mode.sql             # (v2.0.0) Eid mode columns
+│       ├── 014_add_eid_khutbah_time.sql     # (v2.0.0) Eid khutbah time column
+│       └── 015_fix_admins_password_hash.sql # (v2.0.0) Make password_hash nullable
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
@@ -1658,6 +1739,84 @@ Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 ---
 
 ## Changelog
+
+### Version 2.0.0 - February 15, 2026
+
+**MAJOR: Feature Release - Audio Library, Custom Prayer Times, Eid Mode, Team Management**
+
+This is a major feature release adding six new capabilities to the platform, along with critical cron reliability fixes.
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Audio Library** | Upload, manage, and stream Islamic lectures and Quran recitations. Admin creates collections, uploads files to Supabase Storage. Public `/listen` page for streaming. |
+| **Custom Prayer Times** | `calculation_method=99` mode allows admins to manually enter exact prayer times instead of using Aladhan API. Bypasses prayer cache entirely. Falls back to MWL (method 3) if custom times are incomplete. |
+| **Eid Mode** | Admin can enable Eid mode in settings with separate Khutbah and Salah time fields. Displayed on landing page. |
+| **Next Salah Countdown** | Live countdown timer on landing page showing time remaining until next prayer. Updates in real-time. |
+| **Announcement Preview** | Show/hide preview for announcement messages in admin dashboard. |
+| **Admin Team Management** | Owner can add/remove admin team members with roles (admin/announcer). Creates Supabase Auth users. |
+| **Cron Diagnostics** | Endpoint at `/api/cron/diagnostics` for real-time debugging of cron timing and configuration. |
+
+#### Critical Cron Reliability Fixes (7 bugs - Feb 11)
+
+| Bug | Severity | Fix |
+|-----|----------|-----|
+| **`tryClaimReminderLock` used UTC date** | CRITICAL | Now passes `mosque.timezone` for correct lock date |
+| **`getNowInTimezone` missing hourCycle** | CRITICAL | Added explicit `hourCycle: 'h23'` (V8/ICU bug workaround) |
+| **`fetchPrayerTimesFromAPI` used UTC date** | CRITICAL | Uses timezone-aware date components for API calls |
+| **Minute comparison overflow** | HIGH | `isWithinMinutes`/`isWithinMinutesAfter` now normalize negative/overflow minutes |
+| **nafl-reminders lacked per-prayer try-catch** | HIGH | Each nafl prayer wrapped in isolated try-catch |
+| **`cleanupOldLocks` never called** | MEDIUM | Now called in prayer-reminders cron |
+| **No diagnostic tooling** | IMPROVEMENT | Comprehensive logging + diagnostic endpoint |
+
+#### Other Bug Fixes (Feb 13-15)
+
+| Fix | Description |
+|-----|-------------|
+| **Scheduled message retry_count** | Now properly written back to DB on failure |
+| **HADITH_MINUTES_AFTER_PRAYER duplication** | Imported from constants.ts instead of local duplicate |
+| **getTodaysHadith timezone** | Uses mosque timezone instead of UTC date |
+| **toLocaleDateString locale** | Fixed 3 calls to use "en-ZA" locale (team page, subscribers CSV, webhook pause) |
+| **Prayer times cache cleanup** | Old entries (>7 days) cleaned up by prayer-reminders cron |
+| **Landing page caching** | Added `fetchCache = "force-no-store"` to prevent stale prayer times |
+| **Team member creation** | Migration 015 makes password_hash nullable, error messages surface actual Supabase errors |
+| **Custom prayer times validation** | Settings API validates all 6 fields when method=99 |
+
+#### New Database Migrations
+
+| Migration | Purpose |
+|-----------|---------|
+| **012** | Audio collections and files tables with RLS policies |
+| **013** | Eid mode columns (`eid_mode`, `eid_salah_time`) on mosques table |
+| **014** | Eid khutbah time column on mosques table |
+| **015** | Make `password_hash` nullable for team member creation |
+
+#### Architecture: Custom Prayer Times
+
+```
+Admin sets calculation_method = 99 → enters all 6 times (HH:MM)
+  → getMosquePrayerTimes() detects method=99
+  → returns custom times directly (bypasses API + cache)
+  → falls back to MWL (method 3) if custom_prayer_times is null
+```
+
+#### Architecture: Audio Library
+
+```
+Admin uploads audio → signed URL from /api/admin/audio/upload-url
+  → file stored in Supabase Storage (audio-files bucket)
+  → metadata tracked in audio_collections + audio_files tables
+  → public streaming via /listen page → /api/audio/* endpoints
+```
+
+#### Build Status
+
+- **Build:** PASS (0 errors, ~4.7s Turbopack)
+- **TypeScript:** PASS (0 errors)
+- **Lint:** 0 new warnings
+
+---
 
 ### Version 1.9.1 - February 10, 2026
 
