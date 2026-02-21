@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS prayer_reminder_locks (
 );
 
 -- Index for cleanup queries
-CREATE INDEX idx_prayer_reminder_locks_date ON prayer_reminder_locks(reminder_date);
+CREATE INDEX IF NOT EXISTS idx_prayer_reminder_locks_date ON prayer_reminder_locks(reminder_date);
 
 -- Auto-cleanup old locks (older than 2 days) - run daily via pg_cron or manually
 -- DELETE FROM prayer_reminder_locks WHERE reminder_date < CURRENT_DATE - INTERVAL '2 days';
@@ -29,6 +29,7 @@ CREATE INDEX idx_prayer_reminder_locks_date ON prayer_reminder_locks(reminder_da
 ALTER TABLE prayer_reminder_locks ENABLE ROW LEVEL SECURITY;
 
 -- Service role can do everything
+DROP POLICY IF EXISTS "Service role full access" ON prayer_reminder_locks;
 CREATE POLICY "Service role full access" ON prayer_reminder_locks
   FOR ALL USING (true) WITH CHECK (true);
 
