@@ -47,6 +47,7 @@ export interface PrayerTimes {
   date: string
   hijriDate: string
   hijriMonth: string
+  hijriYear: string
 }
 
 // Method codes for Aladhan API
@@ -184,6 +185,7 @@ async function fetchPrayerTimesFromAPI(
     date: data.data.date.gregorian.date,
     hijriDate: data.data.date.hijri.date,
     hijriMonth: data.data.date.hijri.month.en,
+    hijriYear: data.data.date.hijri.year,
   }
 }
 
@@ -255,7 +257,7 @@ function format24to12(time24: string): string {
 /**
  * Fetch just the Hijri date for a given Gregorian date from Aladhan API.
  */
-async function fetchHijriDate(timezone?: string): Promise<{ date: string; hijriDate: string; hijriMonth: string }> {
+async function fetchHijriDate(timezone?: string): Promise<{ date: string; hijriDate: string; hijriMonth: string; hijriYear: string }> {
   const now = new Date()
   const dateStr = getDateString(now, timezone)
   const [y, m, d] = dateStr.split('-')
@@ -268,6 +270,7 @@ async function fetchHijriDate(timezone?: string): Promise<{ date: string; hijriD
         date: data.data.gregorian.date,
         hijriDate: data.data.hijri.date,
         hijriMonth: data.data.hijri.month.en,
+        hijriYear: data.data.hijri.year,
       }
     }
   } catch (e) {
@@ -275,7 +278,7 @@ async function fetchHijriDate(timezone?: string): Promise<{ date: string; hijriD
   }
 
   // Fallback: use formatted date without Hijri
-  return { date: dateStr, hijriDate: '', hijriMonth: '' }
+  return { date: dateStr, hijriDate: '', hijriMonth: '', hijriYear: '' }
 }
 
 /**
@@ -316,6 +319,7 @@ export async function getMosquePrayerTimes(
         date: dateInfo.date,
         hijriDate: dateInfo.hijriDate,
         hijriMonth: dateInfo.hijriMonth,
+        hijriYear: dateInfo.hijriYear,
       }
     }
     console.warn('Custom prayer times incomplete, falling back to API method 3. Fields:', custom)
