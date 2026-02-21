@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build:sw": "tsc src/sw.ts --outDir public --lib ES2017,WebWorker --target ES2017 --moduleDetection force --skipLibCheck",
+    "build": "npm run build:sw && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",

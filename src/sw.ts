@@ -16,7 +16,7 @@ self.addEventListener("push", (event) => {
     data?: Record<string, unknown>;
   };
 
-  const options: NotificationOptions = {
+  const options: NotificationOptions & { vibrate?: number[] } = {
     body: payload.body,
     icon: payload.icon || "/icon-192x192.png",
     badge: payload.badge || "/icon-192x192.png",
