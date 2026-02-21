@@ -5,15 +5,20 @@ let vapidConfigured = false;
 function ensureVapidConfigured() {
   if (vapidConfigured) return true;
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:admin@masjidnotify.com";
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
+  const subject = (process.env.VAPID_SUBJECT || "mailto:admin@masjidnotify.com").trim();
 
   if (!publicKey || !privateKey) return false;
 
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  vapidConfigured = true;
-  return true;
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    vapidConfigured = true;
+    return true;
+  } catch (err) {
+    console.error("Failed to configure VAPID:", err);
+    return false;
+  }
 }
 
 export interface PushSubscriptionData {
