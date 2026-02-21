@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 21, 2026 @ 12:00 SAST
-> **Version:** 3.0.0
+> **Last Updated:** February 21, 2026 @ 23:00 SAST
+> **Version:** 3.0.1
 > **Status:** Production - Web Push PWA (WhatsApp completely removed, replaced with browser push notifications)
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -213,7 +213,7 @@ npm run dev
 # 3. Run TypeScript check
 npx tsc --noEmit
 
-# 4. Run build to catch any issues
+# 4. Run build to catch any issues (compiles sw.ts → public/sw.js, then builds Next.js)
 npm run build
 
 # 5. Commit
@@ -247,7 +247,7 @@ git push origin master
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Landing page | ✅ Works | Shows prayer times, subscribe form, dynamic location from DB |
+| Landing page | ✅ Works | Shows prayer times (with Hijri date + year), additional sun/prayer times (Ishraq, Duha, Zawal, Sunset), subscribe form, dynamic location from DB |
 | Subscribe form | ✅ Works | Enable notifications → choose preferences → subscribe (no phone number) |
 | Web Push sending | ✅ Works | VAPID-authenticated push notifications to all major browsers |
 | Welcome notifications | ✅ Works | Sent on subscription via push notification |
@@ -264,7 +264,7 @@ git push origin master
 | Admin analytics | ✅ Works | Subscriber growth, message types, status breakdown, **optimized queries (v1.9.0)** |
 | Database | ✅ Works | All tables created and functional, **notifications table added (v3.0)** |
 | Cron jobs | ✅ Works | All 5 jobs running, **core-first architecture (v1.9.1)**, auto-resume paused subs, scheduled msg processing, retry limits |
-| Prayer times API | ✅ Works | Aladhan API, **timezone-aware**, **NaN-safe parsing**, **midnight wraparound** |
+| Prayer times API | ✅ Works | Aladhan API, **timezone-aware**, **NaN-safe parsing**, **midnight wraparound**, **hijriYear extraction (v3.0.1)** |
 | Hadith API | ✅ Works | **jsDelivr CDN** (v1.6.2), 6 authentic collections, **Fisher-Yates shuffle** |
 | Rate limiting | ✅ Works | **Secure IP detection** (x-vercel-forwarded-for, rightmost IP) |
 | 404 page | ✅ Works | Branded not-found page, **no admin link exposed (v1.7.2)** |
@@ -397,9 +397,9 @@ git push origin master
 | **User Stories Completed** | 30/30 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
 | **Bug Fixes (v1.6.x-v3.0.0)** | 100+ issues resolved |
-| **Total Commits** | 95+ commits |
-| **Lines of Code** | ~12,000+ lines |
-| **Build Time** | ~4.7 seconds (Turbopack) |
+| **Total Commits** | 101 commits |
+| **Lines of Code** | ~12,500+ lines |
+| **Build Time** | ~4.8 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
 
 ### Key Achievements
@@ -439,6 +439,8 @@ git push origin master
 - ✅ **Diagnostic Endpoint** (real-time cron timing and mosque configuration debugging)
 - ✅ **Prayer cache auto-cleanup** (entries older than 7 days cleaned up automatically)
 - ✅ **WhatsApp fully removed** (v3.0 — replaced with Web Push + PWA)
+- ✅ **Hijri date with year** (v3.0.1 — formatted as "3 Ramadan 1447 AH")
+- ✅ **Additional sun/prayer times** (v3.0.1 — Ishraq, Duha, Zawal, Sunset computed from prayer data)
 
 ---
 
@@ -839,8 +841,9 @@ npx playwright test --headed
 **Checklist:**
 1. Is the site served over HTTPS? (required for service workers)
 2. Check DevTools > Application > Service Workers for errors
-3. Is `withSerwist()` configured in `next.config.ts`?
-4. Check browser console for registration errors
+3. Does `public/sw.js` exist? If not, run `npm run build:sw` to compile `src/sw.ts`
+4. Does `public/sw.js` contain `export {};`? If so, the strip step failed — check the `build:sw` script in `package.json`
+5. Check browser console for registration errors
 
 ### Problem: VAPID key mismatch
 
@@ -850,6 +853,7 @@ npx playwright test --headed
 1. Ensure `NEXT_PUBLIC_VAPID_PUBLIC_KEY` in Vercel matches what was used when subscribers registered
 2. If you regenerate VAPID keys, ALL existing push subscriptions become invalid — subscribers must re-subscribe
 3. Generate keys: `npx web-push generate-vapid-keys`
+4. **Check for trailing whitespace** — Vercel's env var UI can add invisible `\n` at the end. The code `.trim()`s keys at runtime (v3.0.1 fix), but if you see errors, re-add vars via CLI: `printf 'key_value' | npx vercel env add VAR_NAME production`
 
 ### Problem: Subscribers page shows 0 subscribers
 
@@ -933,14 +937,30 @@ npx web-push generate-vapid-keys
 
 **IMPORTANT:** If you regenerate VAPID keys, ALL existing push subscriptions become invalid. Every subscriber will need to re-subscribe.
 
+**IMPORTANT (v3.0.1 fix):** VAPID keys are `.trim()`'d at runtime to handle invisible trailing whitespace from Vercel's environment variable UI. The `web-push.ts` client also defers `setVapidDetails()` to a lazy getter (`getWebPushClient()`) so it doesn't crash during build when env vars aren't available.
+
 ### Service Worker (`src/sw.ts`)
 
-The service worker is compiled by Serwist (via `withSerwist()` in `next.config.ts`). It handles:
+The service worker handles:
 
 - **`push` event** — Receives push notification payload and shows it using `self.registration.showNotification()`
 - **`notificationclick` event** — Opens the app URL from notification data, focuses existing window or opens new one
 
-The service worker source is **excluded from tsconfig** because it's compiled separately by Serwist, not by the Next.js TypeScript compiler.
+**Compilation (v3.0.1 fix):** The service worker is compiled as a pre-build step via the `build:sw` npm script:
+
+```bash
+tsc src/sw.ts --outDir public --lib ES2017,WebWorker --target ES2017 --moduleDetection force --skipLibCheck
+```
+
+Then a post-compilation step strips the `export {};` statement that TypeScript adds (browsers reject ES module syntax in service workers):
+
+```bash
+node -e "...strip export statement from public/sw.js..."
+```
+
+The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker APIs (`self`, `PushEvent`, `NotificationEvent`) that conflict with the DOM lib used by the rest of the app.
+
+**IMPORTANT:** If you modify `src/sw.ts`, the compiled `public/sw.js` must be regenerated via `npm run build` (which runs `build:sw` first) or manually via `npm run build:sw`.
 
 ### PWA Manifest (`public/manifest.json`)
 
@@ -989,11 +1009,11 @@ The service worker source is **excluded from tsconfig** because it's compiled se
 
 ## All Features
 
-### Core Features (27 Total)
+### Core Features (28 Total)
 
 | # | Feature | Status | Description |
 |---|---------|--------|-------------|
-| 1 | Landing Page | ✅ Live | Prayer times display, mosque info, subscribe CTA |
+| 1 | Landing Page | ✅ Live | Prayer times display (Hijri date with year, additional sun times), mosque info, subscribe CTA |
 | 2 | Subscribe Form | ✅ Live | Enable notifications → choose preferences → subscribe (no phone number) |
 | 3 | Push Welcome | ✅ Live | Automated welcome push notification on subscription |
 | 4 | Subscriber Settings | ✅ Live | `/settings` page — update preferences, pause, unsubscribe (localStorage ID) |
@@ -1020,6 +1040,7 @@ The service worker source is **excluded from tsconfig** because it's compiled se
 | 25 | Admin Team Management | ✅ Live | Owner can add/remove admins with role-based access (v2.0.0) |
 | 26 | Cron Diagnostics | ✅ Live | Real-time diagnostic endpoint for debugging (v2.0.0) |
 | 27 | PWA / Service Worker | ✅ Live | Installable web app, offline support, push handler (v3.0.0) |
+| 28 | Hijri Date & Additional Times | ✅ Live | Full Hijri date with year ("3 Ramadan 1447 AH"), plus Ishraq/Duha/Zawal/Sunset computed from prayer data (v3.0.1) |
 
 ### Subscriber Preferences (6 Options)
 
@@ -1194,6 +1215,28 @@ The service worker source is **excluded from tsconfig** because it's compiled se
 | `created_at` | TIMESTAMP | Creation time |
 | `created_by` | TEXT | Admin who created |
 
+### Key Interface: PrayerTimes (TypeScript — `src/lib/prayer-times.ts`)
+
+This is the shape of prayer time data used throughout the app (API responses, cache, landing page, cron jobs):
+
+```typescript
+export interface PrayerTimes {
+  fajr: string        // "5:23 AM" (12h format)
+  sunrise: string     // "6:45 AM"
+  dhuhr: string       // "1:02 PM"
+  asr: string         // "4:15 PM"
+  maghrib: string     // "7:28 PM"
+  isha: string        // "8:50 PM"
+  imsak: string       // "5:13 AM" (Suhoor end time)
+  date: string        // "21-02-2026" (Gregorian, DD-MM-YYYY from Aladhan)
+  hijriDate: string   // "21-08-1447" (DD-MM-YYYY from Aladhan)
+  hijriMonth: string  // "Sha'ban" (English month name)
+  hijriYear: string   // "1447" (Hijri year — added v3.0.1)
+}
+```
+
+**Cache storage:** `prayer_times_cache.times` column stores `Omit<PrayerTimes, 'date'>` as JSONB. The `date` field is reconstructed from the cache key on read. Old cache entries missing `hijriYear` are handled gracefully — the component falls back to parsing year from the `hijriDate` string.
+
 ---
 
 ## Project Structure
@@ -1227,6 +1270,7 @@ masjid-notify/
 │   │   ├── terms/page.tsx              # Terms of service
 │   │   ├── data-deletion/page.tsx      # Data deletion instructions
 │   │   ├── listen/page.tsx             # Public audio streaming page
+│   │   ├── listen/audio-library.tsx   # Audio library client component
 │   │   │
 │   │   └── api/
 │   │       ├── subscribe/route.ts      # Subscription endpoint (push subscription + preferences)
@@ -1262,37 +1306,42 @@ masjid-notify/
 │   │   ├── ui/                         # shadcn components
 │   │   │   └── checkbox.tsx            # Accessible checkbox (v1.6.0)
 │   │   ├── footer.tsx                  # "Powered by Alqode"
-│   │   ├── prayer-times.tsx
+│   │   ├── prayer-times.tsx            # Prayer times display + Hijri date (with year) + additional sun/prayer times (Ishraq, Duha, Zawal, Sunset)
 │   │   ├── next-salah-countdown.tsx    # Live countdown to next prayer
 │   │   ├── qr-code.tsx
 │   │   ├── subscribe-form.tsx          # Enable notifications + preferences form
+│   │   ├── audio-player.tsx           # Audio player widget for /listen page
 │   │   └── admin/
 │   │       ├── sidebar.tsx
 │   │       ├── stats-card.tsx
 │   │       ├── analytics-charts.tsx
 │   │       ├── announcement-form.tsx
 │   │       ├── message-templates.tsx
-│   │       └── subscribers-table.tsx   # Delete confirmation, ARIA labels (v1.6.0)
+│   │       ├── subscribers-table.tsx   # Delete confirmation, ARIA labels (v1.6.0)
+│   │       ├── audio-upload-dialog.tsx # Audio file upload dialog
+│   │       └── audio-collection-dialog.tsx # Audio collection create/edit dialog
 │   │
 │   └── lib/
 │       ├── supabase.ts                 # Database clients + types (Subscriber, Notification, etc.)
 │       ├── web-push.ts                 # Web Push API client (VAPID-based)
 │       ├── push-sender.ts             # Batch push sending with concurrency control (p-limit 10)
-│       ├── prayer-times.ts             # Aladhan API + cache (NaN-safe, timezone-aware)
+│       ├── prayer-times.ts             # Aladhan API + cache (NaN-safe, timezone-aware, hijriYear extraction)
 │       ├── hadith-api.ts               # External hadith API (Fisher-Yates shuffle)
 │       ├── ratelimit.ts                # Rate limiting (IP spoofing protection)
 │       ├── auth.ts                     # Auth utilities (constant-time comparison)
 │       ├── constants.ts                # Time constants (v1.6.0, updated v1.7.1)
 │       ├── reminder-locks.ts           # Atomic reminder locking utility (v1.7.0)
-│       ├── time-format.ts              # Client-safe time formatting utilities (v2.0.0)
+│       ├── time-format.ts              # Client-safe time utilities: formatDbTime, parseTime12hToMinutes, minutesToTime12h, addMinutesToTime, midpointTime (v3.0.1)
 │       ├── logger.ts                   # Structured logging
 │       └── utils.ts                    # Helpers
 │
 ├── public/
 │   ├── manifest.json                   # PWA manifest (standalone, icons, theme)
+│   ├── sw.js                           # Compiled service worker (generated from src/sw.ts by build:sw script)
 │   ├── icon-192x192.png               # PWA icon (192x192)
 │   ├── icon-512x512.png               # PWA icon (512x512)
-│   └── og-image.png                   # Social preview image
+│   ├── og-image.png                   # Social preview image
+│   └── app-icon.svg                   # App icon SVG
 │
 ├── tests/
 │   ├── admin-auth.spec.ts
@@ -1680,7 +1729,7 @@ npx playwright test --headed
 | **Production URL** | https://masjid-notify.vercel.app |
 | **Framework** | Next.js 16.1.6 (Turbopack) |
 | **Node.js Version** | 18.x |
-| **Build Command** | `next build` |
+| **Build Command** | `npm run build:sw && next build` (compiles sw.ts → public/sw.js, then builds Next.js) |
 | **Region** | Washington D.C., USA (iad1) |
 | **Plan** | Hobby (Free) |
 
@@ -1697,6 +1746,75 @@ npx playwright test --headed
 ---
 
 ## Changelog
+
+### Version 3.0.1 - February 21, 2026
+
+**PATCH: Hijri Date with Year, Additional Sun/Prayer Times, Service Worker & VAPID Fixes**
+
+This patch adds display improvements to the landing page and fixes several service worker and VAPID key issues that occurred after the v3.0.0 Web Push migration.
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Hijri Date with Year** | Landing page now shows formatted Hijri date as "3 Ramadan 1447 AH" instead of raw "03-09-1447 Ramadan". Added `hijriYear` field to `PrayerTimes` interface, extracted from Aladhan API response in `fetchPrayerTimesFromAPI`, `fetchHijriDate`, and `getMosquePrayerTimes`. Backward-compatible: falls back to parsing year from `hijriDate` string for old cache entries. |
+| **Additional Sun/Prayer Times** | Compact section below the 6-prayer grid showing Ishraq, Duha, Zawal, and Sunset. Computed client-side using new time arithmetic helpers in `time-format.ts`. |
+
+#### Additional Times — How They're Computed
+
+| Time | Computation | Source |
+|------|------------|--------|
+| **Ishraq** | Sunrise + 20 min | `ISHRAQ_MINUTES_AFTER_SUNRISE` from `constants.ts` |
+| **Duha** | Sunrise + (Dhuhr − Sunrise) / 4 | Quarter of the morning — widely used Islamic calculation |
+| **Zawal** | Midpoint of Sunrise and Maghrib | Solar noon / sun's zenith |
+| **Sunset** | Same as Maghrib | Astronomical equivalence |
+
+#### New Client-Safe Time Helpers (`src/lib/time-format.ts`)
+
+| Function | Purpose |
+|----------|---------|
+| `parseTime12hToMinutes(time)` | Parse "H:MM AM/PM" → minutes since midnight |
+| `minutesToTime12h(minutes)` | Convert minutes since midnight → "H:MM AM/PM" (handles wraparound) |
+| `addMinutesToTime(time, minutes)` | Add minutes to a 12h time string |
+| `midpointTime(time1, time2)` | Get midpoint between two 12h times (handles midnight crossover) |
+
+These functions are **pure and client-safe** — they don't import from `supabase.ts` or `prayer-times.ts`, so they can be used in client components without pulling in server-only dependencies.
+
+#### Bug Fixes (Service Worker & VAPID)
+
+| Commit | Fix | Details |
+|--------|-----|---------|
+| `c260159` | **Service worker 404** | SW wasn't being compiled. Added `build:sw` pre-build step: `tsc src/sw.ts --outDir public` compiles SW before Next.js build. |
+| `058a58b` | **VAPID initialization crash** | `setVapidDetails()` was called at module load time, crashing during build when env vars aren't available. Deferred to lazy initialization inside `getWebPushClient()`. |
+| `41444e3` | **SW export statement** | TypeScript's `--moduleDetection force` added `export {};` to compiled `sw.js`, which browsers rejected. Build script now strips export statements. |
+| `b1522af` | **Subscribe error details** | Added detailed error logging to subscribe endpoint for debugging push registration failures. |
+| `89da473` | **VAPID key whitespace** | VAPID keys pasted from Vercel had invisible trailing whitespace. Added `.trim()` to both public and private keys, plus graceful error handling on `setVapidDetails()`. |
+| `ce8a72e` | **Idempotent migrations** | Made SQL migrations safe to re-run with `IF NOT EXISTS` / `IF EXISTS` guards. Added `test-results/` to `.gitignore`. |
+
+#### Modified Files
+
+| File | Change |
+|------|--------|
+| `src/lib/prayer-times.ts` | Added `hijriYear: string` to `PrayerTimes` interface. Extracted from API in `fetchPrayerTimesFromAPI`, `fetchHijriDate`, and `getMosquePrayerTimes` custom path. |
+| `src/lib/time-format.ts` | Added 4 client-safe time arithmetic functions: `parseTime12hToMinutes`, `minutesToTime12h`, `addMinutesToTime`, `midpointTime`. |
+| `src/components/prayer-times.tsx` | Hijri date formatted as "Day MonthName Year AH". Added additional times section (Ishraq, Duha, Zawal, Sunset) below prayer grid. Uses `time-format.ts` helpers and `ISHRAQ_MINUTES_AFTER_SUNRISE` from `constants.ts`. |
+| `src/lib/web-push.ts` | Deferred VAPID initialization to prevent build-time crash. Added `.trim()` to VAPID keys. Graceful error handling on `setVapidDetails()`. |
+| `src/sw.ts` | Compiled as pre-build step (`build:sw` script). Export statement stripped post-compilation. |
+
+#### Cache Compatibility
+
+Existing `prayer_times_cache` entries won't have `hijriYear`. This is handled:
+- Cache is date-keyed and invalidated daily
+- Display code falls back to parsing year from `hijriDate` string ("DD-MM-YYYY")
+- After one page load, the cache entry will be refreshed with the new field
+
+#### Build Status
+
+- **Build:** PASS (0 errors, ~4.8s Turbopack)
+- **TypeScript:** PASS (0 errors)
+- **Total commits:** 101
+
+---
 
 ### Version 3.0.0 - February 21, 2026
 
@@ -2133,7 +2251,7 @@ Addresses 22 issues including 2 critical security fixes, 5 high-priority fixes, 
 
 ---
 
-**Document Version:** 3.0.0
-**Last Updated:** February 21, 2026 @ 12:00 SAST
+**Document Version:** 3.0.1
+**Last Updated:** February 21, 2026 @ 23:00 SAST
 **Author:** Claude Code
-**Status:** Production - Web Push PWA. WhatsApp fully removed and replaced with browser push notifications. All cron jobs, admin dashboard, and subscriber features fully operational via Web Push.
+**Status:** Production - Web Push PWA. WhatsApp fully removed and replaced with browser push notifications. All cron jobs, admin dashboard, and subscriber features fully operational via Web Push. Landing page displays Hijri date with year and additional sun/prayer times (Ishraq, Duha, Zawal, Sunset).
