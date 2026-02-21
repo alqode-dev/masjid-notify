@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build:sw": "tsc src/sw.ts --outDir public --lib ES2017,WebWorker --target ES2017 --moduleDetection force --skipLibCheck",
+    "build:sw": "tsc src/sw.ts --outDir public --lib ES2017,WebWorker --target ES2017 --moduleDetection force --skipLibCheck && node -e \"const fs=require('fs');const f='public/sw.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/^export\\s*\\{\\};?\\s*$/gm,'').trim()+'\\n')\"",
     "build": "npm run build:sw && next build",
     "start": "next start",
     "lint": "eslint",
