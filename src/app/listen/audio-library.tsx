@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,6 +54,7 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
   const [files, setFiles] = useState<AudioFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<AudioFile | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const fetchFiles = useCallback(async (collectionId: string) => {
     setLoading(true);
@@ -81,6 +82,12 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
   };
 
   const handleBack = () => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
     setSelectedCollection(null);
     setFiles([]);
     setCurrentTrack(null);
@@ -88,6 +95,13 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
 
   const handlePlayTrack = (file: AudioFile) => {
     setCurrentTrack(file);
+    // Play synchronously within click handler — required for iOS Safari
+    const audio = audioRef.current;
+    if (audio) {
+      audio.src = file.file_url;
+      audio.load();
+      audio.play().catch(() => {});
+    }
   };
 
   const currentIndex = currentTrack ? files.findIndex((f) => f.id === currentTrack.id) : -1;
@@ -95,11 +109,27 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
   const hasPrevious = currentIndex > 0;
 
   const handleNext = () => {
-    if (hasNext) setCurrentTrack(files[currentIndex + 1]);
+    if (!hasNext) return;
+    const nextTrack = files[currentIndex + 1];
+    setCurrentTrack(nextTrack);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.src = nextTrack.file_url;
+      audio.load();
+      audio.play().catch(() => {});
+    }
   };
 
   const handlePrevious = () => {
-    if (hasPrevious) setCurrentTrack(files[currentIndex - 1]);
+    if (!hasPrevious) return;
+    const prevTrack = files[currentIndex - 1];
+    setCurrentTrack(prevTrack);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.src = prevTrack.file_url;
+      audio.load();
+      audio.play().catch(() => {});
+    }
   };
 
   // Collections grid
@@ -239,6 +269,14 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
         </div>
       )}
 
+      {/* Persistent audio element — always mounted so iOS remembers user activation */}
+      <audio
+        ref={audioRef}
+        playsInline
+        preload="metadata"
+        onEnded={hasNext ? handleNext : undefined}
+      />
+
       {/* Sticky player at bottom */}
       <AnimatePresence>
         {currentTrack && (
@@ -249,10 +287,9 @@ export function AudioLibrary({ mosqueName, initialCollections }: AudioLibraryPro
             className="sticky bottom-4"
           >
             <AudioPlayer
-              src={currentTrack.file_url}
+              audioRef={audioRef}
               title={currentTrack.title}
               speaker={currentTrack.speaker}
-              onEnded={hasNext ? handleNext : undefined}
               onNext={hasNext ? handleNext : undefined}
               onPrevious={hasPrevious ? handlePrevious : undefined}
               hasNext={hasNext}

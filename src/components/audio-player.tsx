@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { useState, useEffect, useCallback, type RefObject } from "react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, AlertCircle } from "lucide-react";
 
 interface AudioPlayerProps {
-  src: string;
+  audioRef: RefObject<HTMLAudioElement | null>;
   title: string;
   speaker?: string | null;
-  onEnded?: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
   hasNext?: boolean;
@@ -27,20 +26,19 @@ function formatTime(seconds: number): string {
 }
 
 export function AudioPlayer({
-  src,
+  audioRef,
   title,
   speaker,
-  onEnded,
   onNext,
   onPrevious,
   hasNext,
   hasPrevious,
 }: AudioPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -48,42 +46,42 @@ export function AudioPlayer({
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleDurationChange = () => setDuration(audio.duration);
-    const handleEnded = () => {
-      setIsPlaying(false);
-      onEnded?.();
+    const handlePlay = () => {
+      setIsPlaying(true);
+      setError(false);
     };
-    const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleLoadStart = () => {
       setCurrentTime(0);
       setDuration(0);
+      setError(false);
+    };
+    const handleError = () => {
+      setIsPlaying(false);
+      setError(true);
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("durationchange", handleDurationChange);
-    audio.addEventListener("ended", handleEnded);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("loadstart", handleLoadStart);
+    audio.addEventListener("error", handleError);
+
+    // Sync initial state if audio is already playing
+    setIsPlaying(!audio.paused);
+    if (audio.duration) setDuration(audio.duration);
+    if (audio.currentTime) setCurrentTime(audio.currentTime);
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("durationchange", handleDurationChange);
-      audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("loadstart", handleLoadStart);
+      audio.removeEventListener("error", handleError);
     };
-  }, [onEnded]);
-
-  // Auto-play when src changes (user clicked a new track)
-  useEffect(() => {
-    if (src && audioRef.current) {
-      audioRef.current.play().catch(() => {
-        // Autoplay might be blocked
-      });
-    }
-  }, [src]);
+  }, [audioRef]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -91,9 +89,9 @@ export function AudioPlayer({
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play().catch(() => {});
+      audio.play().catch(() => setError(true));
     }
-  }, [isPlaying]);
+  }, [audioRef, isPlaying]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
@@ -114,13 +112,17 @@ export function AudioPlayer({
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4 shadow-lg">
-      <audio ref={audioRef} src={src} preload="metadata" />
-
       {/* Track info */}
       <div className="mb-3 text-center min-w-0">
         <p className="font-semibold text-foreground text-sm truncate">{title}</p>
         {speaker && (
           <p className="text-xs text-muted-foreground truncate">{speaker}</p>
+        )}
+        {error && (
+          <p className="text-xs text-destructive flex items-center justify-center gap-1 mt-1">
+            <AlertCircle className="w-3 h-3" />
+            Unable to play audio
+          </p>
         )}
       </div>
 
