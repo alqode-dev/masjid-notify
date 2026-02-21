@@ -81,7 +81,7 @@ export function QRCodeDisplay({
         <body>
           <h1>${safeName}</h1>
           <img src="${dataUrl}" alt="QR Code" />
-          <p>Scan to subscribe to WhatsApp updates</p>
+          <p>Scan to subscribe to notifications</p>
         </body>
       </html>
     `);

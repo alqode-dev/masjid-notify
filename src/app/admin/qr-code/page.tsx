@@ -125,7 +125,7 @@ export default function QRCodePage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span>📱</span>
-                  <span>WhatsApp groups & status</span>
+                  <span>Community groups & social media</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span>📧</span>

@@ -1,8 +1,8 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 15, 2026 @ 14:00 SAST
-> **Version:** 2.0.0
-> **Status:** Production - Major feature release (Audio Library, Custom Prayer Times, Eid Mode, Team Management)
+> **Last Updated:** February 21, 2026 @ 12:00 SAST
+> **Version:** 3.0.0
+> **Status:** Production - Web Push PWA (WhatsApp completely removed, replaced with browser push notifications)
 > **Production URL:** https://masjid-notify.vercel.app
 
 ---
@@ -12,6 +12,8 @@
 | Resource | URL |
 |----------|-----|
 | **Landing Page** | https://masjid-notify.vercel.app |
+| **Subscriber Settings** | https://masjid-notify.vercel.app/settings |
+| **Notification Center** | https://masjid-notify.vercel.app/notifications |
 | **Admin Login** | https://masjid-notify.vercel.app/admin/login |
 | **Admin Dashboard** | https://masjid-notify.vercel.app/admin |
 | **Privacy Policy** | https://masjid-notify.vercel.app/privacy |
@@ -33,14 +35,14 @@
 
 ### Current Status
 4. [System Status](#system-status)
-5. [WhatsApp Account Status](#whatsapp-account-status--compliance)
-6. [What's Working vs Not Working](#whats-working-vs-not-working)
+5. [What's Working vs Not Working](#whats-working-vs-not-working)
 
 ### How To Do Things
-7. [Common Tasks & How-To Guides](#common-tasks--how-to-guides)
-8. [Testing the App](#testing-the-app)
-9. [Troubleshooting Guide](#troubleshooting-guide)
-10. [Meta Webhook Configuration](#meta-webhook-configuration)
+6. [Common Tasks & How-To Guides](#common-tasks--how-to-guides)
+7. [Testing the App](#testing-the-app)
+8. [Troubleshooting Guide](#troubleshooting-guide)
+9. [Web Push & PWA Setup](#web-push--pwa-setup)
+10. [How to Clean Up Meta / WhatsApp](#how-to-clean-up-meta--whatsapp)
 
 ### Technical Reference
 11. [All Features](#all-features)
@@ -69,12 +71,12 @@
 
 ### The Simple Explanation
 
-**Masjid Notify** is a WhatsApp notification app for mosques. Here's how it works:
+**Masjid Notify** is a PWA (Progressive Web App) push notification platform for mosques. Here's how it works:
 
 1. **Mosque puts up a QR code** (or shares a link)
 2. **People scan it** and land on a website
-3. **They enter their phone number** and choose what notifications they want
-4. **They automatically receive WhatsApp messages** for:
+3. **They enable browser notifications** and choose what reminders they want
+4. **They automatically receive push notifications** for:
    - Prayer time reminders (5 daily prayers)
    - Friday (Jumu'ah) reminders
    - Daily hadith (Islamic teachings)
@@ -85,11 +87,16 @@
 ### Who Is This For?
 
 - **Mosques** who want to send automated reminders to their community
-- **Muslims** who want prayer time notifications on WhatsApp (not another app)
+- **Muslims** who want prayer time notifications directly on their phone or computer
 
-### Why WhatsApp?
+### Why Web Push?
 
-In South Africa (and many countries), **everyone uses WhatsApp**. People don't want to download another app just for prayer times. This sends reminders directly to WhatsApp.
+- **No app download needed** — works directly in the browser
+- **Works on all modern browsers** — Chrome, Firefox, Edge, Safari (iOS 16.4+)
+- **Installable as PWA** — users can add to home screen for an app-like experience
+- **No phone number required** — just grant notification permission
+- **Free to send** — no per-message costs (unlike WhatsApp Business API)
+- **No third-party approval needed** — no Meta templates, no app review
 
 ---
 
@@ -105,11 +112,11 @@ In South Africa (and many countries), **everyone uses WhatsApp**. People don't w
 │   1. User scans QR code          2. Lands on website                    │
 │        📱 ──────────────────────> 🌐 masjid-notify.vercel.app           │
 │                                                                          │
-│   3. Fills subscribe form        4. Saved to database                   │
-│        📝 ──────────────────────> 🗄️ Supabase (PostgreSQL)              │
+│   3. Enables notifications       4. Push subscription saved             │
+│        🔔 ──────────────────────> 🗄️ Supabase (PostgreSQL)              │
 │                                                                          │
-│   5. Welcome message sent        6. User receives on WhatsApp           │
-│        📤 ──────────────────────> 💬 WhatsApp                           │
+│   5. Welcome notification sent   6. User receives push notification     │
+│        📤 ──────────────────────> 🔔 Browser / PWA                      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 
@@ -132,8 +139,9 @@ In South Africa (and many countries), **everyone uses WhatsApp**. People don't w
 │                              YES   │   NO                                │
 │                                ▼       ▼                                 │
 │                           📤 Send    🔄 Wait for                         │
-│                           WhatsApp   next check                          │
-│                           (concurrent, rate-limited)                     │
+│                           Push via   next check                          │
+│                           Web Push API                                   │
+│                           (concurrent, p-limit 10)                      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -142,10 +150,11 @@ In South Africa (and many countries), **everyone uses WhatsApp**. People don't w
 
 | Component | What It Does | Where It Lives |
 |-----------|--------------|----------------|
-| **Frontend** | The website users see (subscribe form, admin dashboard) | Vercel (Next.js) |
-| **Backend API** | Handles subscriptions, sends messages, processes webhooks | Vercel (Next.js API routes) |
-| **Database** | Stores subscribers, mosques, messages, settings | Supabase (PostgreSQL) |
-| **WhatsApp API** | Actually sends the WhatsApp messages | Meta Cloud API |
+| **Frontend** | The website users see (subscribe form, admin dashboard, settings, notifications) | Vercel (Next.js) |
+| **Backend API** | Handles subscriptions, sends push notifications, processes cron jobs | Vercel (Next.js API routes) |
+| **Database** | Stores subscribers, mosques, messages, notifications, settings | Supabase (PostgreSQL) |
+| **Web Push API** | Actually delivers push notifications to browsers | Browser Push Services (FCM, Mozilla, APNs) |
+| **Service Worker** | Receives push events, shows notifications, handles clicks | Browser (Serwist-compiled `sw.ts`) |
 | **Prayer Times API** | Calculates accurate prayer times by location | Aladhan API |
 | **Hadith API** | Provides authentic daily hadith | fawazahmed0/hadith-api (jsDelivr CDN) |
 | **Cron Scheduler** | Triggers reminder checks every 5 minutes | cron-job.org |
@@ -159,10 +168,11 @@ In South Africa (and many countries), **everyone uses WhatsApp**. People don't w
 5. It checks: "Is current time within 5 minutes of [prayer time minus user's offset]?" (timezone-aware)
 6. If YES, it checks the **reminder lock** using `tryClaimReminderLock()` — atomic INSERT with UNIQUE constraint prevents duplicate sends
 7. If lock acquired, it fetches subscribers who want that prayer reminder from **Supabase**
-8. For each subscriber, it calls **WhatsApp Cloud API** to send the message (concurrent, max 10 at once)
-9. It logs the sent message to **Supabase** (messages table) — with PGRST204 fallback retry if metadata column is missing
-10. It updates `last_message_at` for successful sends (batch update, 100 per batch)
-11. **AFTER** all prayers are processed, auxiliary tasks run in isolated try-catches: process scheduled messages, auto-resume paused subscribers
+8. For each subscriber, it sends a **push notification** via `web-push` npm package with VAPID authentication (concurrent, max 10 at once)
+9. If a push subscription returns **410 Gone**, the subscriber is auto-unsubscribed (expired subscription)
+10. It logs the sent message to **Supabase** (messages table) and stores in-app notification (notifications table)
+11. It updates `last_message_at` for successful sends (batch update, 100 per batch)
+12. **AFTER** all prayers are processed, auxiliary tasks run in isolated try-catches: process scheduled messages, auto-resume paused subscribers
 
 ---
 
@@ -181,11 +191,16 @@ npm install
 # 3. Copy environment variables
 cp .env.local.example .env.local
 # Then edit .env.local with your credentials (see Environment Variables section)
+# Key additions for v3.0: NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
 
-# 4. Run development server
+# 4. Generate VAPID keys (if you don't have them yet)
+npx web-push generate-vapid-keys
+# Copy the public and private keys into .env.local
+
+# 5. Run development server
 npm run dev
 
-# 5. Open http://localhost:3000
+# 6. Open http://localhost:3000
 ```
 
 ### If You Want to Deploy Changes
@@ -216,7 +231,7 @@ git push origin master
 
 1. Go to https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth
 2. Click "Table Editor" in sidebar
-3. Browse tables: `subscribers`, `mosques`, `messages`, etc.
+3. Browse tables: `subscribers`, `mosques`, `messages`, `notifications`, etc.
 
 ### If You Want to Check Logs
 
@@ -233,26 +248,28 @@ git push origin master
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Landing page | ✅ Works | Shows prayer times, subscribe form, dynamic location from DB |
-| Subscribe form | ✅ Works | Saves to database correctly, accessible checkbox labels |
-| WhatsApp sending | ✅ Works | Account restored, welcome messages sending |
-| Welcome messages | ✅ Works | Sent on subscription via `masjid_notify_welcome` template |
+| Subscribe form | ✅ Works | Enable notifications → choose preferences → subscribe (no phone number) |
+| Web Push sending | ✅ Works | VAPID-authenticated push notifications to all major browsers |
+| Welcome notifications | ✅ Works | Sent on subscription via push notification |
+| Service Worker | ✅ Works | Handles push events, notification clicks, PWA offline support |
+| PWA installable | ✅ Works | manifest.json, icons, standalone display mode |
+| Subscriber Settings | ✅ Works | `/settings` page — update preferences, pause, unsubscribe (localStorage-based ID) |
+| Notification Center | ✅ Works | `/notifications` page — view all received notifications in-app |
 | Admin login | ✅ Works | Email: alqodez@gmail.com |
 | Admin dashboard | ✅ Works | Stats cards, subscriber counts, analytics charts, **middleware-protected (v1.9.0)** |
-| Admin subscribers | ✅ Works | Table with ARIA labels, search, filter, export, import, **delete confirmation** |
-| Admin announcements | ✅ Works | Send now (concurrent), schedule, templates, WhatsApp policy notice |
+| Admin subscribers | ✅ Works | Table with ARIA labels, search, filter, export, **delete confirmation** |
+| Admin announcements | ✅ Works | Send now (concurrent push), schedule, templates |
 | Admin settings | ✅ Works | Prayer settings save, **cache invalidated on change** |
 | Admin QR code | ✅ Works | Generate and download QR codes |
 | Admin analytics | ✅ Works | Subscriber growth, message types, status breakdown, **optimized queries (v1.9.0)** |
-| Database | ✅ Works | All tables created and functional, **metadata JSONB column added (v1.8.0)** |
-| Cron jobs | ✅ Works | All 5 jobs running, **core-first architecture (v1.9.1)**, auto-resume paused subs, scheduled msg processing, retry limits, metadata fallback |
+| Database | ✅ Works | All tables created and functional, **notifications table added (v3.0)** |
+| Cron jobs | ✅ Works | All 5 jobs running, **core-first architecture (v1.9.1)**, auto-resume paused subs, scheduled msg processing, retry limits |
 | Prayer times API | ✅ Works | Aladhan API, **timezone-aware**, **NaN-safe parsing**, **midnight wraparound** |
 | Hadith API | ✅ Works | **jsDelivr CDN** (v1.6.2), 6 authentic collections, **Fisher-Yates shuffle** |
 | Rate limiting | ✅ Works | **Secure IP detection** (x-vercel-forwarded-for, rightmost IP) |
 | 404 page | ✅ Works | Branded not-found page, **no admin link exposed (v1.7.2)** |
 | Error handling | ✅ Works | Comprehensive logging, **batch update error handling** |
-| Social preview | ✅ Works | **Custom OG image** for WhatsApp/social sharing (v1.6.1) |
-| WhatsApp webhook | ✅ Works | **Fixed (v1.8.0):** WABA subscribed, commands (STOP/PAUSE/SETTINGS/HELP) fully operational |
-| Message logging | ✅ Works | **Fixed (v1.8.0):** metadata column added, all prayer/nafl messages now recorded |
+| Social preview | ✅ Works | **Custom OG image** for social sharing (v1.6.1) |
 | Audio Library | ✅ Works | Upload, manage, stream Islamic lectures/Quran recitations via Supabase Storage, public `/listen` page |
 | Custom Prayer Times | ✅ Works | calculation_method=99 mode for manual prayer time entry, bypasses Aladhan API and cache |
 | Eid Mode | ✅ Works | Admin can enable Eid mode with Khutbah + Salah times, displayed on landing page |
@@ -260,34 +277,12 @@ git push origin master
 | Admin Team Management | ✅ Works | Owner can add/remove team members with roles (admin/announcer), creates Supabase Auth users |
 | Cron Diagnostics | ✅ Works | Real-time diagnostic endpoint `/api/cron/diagnostics` for debugging cron timing |
 
-### ⚠️ Pending Meta Approval
-
-| Feature | Status | Why | Fix |
-|---------|--------|-----|-----|
-| Meta message templates | ⚠️ Not approved | 11 of 12 templates never submitted to Meta | Submit all templates for Meta approval (see Template Guide below) |
-
 ### ⚠️ Known Issues
 
 | Issue | Status | Workaround |
 |-------|--------|------------|
 | ~~**PRODUCTION OUTAGE: Prayer reminders not sending**~~ | ✅ Fixed (v1.9.1) | v1.9.0 audit introduced broken optimistic locking (`status: "sending"` doesn't exist in DB schema) and placed auxiliary code BEFORE core prayer logic. processScheduledMessages crash blocked ALL prayer reminders. Fixed by rewriting route: core logic first, auxiliary after in isolated try-catches, removed broken locking, switched to shared `tryClaimReminderLock`. |
-| ~~Webhook not receiving messages from Meta~~ | ✅ Fixed (v1.8.0) | WABA was not subscribed to app. Fixed by calling POST /v18.0/{WABA_ID}/subscribed_apps. |
-| ~~Webhook signature always failing~~ | ✅ Fixed (v1.8.0) | Trailing `\n` in Vercel env var. Fixed by re-adding clean value + `.trim()` in code. |
-| ~~SETTINGS link broken across lines in WhatsApp~~ | ✅ Fixed (v1.8.0) | `NEXT_PUBLIC_APP_URL` had trailing `\n`, splitting the URL into multiple lines. Fixed all 9 env vars via CLI. |
-| ~~All Vercel env vars had trailing newlines~~ | ✅ Fixed (v1.8.0) | 9 of 11 env vars had `\n` appended when pasted via Vercel UI. Deleted and re-added all via `npx vercel env rm/add`. |
-| ~~Prayer reminders not clickable in WhatsApp~~ | ✅ Fixed (v1.8.0) | `preview_url` was `false` in WhatsApp API call. Changed to `true`. |
-| ~~Prayer/nafl messages not logged in dashboard~~ | ✅ Fixed (v1.8.0) | messages table was missing metadata JSONB column. Fixed via migration 011. |
-
-### 📋 TODO: Next Steps
-
-1. [ ] **Submit ALL 12 Meta templates** for approval (see Template Guide section below for exact body text)
-2. [ ] Wait for template approval (24-48h each)
-3. [ ] Apply for Meta Business Verification
-4. [ ] Get a test phone number for testing
-5. [ ] Implement number warmup (start slow)
-6. [ ] Test prayer reminder flow end-to-end
-7. [ ] Go live with real users
-8. [x] ~~Resolve webhook message reception issue~~ - Fixed in v1.8.0 (WABA subscribed to app)
+| **iOS requires "Add to Home Screen"** | ⚠️ By design | iOS Safari supports push notifications only after the user adds the PWA to their home screen (iOS 16.4+). This is an Apple platform restriction. |
 
 ### 📋 Required Database Migrations
 
@@ -300,6 +295,9 @@ git push origin master
 | **Migration 013** | Eid mode columns on mosques table | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | **Migration 014** | Add eid_khutbah_time column to mosques table | ✅ **REQUIRED** - Run in Supabase SQL Editor |
 | **Migration 015** | Make password_hash nullable for team member creation | ✅ **REQUIRED** - Run in Supabase SQL Editor |
+| **Migration 016** | Web Push migration — add push columns, drop phone/token columns | ✅ **REQUIRED (v3.0)** - Run in Supabase SQL Editor |
+| **Migration 017** | Notifications table for in-app notification center | ✅ **REQUIRED (v3.0)** - Run in Supabase SQL Editor |
+| **Migration 018** | Drop legacy phone_number_old column, remove webhook_command type | ✅ **REQUIRED (v3.0)** - Run in Supabase SQL Editor |
 | Migration 007 | Adds Ramadan columns to mosques table | Optional - settings page has fallback |
 | Add retry_count | For scheduled message retry tracking | Optional - code handles missing column |
 
@@ -331,6 +329,22 @@ git push origin master
 - Alters `admins.password_hash` column to be nullable
 - Required for team member creation via Supabase Auth (password stored in auth.users, not admins table)
 
+**Migration 016 Details (v3.0 - Web Push):**
+- Adds `push_endpoint`, `push_p256dh`, `push_auth`, `user_agent` columns to subscribers
+- Creates UNIQUE index on `(push_endpoint, mosque_id)` for duplicate prevention
+- Drops `settings_token` and `settings_token_expires` columns (no longer needed)
+- Renames `phone_number` to `phone_number_old` (temporary, dropped in 018)
+- Drops old phone unique constraints
+
+**Migration 017 Details (v3.0 - Notifications):**
+- Creates `notifications` table (subscriber_id, mosque_id, type, title, body, data, read)
+- Indexes for subscriber + read status queries and mosque-wide queries
+- RLS enabled with service role full access
+
+**Migration 018 Details (v3.0 - Cleanup):**
+- Drops `phone_number_old` column from subscribers
+- Removes `webhook_command` from messages type CHECK constraint
+
 ---
 
 # PART 2: CURRENT STATUS
@@ -343,18 +357,20 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 15, 2026 | All pages loading, Audio Library, Next Salah countdown, Eid mode, Team management |
-| **Backend API** | ✅ Operational | Feb 15, 2026 | All admin endpoints use secure server-side routes, audio + team APIs added |
-| **Database (Supabase)** | ✅ Connected | Feb 15, 2026 | PostgreSQL with RLS, audio tables, eid columns, 15 migrations applied |
-| **Admin Dashboard** | ✅ Operational | Feb 15, 2026 | All pages functional, accessible, **middleware-protected**, Audio + Team pages added |
-| **Admin Settings** | ✅ Operational | Feb 15, 2026 | Custom prayer times, Eid mode, **cache invalidated on save**, **one-time tokens** |
-| **WhatsApp Sending** | ✅ Active | Feb 15, 2026 | Account restored, **concurrent sending**, `preview_url: true` |
-| **WhatsApp Webhook** | ✅ Operational | Feb 10, 2026 | **Fixed (v1.8.0):** WABA subscribed to app, all 6 commands working (STOP/START/RESUME/PAUSE/SETTINGS/HELP). See [Meta Webhook Configuration](#meta-webhook-configuration). |
-| **Cron Jobs** | ✅ Running | Feb 15, 2026 | 5 jobs, **atomic locking**, **timezone-aware (v2.0.0)**, **core-first architecture**, **dynamic timing**, **cache cleanup** |
-| **Hadith API** | ✅ Integrated | Feb 15, 2026 | jsDelivr CDN (6 collections), **dynamic timing**, **timezone-aware caching (v2.0.0)** |
-| **Audio Library** | ✅ Operational | Feb 15, 2026 | Supabase Storage integration, public streaming page `/listen` |
-| **Team Management** | ✅ Operational | Feb 15, 2026 | Owner-only add/delete admin team members with role-based access |
-| **Cron Diagnostics** | ✅ Operational | Feb 15, 2026 | `/api/cron/diagnostics` endpoint for real-time debugging |
+| **Frontend (Next.js)** | ✅ Operational | Feb 21, 2026 | All pages loading, PWA installable, Audio Library, Next Salah countdown, Eid mode, Team management |
+| **Backend API** | ✅ Operational | Feb 21, 2026 | All admin endpoints use secure server-side routes, push + settings + notifications APIs added |
+| **Database (Supabase)** | ✅ Connected | Feb 21, 2026 | PostgreSQL with RLS, audio tables, eid columns, notifications table, 18 migrations applied |
+| **Admin Dashboard** | ✅ Operational | Feb 21, 2026 | All pages functional, accessible, **middleware-protected**, Audio + Team pages added |
+| **Admin Settings** | ✅ Operational | Feb 21, 2026 | Custom prayer times, Eid mode, **cache invalidated on save** |
+| **Web Push Service** | ✅ Active | Feb 21, 2026 | VAPID-authenticated, concurrent sending via `p-limit(10)`, auto-unsubscribe on 410 Gone |
+| **Service Worker** | ✅ Active | Feb 21, 2026 | Serwist-compiled, handles push events + notification clicks, PWA manifest |
+| **Notification Center** | ✅ Operational | Feb 21, 2026 | In-app notification history at `/notifications` |
+| **Subscriber Settings** | ✅ Operational | Feb 21, 2026 | Preference management at `/settings` via localStorage subscriber ID |
+| **Cron Jobs** | ✅ Running | Feb 21, 2026 | 5 jobs, **atomic locking**, **timezone-aware (v2.0.0)**, **core-first architecture**, **dynamic timing**, **cache cleanup** |
+| **Hadith API** | ✅ Integrated | Feb 21, 2026 | jsDelivr CDN (6 collections), **dynamic timing**, **timezone-aware caching (v2.0.0)** |
+| **Audio Library** | ✅ Operational | Feb 21, 2026 | Supabase Storage integration, public streaming page `/listen` |
+| **Team Management** | ✅ Operational | Feb 21, 2026 | Owner-only add/delete admin team members with role-based access |
+| **Cron Diagnostics** | ✅ Operational | Feb 21, 2026 | `/api/cron/diagnostics` endpoint for real-time debugging |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
 | **Rate Limiting** | ✅ Secure | Feb 9, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
@@ -377,27 +393,29 @@ git push origin master
 
 | Metric | Value |
 |--------|-------|
-| **Development Sprint** | January 31 - February 15, 2026 |
+| **Development Sprint** | January 31 - February 21, 2026 |
 | **User Stories Completed** | 30/30 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
-| **Bug Fixes (v1.6.x-v2.0.0)** | 95+ issues resolved |
-| **Total Commits** | 90+ commits |
+| **Bug Fixes (v1.6.x-v3.0.0)** | 100+ issues resolved |
+| **Total Commits** | 95+ commits |
 | **Lines of Code** | ~12,000+ lines |
 | **Build Time** | ~4.7 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
 
 ### Key Achievements
 
-- ✅ Full WhatsApp Cloud API integration
+- ✅ Full Web Push notification system with VAPID authentication
+- ✅ Progressive Web App (PWA) — installable, offline-capable
+- ✅ Service Worker for push events and notification clicks
+- ✅ In-app Notification Center (`/notifications`)
+- ✅ Subscriber Settings page (`/settings`) — no phone number or login required
 - ✅ Automated prayer time reminders (timezone-aware)
 - ✅ Admin dashboard with analytics
 - ✅ Message scheduling system with **retry limits**
 - ✅ **101 E2E tests** with Playwright
 - ✅ Server-side API routes for admin data
 - ✅ **Secure rate limiting** (IP spoofing protection)
-- ✅ Webhook signature verification (constant-time)
 - ✅ Real Hadith API Integration (**fair shuffle algorithm**)
-- ✅ South African phone number validation
 - ✅ Legal pages (Privacy, Terms, Data Deletion)
 - ✅ **Nafl Salah Reminders** (Tahajjud, Ishraq, Awwabin)
 - ✅ **Twice-Daily Hadith** (morning and evening)
@@ -405,13 +423,10 @@ git push origin master
 - ✅ **Security Fixes** (mosque-scoped admin operations)
 - ✅ **Accessibility improvements** (ARIA labels, proper form linking)
 - ✅ **Prayer cache invalidation** on settings change
-- ✅ **Concurrent message sending** for announcements
+- ✅ **Concurrent push sending** for announcements
 - ✅ **Branded 404 page**
 - ✅ **Dynamic hadith timing** (follows prayer times, not fixed UTC)
 - ✅ **Atomic reminder locking** (prevents duplicate messages)
-- ✅ **WhatsApp webhook commands** (STOP/START/RESUME/PAUSE/SETTINGS/HELP all verified working)
-- ✅ **User settings via WhatsApp** (24h token-based link to preference page)
-- ✅ **Env var `.trim()` defense** (prevents trailing newline issues)
 - ✅ **Core-first cron architecture** (prayer reminders always execute first, auxiliary features isolated)
 - ✅ **Shared reminder lock utility** (all 5 cron routes use same `tryClaimReminderLock`)
 - ✅ **Production incident recovery** (v1.9.1 hotfix for prayer-reminders outage)
@@ -423,50 +438,47 @@ git push origin master
 - ✅ **Cron Reliability Fix** (7 critical timezone handling bugs fixed)
 - ✅ **Diagnostic Endpoint** (real-time cron timing and mosque configuration debugging)
 - ✅ **Prayer cache auto-cleanup** (entries older than 7 days cleaned up automatically)
+- ✅ **WhatsApp fully removed** (v3.0 — replaced with Web Push + PWA)
 
 ---
 
 ## Code Quality & Security
 
-### Security Features (v1.6.0 - v2.0.0)
+### Security Features (v1.6.0 - v3.0.0)
 
 | Feature | Implementation | File |
 |---------|----------------|------|
-| **Constant-time auth comparison** | Prevents timing attacks on cron secret | `auth.ts:116-140` |
-| **IP spoofing protection** | Uses `x-vercel-forwarded-for` or rightmost IP | `ratelimit.ts:63-93` |
-| **Webhook signature verification** | HMAC-SHA256 with constant-time comparison | `webhook/route.ts:14-49` |
+| **Constant-time auth comparison** | Prevents timing attacks on cron secret | `auth.ts` |
+| **IP spoofing protection** | Uses `x-vercel-forwarded-for` or rightmost IP | `ratelimit.ts` |
 | **Mosque-scoped operations** | Admins can only access their mosque's data | All admin routes |
-| **Input validation** | Boolean preference validation | `settings/[token]/route.ts:136-153` |
-| **Delete confirmation** | Prevents accidental subscriber deletion | `subscribers-table.tsx:158-170` |
-| **XSS prevention in QR print** | HTML entity escaping in document.write() | qr-code.tsx (v1.7.2) |
-| **Sanitized error messages** | Supabase errors not leaked to client | admin/settings/route.ts (v1.7.2) |
-| **Generic login errors** | Auth details not leaked on failed login | admin/login/page.tsx (v1.7.2) |
-| **No admin link on 404** | Public 404 page does not expose admin URL | not-found.tsx (v1.7.2) |
-| **Import validation** | Phone validation + size limits on import | admin/subscribers/import/route.ts (v1.7.2) |
-| **Status validation** | Status field validated on subscriber PATCH | admin/subscribers/route.ts (v1.7.2) |
-| **Env var `.trim()` defense** | Prevents trailing whitespace/newline in app secret | webhook/whatsapp/route.ts (v1.8.0) |
-| **PGRST204 fallback retry** | Message logging survives missing metadata column | prayer-reminders, nafl-reminders (v1.8.0) |
-| **Edge middleware auth** | Admin routes protected at edge before page loads | middleware.ts (v1.9.0) |
-| **Security headers** | HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | next.config.ts (v1.9.0) |
-| **Core-first cron architecture** | Prayer reminders execute FIRST; auxiliary code (scheduled msgs, auto-resume) runs AFTER in isolated try-catches so failures can't block core logic | prayer-reminders/route.ts (v1.9.1) |
-| **Shared reminder locking** | All 5 cron routes use shared `tryClaimReminderLock()` from `reminder-locks.ts` with atomic INSERT + UNIQUE constraint; fails open safely | reminder-locks.ts, all cron routes (v1.9.1) |
-| **One-time settings tokens** | Settings token invalidated after successful preference update | settings/[token]/route.ts (v1.9.0) |
-| **Content length validation** | Announcements limited to 4096 chars server-side | announcements/route.ts, schedule/route.ts (v1.9.0) |
-| **Token generation bias fix** | Rejection sampling eliminates modulo bias in generateToken() | utils.ts (v1.9.0) |
-| **WhatsApp API version configurable** | `WHATSAPP_API_VERSION` env var prevents breakage on Meta sunsets | whatsapp.ts (v1.9.0) |
-| **Consistent admin auth** | All admin routes standardized to `withAdminAuth` wrapper | All admin routes (v1.9.0) |
+| **Delete confirmation** | Prevents accidental subscriber deletion | `subscribers-table.tsx` |
+| **XSS prevention in QR print** | HTML entity escaping in document.write() | `qr-code.tsx` |
+| **Sanitized error messages** | Supabase errors not leaked to client | `admin/settings/route.ts` |
+| **Generic login errors** | Auth details not leaked on failed login | `admin/login/page.tsx` |
+| **No admin link on 404** | Public 404 page does not expose admin URL | `not-found.tsx` |
+| **Status validation** | Status field validated on subscriber PATCH | `admin/subscribers/route.ts` |
+| **PGRST204 fallback retry** | Message logging survives missing metadata column | `prayer-reminders`, `nafl-reminders` |
+| **Edge middleware auth** | Admin routes protected at edge before page loads | `middleware.ts` |
+| **Security headers** | HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | `next.config.ts` |
+| **Core-first cron architecture** | Prayer reminders execute FIRST; auxiliary code (scheduled msgs, auto-resume) runs AFTER in isolated try-catches so failures can't block core logic | `prayer-reminders/route.ts` |
+| **Shared reminder locking** | All 5 cron routes use shared `tryClaimReminderLock()` from `reminder-locks.ts` with atomic INSERT + UNIQUE constraint; fails open safely | `reminder-locks.ts`, all cron routes |
+| **Content length validation** | Announcements limited to 4096 chars server-side | `announcements/route.ts`, `schedule/route.ts` |
+| **Token generation bias fix** | Rejection sampling eliminates modulo bias in generateToken() | `utils.ts` |
+| **Consistent admin auth** | All admin routes standardized to `withAdminAuth` wrapper | All admin routes |
+| **Push subscription validation** | Validates push endpoint, p256dh, auth keys on subscribe | `subscribe/route.ts` |
+| **Auto-unsubscribe expired** | 410 Gone from push service triggers auto-unsubscribe | `push-sender.ts` |
 
-### Code Quality Improvements (v1.6.0 - v2.0.0)
+### Code Quality Improvements (v1.6.0 - v3.0.0)
 
 | Improvement | Description | Files |
 |-------------|-------------|-------|
 | **NaN-safe time parsing** | Validates parsed values before use | `prayer-times.ts` |
-| **Midnight wraparound handling** | Proper modular arithmetic for time offsets | `prayer-times.ts:291-298` |
-| **Fisher-Yates shuffle** | Unbiased randomization for hadith collections | `hadith-api.ts:155-165` |
-| **Concurrent message sending** | 10 concurrent requests with p-limit | `announcements/route.ts` |
-| **Batch error handling** | Logs errors without throwing for non-critical updates | `message-sender.ts:172-184` |
+| **Midnight wraparound handling** | Proper modular arithmetic for time offsets | `prayer-times.ts` |
+| **Fisher-Yates shuffle** | Unbiased randomization for hadith collections | `hadith-api.ts` |
+| **Concurrent push sending** | 10 concurrent requests with p-limit | `push-sender.ts` |
+| **Batch error handling** | Logs errors without throwing for non-critical updates | `push-sender.ts` |
 | **Retry limits** | Scheduled messages fail after 5 retries | `prayer-reminders/route.ts` |
-| **PostgreSQL error codes** | Uses error codes instead of fragile message matching | `admin/settings/route.ts:57-60` |
+| **PostgreSQL error codes** | Uses error codes instead of fragile message matching | `admin/settings/route.ts` |
 | **Constants extraction** | Magic numbers moved to constants file | `constants.ts` |
 | **Core-first cron architecture** | Primary function runs before auxiliary code; auxiliary code isolated in try-catches (v1.9.1) | `prayer-reminders/route.ts` |
 | **Shared lock utility** | All cron routes use same `tryClaimReminderLock()` instead of inline implementations (v1.9.1) | `reminder-locks.ts`, all cron routes |
@@ -532,141 +544,6 @@ export const REMINDER_OPTIONS = [
 
 ---
 
-## WhatsApp Account Status & Compliance
-
-### Current Status: ✅ ACTIVE
-
-| Item | Status | Details |
-|------|--------|---------|
-| **Account Status** | ✅ Active | Restored after appeal — business name was updated |
-| **Appeal Result** | ✅ Approved | February 4, 2026 |
-| **Business Name** | Masjid Notify | Updated from "Bochi" (name issue caused original suspension) |
-| **Welcome Messages** | ✅ Sending | `masjid_notify_welcome` template working |
-| **Message Templates** | ⚠️ Need approval | All other templates must be submitted to Meta for approval |
-
-### Why the Original Ban Occurred (Resolved)
-
-The WhatsApp Business account was suspended on Feb 2, 2026 and restored on Feb 4, 2026. Root cause was the business name ("Bochi") not matching the service. After updating to "Masjid Notify" and appealing, Meta restored the account.
-
-| Cause | Explanation | Prevention |
-|-------|-------------|------------|
-| **Business name mismatch** | Name "Bochi" didn't match mosque notification service | Updated to "Masjid Notify" |
-| **New unverified account** | Meta is suspicious of new WhatsApp Business accounts | Get Meta Business Verified |
-| **No approved templates** | Messages sent without Meta-approved templates | Submit templates for approval FIRST |
-| **Testing pattern** | Repeatedly deleting/re-adding numbers looks like spam testing | Use dedicated test numbers |
-
-### WhatsApp Business Terms Compliance
-
-Our service **fully complies** with WhatsApp's terms:
-
-| Requirement | Our Status | Evidence |
-|-------------|------------|----------|
-| **Explicit opt-in** | ✅ Compliant | Users subscribe via web form voluntarily |
-| **No spam** | ✅ Compliant | Only send to opted-in users |
-| **Valuable content** | ✅ Compliant | Prayer times, religious reminders |
-| **Easy opt-out** | ✅ Compliant | STOP command instantly unsubscribes |
-| **No prohibited products** | ✅ Compliant | Religious/community service only |
-| **No cold outreach** | ✅ Compliant | Never message non-subscribers |
-| **User control** | ✅ Compliant | SETTINGS, PAUSE, preferences |
-
----
-
-## WhatsApp Template Guide
-
-### IMPORTANT: Two Different Types of "Templates"
-
-This project uses the word "template" in two completely different ways:
-
-#### 1. Meta WhatsApp Templates (submitted to Meta for approval)
-
-- **What:** Message structures registered with Meta's WhatsApp Business API
-- **Why:** Required to send messages outside the 24-hour conversation window
-- **Where defined:** `src/lib/whatsapp-templates.ts`
-- **How many:** 12 templates total (all category: MARKETING per Meta's latest guidance)
-- **Admin interaction:** None — these work automatically behind the scenes
-- **Key point:** ALL automated messages (cron reminders, welcome) use these
-
-#### 2. Dashboard Announcement Templates (UI helpers in admin panel)
-
-- **What:** Pre-written text snippets the admin can pick from when composing announcements
-- **Why:** Convenience — admin clicks "Use a template" and gets pre-filled text
-- **Where defined:** `src/components/admin/message-templates.tsx`
-- **How many:** 11 templates (Eid, Juma, lectures, fundraiser, Ramadan, etc.)
-- **Admin interaction:** Yes — admin selects one, edits the `[PLACEHOLDERS]`, and sends
-- **Key point:** ALL of these are sent through ONE Meta template: `mosque_announcement`
-
-#### How They Connect
-
-```
-Admin picks "Eid ul-Fitr" dashboard template
-  → Text fills the announcement box
-  → Admin edits [TIME] placeholders
-  → Clicks "Send Now"
-  → System sends via Meta's "mosque_announcement" template
-  → {{1}} = mosque name, {{2}} = the announcement text
-```
-
-So 11 dashboard templates all flow through 1 Meta template. The admin never needs to think about Meta templates — they just work.
-
-### Meta Template Approval Status
-
-| # | Template Name | Category | Meta Status | Used By | Variables |
-|---|--------------|----------|-------------|---------|-----------|
-| 1 | `masjid_notify_welcome` | MARKETING | ✅ Approved | Auto: on subscribe | `{{1}}` = mosque name |
-| 2 | `salah_reminder` | MARKETING | ❌ Not submitted | Auto: cron every 5 min | `{{1}}` = prayer, `{{2}}` = time, `{{3}}` = mosque |
-| 3 | `jumuah_reminder` | MARKETING | ❌ Not submitted | Auto: Friday cron | `{{1}}` = adhaan, `{{2}}` = khutbah, `{{3}}` = mosque |
-| 4 | `daily_hadith` | MARKETING | ❌ Not submitted | Auto: morning + evening cron | `{{1}}` = text, `{{2}}` = source, `{{3}}` = ref, `{{4}}` = mosque |
-| 5 | `mosque_announcement` | MARKETING | ❌ Not submitted | Admin dashboard (powers ALL 11 announcement templates) | `{{1}}` = mosque, `{{2}}` = content |
-| 6 | `ramadan_suhoor` | MARKETING | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = fajr time, `{{2}}` = mosque |
-| 7 | `ramadan_iftar` | MARKETING | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = mins, `{{2}}` = maghrib, `{{3}}` = mosque |
-| 8 | `ramadan_taraweeh` | MARKETING | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = time, `{{2}}` = mosque |
-| 9 | `tahajjud_reminder` | MARKETING | ❌ Not submitted | Auto: nafl cron | `{{1}}` = fajr time, `{{2}}` = mosque |
-| 10 | `ishraq_reminder` | MARKETING | ❌ Not submitted | Auto: nafl cron | `{{1}}` = mosque |
-| 11 | `awwabin_reminder` | MARKETING | ❌ Not submitted | Auto: nafl cron | `{{1}}` = mosque |
-| 12 | `suhoor_planning` | MARKETING | ❌ Not submitted | Auto: Ramadan cron | `{{1}}` = fajr time, `{{2}}` = mosque |
-
-### WhatsApp Commands (Available to Subscribers)
-
-Users can text these commands to the WhatsApp number at any time:
-
-| Command | What It Does | Code Location |
-|---------|-------------|---------------|
-| **STOP** | Unsubscribe from all messages | `webhook/whatsapp/route.ts` → `handleStop()` |
-| **START** | Resubscribe after STOP | `webhook/whatsapp/route.ts` → `handleResume()` |
-| **RESUME** | Resume after PAUSE | `webhook/whatsapp/route.ts` → `handleResume()` |
-| **PAUSE [days]** | Pause notifications for 1-30 days (default 7) | `webhook/whatsapp/route.ts` → `handlePause()` |
-| **SETTINGS** | Get a 24-hour link to update preferences on the web | `webhook/whatsapp/route.ts` → `handleSettings()` |
-| **HELP** | Show all available commands | `webhook/whatsapp/route.ts` → `handleHelp()` |
-
-Any unrecognized text also returns the commands list.
-
-### How to Submit Templates to Meta
-
-1. Go to **Meta Business Manager**: https://business.facebook.com/
-2. Navigate to: **WhatsApp Manager > Account Tools > Message Templates**
-3. Click **"Create Template"**
-4. Select Category: **MARKETING** (Meta's latest guidance for all notification types)
-5. Enter template name (use underscore format, e.g., `salah_reminder`)
-6. Select language: **English (en)**
-7. Enter the template body text exactly as specified in `src/lib/whatsapp-templates.ts`
-8. For variables (`{{1}}`, `{{2}}`, etc.) — add sample values when prompted
-9. Submit for review (typically 24-48 hours)
-
-### Ban Prevention Best Practices
-
-| Practice | What They Do | Our Implementation |
-|----------|--------------|-------------------|
-| **Business Verification** | Get Meta Business verified (blue checkmark) | ❌ TODO: Apply for verification |
-| **Template Approval** | ONLY send pre-approved templates, never plain text for first contact | ⚠️ 1 of 12 approved, 11 remaining |
-| **Double Opt-in** | Send "Reply YES to confirm" after signup | ❌ TODO: Future feature |
-| **Number Warmup** | Start 50 msgs/day, increase 20% weekly | ❌ TODO: Implement rate scaling |
-| **Quality Monitoring** | Track blocks/reports, auto-pause if quality drops | ❌ TODO: Future feature |
-| **Dedicated Test Numbers** | Use separate numbers for testing | ❌ TODO: Get test number |
-| **Message Spacing** | Min 1 second between messages | ✅ Implemented (p-limit) |
-| **Opt-out Compliance** | Process STOP within 24 hours | ✅ Implemented (instant) |
-
----
-
 # PART 3: HOW TO DO THINGS
 
 ---
@@ -676,10 +553,11 @@ Any unrecognized text also returns the commands list.
 ### How to Test If Subscriptions Work
 
 1. Go to https://masjid-notify.vercel.app
-2. Enter a phone number and click Subscribe
-3. Check Supabase > Table Editor > `subscribers` table
-4. Your number should appear with `status: active`
-5. Check if you receive the WhatsApp welcome message
+2. Click "Enable Notifications" and grant browser permission
+3. Choose your notification preferences and subscribe
+4. Check Supabase > Table Editor > `subscribers` table
+5. Your entry should appear with `status: active` and `push_endpoint` populated
+6. You should receive a welcome push notification in your browser
 
 ### How to Check If Cron Jobs Are Running
 
@@ -718,12 +596,15 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 1. Go to Supabase > Table Editor > `subscribers`
 2. Click "Insert row"
 3. Fill in:
-   - `phone_number`: `+27XXXXXXXXX` (must include country code)
+   - `push_endpoint`: The subscriber's push subscription endpoint URL
+   - `push_p256dh`: The p256dh key from the push subscription
+   - `push_auth`: The auth key from the push subscription
    - `mosque_id`: Copy from `mosques` table
    - `status`: `active`
    - `pref_daily_prayers`: `true` (or false)
    - Other preferences as needed
 4. Click "Save"
+5. **Note:** In practice, subscribers self-register via the subscribe form. Manual insertion is only for testing.
 
 ### How to Delete a Subscriber
 
@@ -765,7 +646,7 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 2. Go to Announcements
 3. Type your message (or select a template)
 4. Click "Send Now" or schedule for later
-5. **Messages are sent concurrently** for better performance (v1.6.0)
+5. **Messages are sent as push notifications concurrently** for better performance
 
 ### How to Check Vercel Deployment Status
 
@@ -783,15 +664,105 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 
 ---
 
+## How to Clean Up Meta / WhatsApp
+
+> **Context:** As of v3.0.0, WhatsApp has been completely removed from the codebase and replaced with Web Push + PWA. The steps below guide you through cleaning up the Meta/WhatsApp resources that are no longer needed.
+
+### Step 1: Remove Vercel Environment Variables
+
+1. Go to https://vercel.com/alqodes-projects/masjid-notify/settings/environment-variables
+2. Delete these variables (one by one):
+   - `WHATSAPP_ACCESS_TOKEN`
+   - `WHATSAPP_PHONE_NUMBER_ID`
+   - `WHATSAPP_BUSINESS_ACCOUNT_ID`
+   - `WHATSAPP_APP_SECRET`
+   - `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+   - `WHATSAPP_API_VERSION`
+3. Add these new variables (if not already set):
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — your VAPID public key
+   - `VAPID_PRIVATE_KEY` — your VAPID private key
+   - `VAPID_SUBJECT` — `mailto:alqodez@gmail.com`
+4. Trigger a redeploy
+
+### Step 2: Delete WhatsApp Message Templates (Meta Business Manager)
+
+1. Go to https://business.facebook.com
+2. Navigate to: WhatsApp Manager > Account Tools > Message Templates
+3. Delete each template one by one:
+   - `masjid_notify_welcome`
+   - `salah_reminder` (if submitted)
+   - Any other templates you submitted
+4. Note: You can only delete templates that are not currently in use
+
+### Step 3: Remove Webhook Configuration (Meta Developer Console)
+
+1. Go to https://developers.facebook.com
+2. Select your app (Masjid Notify)
+3. Navigate to: WhatsApp > Configuration
+4. Under "Webhook", click "Edit" and remove the callback URL
+5. Unsubscribe from all webhook fields (messages, etc.)
+
+### Step 4: Unsubscribe WABA from App
+
+1. This prevents the app from receiving any further webhook events
+2. You can leave it or run:
+   ```bash
+   curl -X DELETE "https://graph.facebook.com/v21.0/{WABA_ID}/subscribed_apps" \
+     -H "Authorization: Bearer {TOKEN}"
+   ```
+
+### Step 5: (Optional) Delete the WhatsApp Business Number
+
+1. Go to Meta Business Manager > WhatsApp Manager > Phone Numbers
+2. If you want to release the number, you can delete it here
+3. Note: Once deleted, the number cannot be recovered for WhatsApp Business use
+
+### Step 6: (Optional) Delete the Meta App Entirely
+
+1. Go to https://developers.facebook.com/apps/
+2. Select your app > Settings > Basic
+3. Scroll to bottom > "Delete App"
+4. Note: Only do this if you're 100% sure you won't need WhatsApp again
+
+### Step 7: Update cron-job.org (No changes needed)
+
+- The 5 cron jobs stay exactly the same — same URLs, same schedule, same auth header
+- They now send push notifications instead of WhatsApp messages
+
+### Step 8: Run Database Migrations
+
+1. Go to https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth
+2. Open SQL Editor
+3. Run these migrations in order:
+   - `016_web_push_migration.sql` — Adds push columns, drops phone/token columns
+   - `017_notifications_table.sql` — Creates notifications table
+   - `018_drop_phone_column.sql` — Drops legacy phone_number_old column
+
+### Step 9: Verify Everything Works
+
+1. Visit https://masjid-notify.vercel.app
+2. Click "Enable Notifications" > grant permission > choose preferences > subscribe
+3. Check Supabase `subscribers` table — should see `push_endpoint` populated
+4. Go to `/settings` — should load your preferences
+5. Go to `/notifications` — should show notification history
+6. Send a test announcement from admin dashboard — should receive push notification
+
+### Order of Operations
+
+**Order matters**: Do Vercel env vars first (Step 1), then deploy the code, then run migrations (Step 8), then clean up Meta (Steps 2-6). The Meta cleanup can happen anytime after — WhatsApp is already disconnected from the code.
+
+---
+
 ## Testing the App
 
 ### Test Subscription Flow
 
-1. Delete your number from Supabase `subscribers` table (if exists)
-2. Go to landing page and subscribe
-3. Check database - subscriber should be created
-4. Check Vercel logs for any errors
-5. Check if you receive welcome message on WhatsApp
+1. Go to landing page
+2. Click "Enable Notifications" and grant browser notification permission
+3. Choose your preferences and subscribe
+4. Check database — subscriber should be created with `push_endpoint` populated
+5. Check Vercel logs for any errors
+6. Check if you receive welcome push notification
 
 ### Test Prayer Reminder Flow
 
@@ -799,7 +770,7 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 2. Wait until near a prayer time (within your offset, e.g., 15 mins before)
 3. Manually trigger prayer reminders cron (see above)
 4. Check Vercel logs for "messages sent" count
-5. Check if you receive the reminder
+5. Check if you receive the push notification
 
 ### Test Admin Dashboard
 
@@ -808,6 +779,20 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 3. Go to Subscribers - should show all subscribers
 4. Go to Settings - should load mosque settings
 5. All navigation should work
+
+### Test Settings Page
+
+1. Subscribe to get a subscriber ID (stored in localStorage)
+2. Go to `/settings`
+3. Should load your current preferences
+4. Update a preference and save
+5. Verify the change in Supabase
+
+### Test Notification Center
+
+1. Go to `/notifications`
+2. Should show your notification history
+3. Unread notifications should be marked differently
 
 ### Run Automated E2E Tests
 
@@ -830,6 +815,42 @@ npx playwright test --headed
 
 ## Troubleshooting Guide
 
+### Problem: Push notifications not arriving
+
+**Checklist:**
+1. Did the user grant notification permission? (Check browser settings)
+2. Is the service worker registered? (DevTools > Application > Service Workers)
+3. Is the push subscription saved? (Check `subscribers` table for `push_endpoint`)
+4. Are VAPID keys correct? (Check Vercel env vars match what's in the code)
+5. Is the subscriber `status: active`?
+6. Check Vercel logs for the cron job — look for errors or 500 responses
+7. Check if push endpoint is returning 410 (expired subscription — subscriber needs to re-subscribe)
+
+**Common causes:**
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No notifications at all | Notification permission denied | User must re-enable in browser settings |
+| 410 Gone errors in logs | Push subscription expired | Subscriber needs to re-subscribe (auto-unsubscribed) |
+| Notifications work on desktop but not mobile | Mobile browser closed | Some browsers stop service worker when closed. Using PWA (Add to Home Screen) helps. |
+| No notifications on iOS | Not installed as PWA | iOS requires Add to Home Screen for push support (iOS 16.4+) |
+
+### Problem: Service worker not registering
+
+**Checklist:**
+1. Is the site served over HTTPS? (required for service workers)
+2. Check DevTools > Application > Service Workers for errors
+3. Is `withSerwist()` configured in `next.config.ts`?
+4. Check browser console for registration errors
+
+### Problem: VAPID key mismatch
+
+**Symptoms:** Push sends fail with 401 or "UnauthorizedRegistration" errors.
+
+**Fix:**
+1. Ensure `NEXT_PUBLIC_VAPID_PUBLIC_KEY` in Vercel matches what was used when subscribers registered
+2. If you regenerate VAPID keys, ALL existing push subscriptions become invalid — subscribers must re-subscribe
+3. Generate keys: `npx web-push generate-vapid-keys`
+
 ### Problem: Subscribers page shows 0 subscribers
 
 **Cause:** Usually a database query issue or RLS policy problem.
@@ -844,10 +865,10 @@ npx playwright test --headed
 **Cause:** Could be many things. See the v1.9.1 incident below for the most recent cause.
 
 **Checklist:**
-1. Is WhatsApp account active? (Currently YES)
-2. Is it actually near prayer time?
-3. Does subscriber have `pref_daily_prayers: true`?
-4. Is subscriber `status: active`?
+1. Is it actually near prayer time?
+2. Does subscriber have `pref_daily_prayers: true`?
+3. Is subscriber `status: active`?
+4. Does subscriber have a valid `push_endpoint`?
 5. Check Vercel logs for the cron job — look for errors or 500 responses
 6. Check cron-job.org - is the job running?
 7. Check `prayer_reminder_locks` table in Supabase — if locks exist for today's prayers but `messages` table has no corresponding entries, the messages were attempted but logging failed
@@ -865,16 +886,6 @@ The v1.9.0 deep audit accidentally introduced broken optimistic locking (`status
 | `Unauthorized` | Wrong or missing auth header | Check cron-job.org has correct `Authorization: Bearer masjidnotify2025cron` |
 | `Could not find table X` | Database table missing | Run the SQL migrations (see Database Schema section) |
 | `column X does not exist` | Database column missing | Run ALTER TABLE to add column |
-| WhatsApp API error | Token expired or template not approved | Check Meta Business Manager |
-
-### Problem: WhatsApp messages not sending
-
-**General checklist:**
-1. Is the access token valid? (Check Meta Business Manager)
-2. Is the phone number ID correct?
-3. Are message templates approved?
-4. Is the recipient's number in correct format (+27...)?
-5. Check Vercel logs for WhatsApp API error messages
 
 ### Problem: Admin can't login
 
@@ -895,386 +906,120 @@ The v1.9.0 deep audit accidentally introduced broken optimistic locking (`status
 
 **Fix:** As of v1.6.0, prayer cache is automatically invalidated when settings are saved. If you edited the database directly, manually delete rows from `prayer_times_cache` for your mosque.
 
-### Problem: STOP/PAUSE/SETTINGS commands not working
-
-Users send commands but nothing happens. This is a multi-step issue:
-
-**Step 1: Check WHATSAPP_APP_SECRET**
-```
-Go to: Meta Developer Console > Your App > App Settings > Basic > App Secret
-Copy the secret and set it in Vercel Dashboard > Settings > Environment Variables
-The value should be: c426370968ddf41c9adf0c3c5a1d2aae
-```
-
-**Step 2: Check Webhook Subscription in Meta**
-```
-Go to: Meta Developer Console > Your App > WhatsApp > Configuration
-Under "Webhook fields", ensure "messages" is SUBSCRIBED (toggled ON)
-This is separate from webhook verification - the webhook can verify but still not receive messages!
-```
-
-**Step 3: Check Vercel Logs**
-```
-Go to: Vercel Dashboard > Your Project > Logs
-Filter by: api/webhook/whatsapp
-Look for: "[webhook] Signature verified successfully" or error messages
-```
-
-**Common Issues:**
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| No logs at all | "messages" not subscribed in Meta | Subscribe to "messages" webhook field |
-| No POST requests in Vercel logs | WABA not subscribed to your app | Run: `curl -X POST "https://graph.facebook.com/v18.0/{WABA_ID}/subscribed_apps" -H "Authorization: Bearer {TOKEN}"` |
-| "Signature verification failed" | Wrong WHATSAPP_APP_SECRET | Update env var with correct secret |
-| "Signature verification failed" after correct secret | **Trailing whitespace/newline in env var** (v1.8.0 fix) | The code now `.trim()`s the secret. But also: delete and re-add the env var in Vercel without trailing whitespace |
-| "CRITICAL: WHATSAPP_APP_SECRET is not configured" | Env var missing | Add WHATSAPP_APP_SECRET to Vercel |
-
-**IMPORTANT: Trailing Newline Bug (Fixed in v1.8.0)**
-
-When pasting the App Secret into Vercel's environment variable UI, a trailing newline (`\n`) can be silently appended. This causes EVERY webhook signature verification to fail because the HMAC is computed with `secret\n` instead of `secret`.
-
-How we diagnosed it:
-1. Pulled Vercel env vars locally: `npx vercel env pull .env.check`
-2. Found: `WHATSAPP_APP_SECRET="c426370968ddf41c9adf0c3c5a1d2aae\n"` (note the `\n`)
-3. Fix: Deleted and re-added the env var: `npx vercel env rm WHATSAPP_APP_SECRET production -y` then `printf 'value' | npx vercel env add WHATSAPP_APP_SECRET production`
-4. Code fix: Added `.trim()` to `process.env.WHATSAPP_APP_SECRET?.trim()` so this can never happen again
-
 ---
 
-## Meta Webhook Configuration
+## Web Push & PWA Setup
 
-### Required Webhook Fields
+### VAPID Key Generation
 
-In Meta Developer Console > WhatsApp > Configuration, ensure these webhook fields are **SUBSCRIBED**:
-
-| Field | Required | Purpose |
-|-------|----------|---------|
-| `messages` | ✅ **YES** | Receives incoming user messages (STOP, PAUSE, SETTINGS, etc.) |
-| `message_status` | Optional | Delivery receipts |
-
-**CRITICAL:** The `messages` field subscription is separate from webhook URL verification. Your webhook can pass verification but still not receive messages if `messages` is not subscribed.
-
-### Webhook URL Configuration
-
-| Setting | Value |
-|---------|-------|
-| **Callback URL** | `https://masjid-notify.vercel.app/api/webhook/whatsapp` |
-| **Verify Token** | `masjidnotifywebhook2025` |
-
-### Verifying Webhook Works
-
-1. **Check subscription:** Meta Console > WhatsApp > Configuration > Webhook fields > "messages" should be ON
-2. **Send a test message:** Text "HELP" to your WhatsApp number from any phone
-3. **Check Vercel logs:** Should see `[webhook] Signature verified successfully` and `[webhook] Processing command 'HELP'`
-
----
-
-## Recent Bug Fixes
-
-### February 5, 2026 (v1.6.0) - Comprehensive Bug Fix Release
-
-This release addresses 22 issues identified through thorough code review, including critical security fixes, performance improvements, and accessibility enhancements.
-
-#### Critical Fixes (P0)
-
-| Issue | Root Cause | Solution | Status |
-|-------|------------|----------|--------|
-| **IP spoofing bypass in rate limiter** | `x-forwarded-for` header can be spoofed by clients | Now uses `x-vercel-forwarded-for` (Vercel's trusted header) or rightmost IP from chain | ✅ Fixed |
-| **Scheduled messages stuck forever on failure** | No retry limit — failed messages retried infinitely | Added `retry_count` tracking, max 5 retries, then marked as `failed` | ✅ Fixed |
-
-#### High Priority Fixes (P1)
-
-| Issue | Root Cause | Solution | Status |
-|-------|------------|----------|--------|
-| **No delete confirmation for subscribers** | One misclick could delete subscriber | Added `window.confirm()` before deletion | ✅ Fixed |
-| **Prayer cache not invalidated on settings change** | Stale prayer times after admin changes calculation method | Added `invalidatePrayerCache()` called after settings save | ✅ Fixed |
-| **Missing ARIA labels** | Accessibility issues for screen readers | Added `aria-label` to table, action buttons; proper `id`/`htmlFor` in Checkbox | ✅ Fixed |
-
-#### Code Quality Fixes (P2)
-
-| Issue | Root Cause | Solution | Status |
-|-------|------------|----------|--------|
-| **Timing-safe comparison result discarded** | Auth check result never used | Fixed to properly return comparison result | ✅ Fixed |
-| **NaN in formatTime output** | No validation of parsed time values | Added `isNaN()` check before using parsed values | ✅ Fixed |
-| **Midnight wraparound edge case** | `applyOffset()` could produce invalid times | Rewrote with modular arithmetic for proper wraparound | ✅ Fixed |
-| **Missing error handling in batchUpdateLastMessageAt** | Silent failures in subscriber updates | Added error check with logging | ✅ Fixed |
-| **Sequential message sending in announcements** | Timeout risk on large subscriber bases | Converted to use `sendTemplatesConcurrently()` | ✅ Fixed |
-| **Biased shuffle algorithm** | `Math.random() - 0.5` produces non-uniform distribution | Replaced with proper Fisher-Yates shuffle | ✅ Fixed |
-| **Confusing negative offset usage** | `isWithinMinutes(-90)` for "after" logic | Changed to use `isWithinMinutesAfter(90)` | ✅ Fixed |
-| **Fragile error message matching** | Checked error message text instead of codes | Now checks PostgreSQL error codes (`42703`, `PGRST204`) | ✅ Fixed |
-| **No input validation for boolean preferences** | Accepted any value for preference fields | Added type validation for all boolean prefs | ✅ Fixed |
-| **Missing message structure validation in webhook** | Could throw on malformed messages | Added null check for `from` field with warning log | ✅ Fixed |
-| **Magic numbers scattered in code** | `720`, `1440`, `10 * 60 * 1000` repeated | Extracted to `constants.ts` | ✅ Fixed |
-| **No branded 404 page** | Generic Next.js 404 | Created `src/app/not-found.tsx` | ✅ Fixed |
-
-#### P3 Fixes (Code Quality & Hardening)
-
-| Issue | Root Cause | Solution | Status |
-|-------|------------|----------|--------|
-| **Webhook GET timing attack** | Direct string comparison for verify token | Added constant-time comparison using `timingSafeEqual` | ✅ Fixed |
-| **Subscribe route missing reminder_offset validation** | Accepted any numeric value | Added validation against `VALID_REMINDER_OFFSETS` (5, 10, 15, 30) | ✅ Fixed |
-| **logCommand error handling** | Silent failures when logging webhook commands | Added try/catch with error logging | ✅ Fixed |
-| **parseInt missing radix** | `parseInt(value)` without base could misbehave | Added `, 10` radix to all parseInt calls | ✅ Fixed |
-| **nafl-reminders hardcoded milliseconds** | `10 * 60 * 1000` instead of constant | Now uses `TEN_MINUTES_MS` from constants | ✅ Fixed |
-| **Mosque type assertion unsafe** | No null check before using mosque data | Added null check with early return | ✅ Fixed |
-| **daily-hadith missing error handling** | Message insert had no error check | Added error handling with console logging | ✅ Fixed |
-| **jumuah-reminder missing error handling** | Message insert had no error check | Added error handling with console logging | ✅ Fixed |
-| **Random hadith fallback ID** | `Math.random() * 10000` could cause duplicates | Replaced with stable hash-based ID generation | ✅ Fixed |
-| **Token param validation** | `params.token as string` without check | Added type validation for token param | ✅ Fixed |
-| **Taraweeh magic number 30** | Hardcoded in ramadan-reminders | Extracted to `TARAWEEH_REMINDER_MINUTES` constant | ✅ Fixed |
-| **Suhoor planning magic number 90** | Hardcoded in ramadan-reminders | Extracted to `SUHOOR_PLANNING_OFFSET_MINUTES` constant | ✅ Fixed |
-| **Hadith API delay magic number 200** | Hardcoded milliseconds | Extracted to `HADITH_API_DELAY_MS` constant | ✅ Fixed |
-| **Duplicate REMINDER_OPTIONS** | Same array in multiple files | Centralized in `constants.ts` | ✅ Fixed |
-| **Nafl timing magic numbers** | 120, 20, 15 hardcoded | Extracted to `TAHAJJUD_MINUTES_BEFORE_FAJR`, `ISHRAQ_MINUTES_AFTER_SUNRISE`, `AWWABIN_MINUTES_AFTER_MAGHRIB` | ✅ Fixed |
-
-#### Files Modified in v1.6.0 and v1.6.1
-
-| File | Changes |
-|------|---------|
-| `src/lib/auth.ts` | Fixed timing-safe comparison to properly return result |
-| `src/lib/prayer-times.ts` | NaN validation, midnight wraparound fix, constants usage |
-| `src/lib/message-sender.ts` | Error handling for batch update |
-| `src/lib/hadith-api.ts` | Fisher-Yates shuffle algorithm, stable hash ID fallback, constant delay |
-| `src/lib/ratelimit.ts` | Secure IP detection |
-| `src/lib/constants.ts` | Added 15+ constants for time, validation, and UI |
-| `src/lib/supabase.ts` | Added `retry_count` and `failed` status to ScheduledMessage |
-| `src/app/api/cron/prayer-reminders/route.ts` | Retry limit logic |
-| `src/app/api/cron/ramadan-reminders/route.ts` | Use `isWithinMinutesAfter()`, timing constants |
-| `src/app/api/cron/nafl-reminders/route.ts` | Use timing constants |
-| `src/app/api/cron/daily-hadith/route.ts` | Added error handling for message insert |
-| `src/app/api/cron/jumuah-reminder/route.ts` | Added error handling for message insert |
-| `src/app/api/admin/announcements/route.ts` | Concurrent sending |
-| `src/app/api/admin/settings/route.ts` | Cache invalidation, error code checking |
-| `src/app/api/settings/[token]/route.ts` | Boolean preference validation |
-| `src/app/api/subscribe/route.ts` | Added reminder_offset validation |
-| `src/app/api/webhook/whatsapp/route.ts` | Timing-safe verify, message validation, mosque null check, radix fix |
-| `src/app/settings/[token]/page.tsx` | Token validation, parseInt radix, shared constants |
-| `src/components/subscribe-form.tsx` | Use shared REMINDER_OPTIONS, parseInt radix |
-| `src/components/admin/subscribers-table.tsx` | Delete confirmation, ARIA labels |
-| `src/components/ui/checkbox.tsx` | Accessibility improvements |
-| `src/app/not-found.tsx` | New branded 404 page |
-| `src/app/layout.tsx` | Added OG image metadata for social sharing (v1.6.1) |
-| `public/og-image.png` | Custom social preview image (v1.6.1) |
-
----
-
-### February 4, 2026 (v1.5.1)
-
-#### Mosque Coordinates & Location Fix
-
-Updated mosque coordinates from Cape Town city center to actual mosque location in Rondebosch East.
-
-#### Changes
-
-| Change | Description |
-|--------|-------------|
-| **Coordinates updated** | -33.9249, 18.4241 → -33.9769192, 18.5006926 (via Supabase SQL) |
-| **Landing page location** | "Cape Town, South Africa" → "Rondebosch East, Cape Town" |
-| **Prayer times cache** | Cleared to force recalculation with correct coordinates |
-| **WhatsApp status** | Account restored and active after Meta appeal |
-
----
-
-### February 3, 2026 (v1.5.0)
-
-#### Complete Admin Dashboard API Migration
-
-All admin pages now use secure server-side API routes instead of client-side Supabase queries.
-
-#### Bug Fixes
-
-| Fix | Description |
-|-----|-------------|
-| **Announcements page: 0 subscribers** | Created `/api/admin/announcements/data` route |
-| **Analytics charts: empty** | Created `/api/admin/analytics` route |
-| **Settings: client-side queries** | Created `/api/admin/settings` route (GET + PUT) |
-| **QR code page: client-side queries** | Now uses existing `/api/admin/stats` |
-| **Subscriber import: client-side insert** | Created `/api/admin/subscribers/import` route |
-| **Search bar not working** | Replaced Input component with raw `<input>` |
-| **Settings save: missing columns** | Created migration 007 + fallback in PUT route |
-| **Missing preference badges** | Added Ramadan (teal) and Nafl Salahs (indigo) badges |
-| **WhatsApp policy not visible** | Added 24-hour messaging window notice |
-
----
-
-## E2E Test Suite
-
-### Overview
-
-| Metric | Value |
-|--------|-------|
-| **Framework** | Playwright |
-| **Total Tests** | 101 |
-| **Pass Rate** | 100% |
-| **Runtime** | ~2.5 minutes |
-| **Browser** | Chromium (Desktop) |
-
-### Test Files
-
-| File | Tests | Coverage |
-|------|-------|----------|
-| `admin-auth.spec.ts` | 3 | Login, redirects, error handling |
-| `admin-dashboard.spec.ts` | 9 | Stats cards, quick actions, navigation |
-| `admin-subscribers.spec.ts` | 12 | Table, search, filters, export, delete |
-| `admin-announcements.spec.ts` | 19 | Form, preview, scheduling |
-| `admin-settings.spec.ts` | 17 | Settings form, Ramadan toggle, save |
-| `admin-qrcode.spec.ts` | 13 | QR display, copy URL |
-| `admin-navigation.spec.ts` | 12 | Sidebar, redirects, responsive |
-| `subscription.spec.ts` | 5 | Landing page, subscription |
-| `mobile.spec.ts` | 6 | Mobile & desktop layouts |
-
-### Running Tests
+VAPID (Voluntary Application Server Identification) keys authenticate your server with browser push services.
 
 ```bash
-# Set credentials
-export TEST_ADMIN_EMAIL="your-admin@email.com"
-export TEST_ADMIN_PASSWORD="your-password"
+# Generate VAPID keys (run once, save permanently)
+npx web-push generate-vapid-keys
 
-# Run all tests
-npm test
-
-# Run with UI (interactive)
-npm run test:ui
-
-# Run specific test file
-npx playwright test admin-dashboard
-
-# Run in headed mode (see browser)
-npx playwright test --headed
+# Output will look like:
+# Public Key: BNx...abc (use for NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+# Private Key: abc...xyz (use for VAPID_PRIVATE_KEY)
 ```
 
----
+**Add to Vercel:**
 
-## Production Infrastructure
-
-### Vercel Deployment
-
-| Property | Value |
+| Variable | Value |
 |----------|-------|
-| **Account** | alqodes-projects |
-| **Project Name** | masjid-notify |
-| **Production URL** | https://masjid-notify.vercel.app |
-| **Framework** | Next.js 16.1.6 (Turbopack) |
-| **Node.js Version** | 18.x |
-| **Build Command** | `next build` |
-| **Region** | Washington D.C., USA (iad1) |
-| **Plan** | Hobby (Free) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | The public key from above |
+| `VAPID_PRIVATE_KEY` | The private key from above |
+| `VAPID_SUBJECT` | `mailto:alqodez@gmail.com` |
 
-### Supabase Configuration
+**IMPORTANT:** If you regenerate VAPID keys, ALL existing push subscriptions become invalid. Every subscriber will need to re-subscribe.
 
-| Property | Value |
-|----------|-------|
-| **Project ID** | jlqtuynaxuooymbwrwth |
-| **Database** | PostgreSQL 15 |
-| **Auth** | Email/Password enabled |
-| **RLS** | Enabled on all tables |
-| **API URL** | https://jlqtuynaxuooymbwrwth.supabase.co |
+### Service Worker (`src/sw.ts`)
 
----
+The service worker is compiled by Serwist (via `withSerwist()` in `next.config.ts`). It handles:
 
-## Admin Access
+- **`push` event** — Receives push notification payload and shows it using `self.registration.showNotification()`
+- **`notificationclick` event** — Opens the app URL from notification data, focuses existing window or opens new one
 
-### Credentials
+The service worker source is **excluded from tsconfig** because it's compiled separately by Serwist, not by the Next.js TypeScript compiler.
 
-| Field | Value |
-|-------|-------|
-| **Login URL** | https://masjid-notify.vercel.app/admin/login |
-| **Email** | alqodez@gmail.com |
-| **Role** | owner |
-| **Linked Mosque** | Anwaarul Islam Rondebosch East |
+### PWA Manifest (`public/manifest.json`)
 
-### Admin Pages
+```json
+{
+  "name": "Masjid Notify",
+  "short_name": "Masjid Notify",
+  "description": "Prayer time reminders and mosque notifications",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#10b981",
+  "icons": [
+    { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+```
 
-| Page | URL | Purpose |
-|------|-----|---------|
-| **Dashboard** | `/admin` | Stats overview, quick actions, analytics charts |
-| **Subscribers** | `/admin/subscribers` | View, search, filter, export subscribers |
-| **Announcements** | `/admin/announcements` | Send immediate or scheduled messages |
-| **QR Code** | `/admin/qr-code` | Generate and download QR codes |
-| **Settings** | `/admin/settings` | Mosque configuration, prayer times, Ramadan mode, Eid mode, custom times |
-| **Audio Library** | `/admin/audio` | Upload and manage Islamic lectures, Quran recitations |
-| **Team** | `/admin/team` | Manage admin team members (owner-only) |
+### Browser Push Service Flow
 
-### Admin Capabilities
+```
+1. User clicks "Enable Notifications"
+2. Browser asks for notification permission
+3. If granted, browser contacts its push service (FCM for Chrome, Mozilla for Firefox, APNs for Safari)
+4. Push service returns a PushSubscription object (endpoint URL + encryption keys)
+5. Our app sends this subscription to /api/subscribe
+6. We save push_endpoint, push_p256dh, push_auth to the subscribers table
+7. When sending: our server POSTs encrypted payload to the endpoint URL using VAPID auth
+8. Push service delivers it to the user's browser
+9. Service worker's `push` event fires → shows notification
+```
 
-- View subscriber statistics and growth charts
-- Send announcements to all active subscribers (concurrent sending)
-- Schedule messages for future delivery
-- Cancel pending scheduled messages
-- Import subscribers via CSV
-- Export subscriber list to CSV
-- Configure prayer time calculation method
-- Set Jumu'ah times
-- Enable/disable Ramadan mode
-- Configure Taraweeh time
-- Upload and manage audio collections and files
-- Add/remove admin team members with roles (owner-only)
-- Set custom prayer times (calculation_method=99 mode)
-- Enable Eid mode with Khutbah and Salah times
+### iOS Considerations
+
+- iOS supports Web Push only from iOS 16.4+
+- The user MUST install the PWA by using "Add to Home Screen" in Safari
+- Push notifications do NOT work in regular Safari — only in the installed PWA
+- This is an Apple platform restriction, not something we can work around
 
 ---
 
-## Environment Variables
-
-### Production Variables (Vercel)
-
-| Variable | Status | Description |
-|----------|--------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Set | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Set | Supabase anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Set | Supabase service role (admin access) |
-| `WHATSAPP_ACCESS_TOKEN` | ✅ Set | Meta access token |
-| `WHATSAPP_PHONE_NUMBER_ID` | ✅ Set | `895363247004714` |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | ✅ Set | `1443752210724410` |
-| `WHATSAPP_APP_SECRET` | ✅ Set | **CRITICAL:** For webhook signature verification. Get from Meta > App Dashboard > App Settings > Basic > App Secret. Value: `c426370968ddf41c9adf0c3c5a1d2aae` |
-| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | ✅ Set | `masjidnotifywebhook2025` - Must match Meta webhook configuration |
-| `CRON_SECRET` | ✅ Set | `masjidnotify2025cron` |
-| `ALADHAN_API_URL` | ✅ Set | `https://api.aladhan.com/v1` |
-| `NEXT_PUBLIC_APP_URL` | ✅ Set | `https://masjid-notify.vercel.app` |
-| `NEXT_PUBLIC_DEFAULT_MOSQUE_SLUG` | ✅ Set | `anwaarul-islam-rondebosch-east` |
-
-### Optional Variables
-
-| Variable | Purpose | How to Enable |
-|----------|---------|---------------|
-| `WHATSAPP_API_VERSION` | WhatsApp Graph API version (default: `v21.0`) | Set to `v22.0` etc when Meta releases new versions |
-| `UPSTASH_REDIS_REST_URL` | Rate limiting | Create Redis at console.upstash.com |
-| `UPSTASH_REDIS_REST_TOKEN` | Rate limiting | From Upstash dashboard |
-| `SENTRY_DSN` | Error tracking | Create project at sentry.io |
+# PART 4: TECHNICAL REFERENCE
 
 ---
 
 ## All Features
 
-### Core Features (25 Total)
+### Core Features (27 Total)
 
 | # | Feature | Status | Description |
 |---|---------|--------|-------------|
 | 1 | Landing Page | ✅ Live | Prayer times display, mosque info, subscribe CTA |
-| 2 | Subscribe Form | ✅ Live | Multi-step form with SA phone validation (+27), accessible |
-| 3 | WhatsApp Welcome | ✅ Live | Automated welcome message on subscription |
-| 4 | Admin Login | ✅ Live | Supabase Auth email/password |
-| 5 | Admin Dashboard | ✅ Live | Stats cards, quick actions, analytics |
-| 6 | Subscribers Table | ✅ Live | Search, filter, pagination, **delete confirmation** |
-| 7 | CSV Export | ✅ Live | Download subscriber list |
-| 8 | CSV Import | ✅ Live | Bulk import with validation preview |
-| 9 | Announcements | ✅ Live | **Concurrent sending**, message composer with preview |
-| 10 | Message Templates | ✅ Live | Pre-built announcement templates |
-| 11 | Message Scheduling | ✅ Live | Schedule for future delivery, **retry limits** |
-| 12 | Mosque Settings | ✅ Live | Prayer calculation, Jumu'ah times, **cache invalidation** |
-| 13 | Ramadan Mode | ✅ Live | Toggle Suhoor/Iftar/Taraweeh reminders |
-| 14 | QR Code Generator | ✅ Live | Generate, download, print QR codes |
-| 15 | Prayer Reminders | ✅ Live | **Timezone-aware**, **NaN-safe** |
-| 16 | Daily Hadith | ✅ Live | Real API - 6 authentic collections, **fair shuffle**, **dynamic timing** (15 min after Fajr/Maghrib) |
-| 17 | Jumu'ah Reminder | ✅ Live | Friday morning reminder |
-| 18 | Analytics Charts | ✅ Live | Subscriber growth, message breakdown |
-| 19 | 404 Page | ✅ Live | **Branded not-found page** (v1.6.0) |
-| 20 | Audio Library | ✅ Live | Upload, manage, stream Islamic lectures/Quran, public `/listen` page (v2.0.0) |
-| 21 | Custom Prayer Times | ✅ Live | Manual prayer time entry mode (calculation_method=99) (v2.0.0) |
-| 22 | Eid Mode | ✅ Live | Eid Khutbah + Salah time display on landing page (v2.0.0) |
-| 23 | Next Salah Countdown | ✅ Live | Live countdown timer to next prayer on landing page (v2.0.0) |
-| 24 | Admin Team Management | ✅ Live | Owner can add/remove admins with role-based access (v2.0.0) |
-| 25 | Cron Diagnostics | ✅ Live | Real-time diagnostic endpoint for debugging (v2.0.0) |
+| 2 | Subscribe Form | ✅ Live | Enable notifications → choose preferences → subscribe (no phone number) |
+| 3 | Push Welcome | ✅ Live | Automated welcome push notification on subscription |
+| 4 | Subscriber Settings | ✅ Live | `/settings` page — update preferences, pause, unsubscribe (localStorage ID) |
+| 5 | Notification Center | ✅ Live | `/notifications` — view all received notifications in-app |
+| 6 | Admin Login | ✅ Live | Supabase Auth email/password |
+| 7 | Admin Dashboard | ✅ Live | Stats cards, quick actions, analytics |
+| 8 | Subscribers Table | ✅ Live | Search, filter, pagination, **delete confirmation** |
+| 9 | CSV Export | ✅ Live | Download subscriber list |
+| 10 | Announcements | ✅ Live | **Concurrent push sending**, message composer with preview |
+| 11 | Message Templates | ✅ Live | Pre-built announcement templates |
+| 12 | Message Scheduling | ✅ Live | Schedule for future delivery, **retry limits** |
+| 13 | Mosque Settings | ✅ Live | Prayer calculation, Jumu'ah times, **cache invalidation** |
+| 14 | Ramadan Mode | ✅ Live | Toggle Suhoor/Iftar/Taraweeh reminders |
+| 15 | QR Code Generator | ✅ Live | Generate, download, print QR codes |
+| 16 | Prayer Reminders | ✅ Live | **Timezone-aware**, **NaN-safe**, push notifications |
+| 17 | Daily Hadith | ✅ Live | Real API - 6 authentic collections, **fair shuffle**, **dynamic timing** (15 min after Fajr/Maghrib) |
+| 18 | Jumu'ah Reminder | ✅ Live | Friday morning reminder via push |
+| 19 | Analytics Charts | ✅ Live | Subscriber growth, message breakdown |
+| 20 | 404 Page | ✅ Live | **Branded not-found page** (v1.6.0) |
+| 21 | Audio Library | ✅ Live | Upload, manage, stream Islamic lectures/Quran, public `/listen` page (v2.0.0) |
+| 22 | Custom Prayer Times | ✅ Live | Manual prayer time entry mode (calculation_method=99) (v2.0.0) |
+| 23 | Eid Mode | ✅ Live | Eid Khutbah + Salah time display on landing page (v2.0.0) |
+| 24 | Next Salah Countdown | ✅ Live | Live countdown timer to next prayer on landing page (v2.0.0) |
+| 25 | Admin Team Management | ✅ Live | Owner can add/remove admins with role-based access (v2.0.0) |
+| 26 | Cron Diagnostics | ✅ Live | Real-time diagnostic endpoint for debugging (v2.0.0) |
+| 27 | PWA / Service Worker | ✅ Live | Installable web app, offline support, push handler (v3.0.0) |
 
 ### Subscriber Preferences (6 Options)
 
@@ -1287,16 +1032,14 @@ npx playwright test --headed
 | Daily Hadith | `pref_hadith` | Authentic hadith twice daily (morning & evening) |
 | Announcements & Events | `pref_announcements` | Programs, Eid, special events |
 
-### WhatsApp Commands (6 Total)
+### Subscriber Self-Service
 
-| Command | Description |
-|---------|-------------|
-| `STOP` | Unsubscribe from all messages |
-| `START` | Resubscribe after STOP |
-| `RESUME` | Resume after pause |
-| `PAUSE [days]` | Pause for 1-30 days |
-| `SETTINGS` | Get 24-hour preferences link |
-| `HELP` | Show available commands |
+| Feature | How | Code Location |
+|---------|-----|---------------|
+| **Update preferences** | `/settings` page (localStorage subscriber ID) | `settings/page.tsx`, `api/settings/route.ts` |
+| **Pause notifications** | `/settings` page — pause for 1-30 days | `api/settings/route.ts` |
+| **Unsubscribe** | `/settings` page — unsubscribe button | `api/settings/unsubscribe/route.ts` |
+| **View notifications** | `/notifications` page — all received notifications | `notifications/page.tsx`, `api/notifications/route.ts` |
 
 ---
 
@@ -1306,10 +1049,11 @@ npx playwright test --headed
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `POST` | `/api/subscribe` | Subscribe new user |
-| `POST` | `/api/webhook/whatsapp` | WhatsApp webhook |
-| `GET` | `/api/settings/[token]` | Get user preferences |
-| `PUT` | `/api/settings/[token]` | Update user preferences |
+| `POST` | `/api/subscribe` | Subscribe new user (saves push subscription + preferences) |
+| `GET` | `/api/settings` | Get subscriber preferences (by subscriber ID query param) |
+| `PUT` | `/api/settings` | Update subscriber preferences |
+| `POST` | `/api/settings/unsubscribe` | Unsubscribe a subscriber |
+| `GET` | `/api/notifications` | Get subscriber's notification history |
 | `GET` | `/api/audio` | List public audio collections |
 | `GET` | `/api/audio/[collectionId]` | Get audio files in collection |
 
@@ -1321,11 +1065,10 @@ npx playwright test --headed
 | `GET` | `/api/admin/subscribers` | List subscribers with optional status filter |
 | `PATCH` | `/api/admin/subscribers` | Update subscriber status |
 | `DELETE` | `/api/admin/subscribers?id=` | Delete subscriber |
-| `POST` | `/api/admin/subscribers/import` | Bulk import subscribers from CSV |
 | `GET` | `/api/admin/settings` | Get mosque settings |
 | `PUT` | `/api/admin/settings` | Update mosque settings (**invalidates prayer cache**) |
 | `GET` | `/api/admin/announcements/data` | Announcements page data (mosque, active count, recent) |
-| `POST` | `/api/admin/announcements` | Send announcement immediately (**concurrent**) |
+| `POST` | `/api/admin/announcements` | Send announcement immediately (**concurrent push**) |
 | `GET` | `/api/admin/announcements/schedule` | List scheduled messages |
 | `POST` | `/api/admin/announcements/schedule` | Create scheduled message |
 | `DELETE` | `/api/admin/announcements/schedule/[id]` | Cancel scheduled message |
@@ -1361,9 +1104,10 @@ npx playwright test --headed
 | Table | Purpose | RLS |
 |-------|---------|-----|
 | `mosques` | Mosque configuration | ✅ |
-| `subscribers` | User subscriptions | ✅ |
+| `subscribers` | User subscriptions (push endpoint + preferences) | ✅ |
 | `admins` | Admin users | ✅ |
 | `messages` | Message log (all notification types) | ✅ |
+| `notifications` | In-app notification center (per subscriber) | ✅ |
 | `daily_hadith_log` | Tracks sent hadiths | ✅ |
 | `prayer_times_cache` | API response cache (with INSERT/UPDATE policies) | ✅ |
 | `scheduled_messages` | Scheduled announcements | ✅ |
@@ -1371,13 +1115,16 @@ npx playwright test --headed
 | `audio_collections` | Audio content organization (v2.0.0) | ✅ |
 | `audio_files` | Audio file metadata (v2.0.0) | ✅ |
 
-### Key Table: subscribers
+### Key Table: subscribers (v3.0 — Web Push)
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID | Primary key |
-| `phone_number` | TEXT | +27 format |
 | `mosque_id` | UUID | Foreign key to mosques |
+| `push_endpoint` | TEXT | Push subscription endpoint URL |
+| `push_p256dh` | TEXT | Push subscription p256dh encryption key |
+| `push_auth` | TEXT | Push subscription auth key |
+| `user_agent` | TEXT | Subscriber's browser user agent |
 | `status` | TEXT | active / paused / unsubscribed |
 | `pref_daily_prayers` | BOOLEAN | All 5 daily prayers opt-in |
 | `pref_jumuah` | BOOLEAN | Jumu'ah reminder opt-in |
@@ -1386,11 +1133,25 @@ npx playwright test --headed
 | `pref_hadith` | BOOLEAN | Daily hadith opt-in |
 | `pref_announcements` | BOOLEAN | Announcements opt-in |
 | `reminder_offset` | INT | Minutes before prayer |
-| `settings_token` | TEXT | 32-char token for SETTINGS command preference link |
-| `settings_token_expires` | TIMESTAMP | Token expiry (24h from generation) |
 | `pause_until` | TIMESTAMP | When PAUSE expires (null if not paused) |
 | `last_message_at` | TIMESTAMP | Last successful message delivery |
 | `subscribed_at` | TIMESTAMP | First subscription date |
+
+**UNIQUE constraint:** `(push_endpoint, mosque_id)` — prevents duplicate push subscriptions per mosque.
+
+### Key Table: notifications (v3.0 — New)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `subscriber_id` | UUID | Foreign key to subscribers (CASCADE delete) |
+| `mosque_id` | UUID | Foreign key to mosques (CASCADE delete) |
+| `type` | TEXT | Notification type (prayer, hadith, announcement, etc.) |
+| `title` | TEXT | Notification title |
+| `body` | TEXT | Notification body text |
+| `data` | JSONB | Additional data (prayer name, hadith source, etc.) |
+| `read` | BOOLEAN | Whether subscriber has read this notification |
+| `created_at` | TIMESTAMPTZ | When notification was created |
 
 ### Key Table: messages (v1.8.0 - Added metadata column)
 
@@ -1398,7 +1159,7 @@ npx playwright test --headed
 |--------|------|-------------|
 | `id` | UUID | Primary key |
 | `mosque_id` | UUID | Foreign key to mosques |
-| `type` | TEXT | **prayer / hadith / announcement / ramadan / welcome / jumuah / nafl / webhook_command** |
+| `type` | TEXT | **prayer / hadith / announcement / ramadan / welcome / jumuah / nafl** |
 | `content` | TEXT | Message content |
 | `sent_to_count` | INT | Number of recipients |
 | `sent_at` | TIMESTAMP | When sent |
@@ -1440,9 +1201,12 @@ npx playwright test --headed
 ```
 masjid-notify/
 ├── src/
+│   ├── sw.ts                            # Service worker source (push events, notification clicks)
+│   │                                    # Compiled by Serwist, excluded from tsconfig
 │   ├── app/
 │   │   ├── page.tsx                    # Landing page
 │   │   ├── layout.tsx                  # Root layout
+│   │   ├── landing-page.tsx            # Landing page component
 │   │   ├── not-found.tsx               # Branded 404 page (v1.6.0)
 │   │   ├── globals.css                 # Tailwind styles
 │   │   │
@@ -1457,24 +1221,27 @@ masjid-notify/
 │   │   │   ├── audio/page.tsx          # Audio Library management
 │   │   │   └── team/page.tsx           # Team management (owner-only)
 │   │   │
-│   │   ├── settings/[token]/page.tsx    # User notification preferences (24h token access via SETTINGS command)
+│   │   ├── settings/page.tsx           # Subscriber notification preferences (localStorage ID)
+│   │   ├── notifications/page.tsx      # In-app notification center
 │   │   ├── privacy/page.tsx            # Privacy policy
 │   │   ├── terms/page.tsx              # Terms of service
 │   │   ├── data-deletion/page.tsx      # Data deletion instructions
 │   │   ├── listen/page.tsx             # Public audio streaming page
 │   │   │
 │   │   └── api/
-│   │       ├── subscribe/route.ts      # Subscription endpoint
+│   │       ├── subscribe/route.ts      # Subscription endpoint (push subscription + preferences)
+│   │       ├── settings/route.ts       # Subscriber settings (GET/PUT by subscriber ID)
+│   │       ├── settings/unsubscribe/route.ts  # Unsubscribe endpoint
+│   │       ├── notifications/route.ts  # In-app notification center API
 │   │       ├── audio/                  # Public audio collections + files API
 │   │       │
 │   │       ├── admin/
 │   │       │   ├── stats/route.ts          # Dashboard stats
 │   │       │   ├── subscribers/route.ts    # Subscribers CRUD
-│   │       │   ├── subscribers/import/route.ts # CSV bulk import
 │   │       │   ├── settings/route.ts       # Mosque settings GET/PUT (cache invalidation)
 │   │       │   ├── analytics/route.ts      # Analytics charts data
 │   │       │   └── announcements/
-│   │       │       ├── route.ts            # Send announcement (concurrent)
+│   │       │       ├── route.ts            # Send announcement (concurrent push)
 │   │       │       ├── data/route.ts       # Announcements page data
 │   │       │       └── schedule/           # Scheduled messages
 │   │       │   ├── audio/
@@ -1483,17 +1250,13 @@ masjid-notify/
 │   │       │   │   └── upload-url/         # Signed upload URL
 │   │       │   └── team/route.ts           # Team management (owner-only)
 │   │       │
-│   │       ├── cron/
-│   │       │   ├── prayer-reminders/route.ts    # Prayer reminders (core-first, shared locks, retry limits) (v1.9.1)
-│   │       │   ├── daily-hadith/route.ts
-│   │       │   ├── jumuah-reminder/route.ts
-│   │       │   ├── ramadan-reminders/route.ts   # Uses isWithinMinutesAfter
-│   │       │   ├── nafl-reminders/route.ts
-│   │       │   └── diagnostics/route.ts       # Diagnostic endpoint
-│   │       │
-│   │       ├── settings/[token]/route.ts        # User preferences (validation)
-│   │       │
-│   │       └── webhook/whatsapp/route.ts        # WhatsApp webhook (structure validation)
+│   │       └── cron/
+│   │           ├── prayer-reminders/route.ts    # Prayer reminders (core-first, shared locks, retry limits) (v1.9.1)
+│   │           ├── daily-hadith/route.ts
+│   │           ├── jumuah-reminder/route.ts
+│   │           ├── ramadan-reminders/route.ts   # Uses isWithinMinutesAfter
+│   │           ├── nafl-reminders/route.ts
+│   │           └── diagnostics/route.ts       # Diagnostic endpoint
 │   │
 │   ├── components/
 │   │   ├── ui/                         # shadcn components
@@ -1502,23 +1265,21 @@ masjid-notify/
 │   │   ├── prayer-times.tsx
 │   │   ├── next-salah-countdown.tsx    # Live countdown to next prayer
 │   │   ├── qr-code.tsx
-│   │   ├── subscribe-form.tsx
+│   │   ├── subscribe-form.tsx          # Enable notifications + preferences form
 │   │   └── admin/
 │   │       ├── sidebar.tsx
 │   │       ├── stats-card.tsx
 │   │       ├── analytics-charts.tsx
 │   │       ├── announcement-form.tsx
 │   │       ├── message-templates.tsx
-│   │       ├── subscribers-table.tsx   # Delete confirmation, ARIA labels (v1.6.0)
-│   │       └── subscriber-import.tsx
+│   │       └── subscribers-table.tsx   # Delete confirmation, ARIA labels (v1.6.0)
 │   │
 │   └── lib/
-│       ├── supabase.ts                 # Database clients + types
-│       ├── whatsapp.ts                 # WhatsApp API
-│       ├── whatsapp-templates.ts       # Template definitions
+│       ├── supabase.ts                 # Database clients + types (Subscriber, Notification, etc.)
+│       ├── web-push.ts                 # Web Push API client (VAPID-based)
+│       ├── push-sender.ts             # Batch push sending with concurrency control (p-limit 10)
 │       ├── prayer-times.ts             # Aladhan API + cache (NaN-safe, timezone-aware)
 │       ├── hadith-api.ts               # External hadith API (Fisher-Yates shuffle)
-│       ├── message-sender.ts           # Concurrent sending (error handling)
 │       ├── ratelimit.ts                # Rate limiting (IP spoofing protection)
 │       ├── auth.ts                     # Auth utilities (constant-time comparison)
 │       ├── constants.ts                # Time constants (v1.6.0, updated v1.7.1)
@@ -1526,6 +1287,12 @@ masjid-notify/
 │       ├── time-format.ts              # Client-safe time formatting utilities (v2.0.0)
 │       ├── logger.ts                   # Structured logging
 │       └── utils.ts                    # Helpers
+│
+├── public/
+│   ├── manifest.json                   # PWA manifest (standalone, icons, theme)
+│   ├── icon-192x192.png               # PWA icon (192x192)
+│   ├── icon-512x512.png               # PWA icon (512x512)
+│   └── og-image.png                   # Social preview image
 │
 ├── tests/
 │   ├── admin-auth.spec.ts
@@ -1557,13 +1324,15 @@ masjid-notify/
 │       ├── 012_add_audio_tables.sql         # (v2.0.0) Audio collections and files tables
 │       ├── 013_add_eid_mode.sql             # (v2.0.0) Eid mode columns
 │       ├── 014_add_eid_khutbah_time.sql     # (v2.0.0) Eid khutbah time column
-│       └── 015_fix_admins_password_hash.sql # (v2.0.0) Make password_hash nullable
+│       ├── 015_fix_admins_password_hash.sql # (v2.0.0) Make password_hash nullable
+│       ├── 016_web_push_migration.sql       # (v3.0.0) Add push columns, drop phone/token
+│       ├── 017_notifications_table.sql      # (v3.0.0) In-app notification center
+│       └── 018_drop_phone_column.sql        # (v3.0.0) Drop legacy phone column, clean types
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
 ├── tsconfig.json
-├── tailwind.config.ts
-├── next.config.ts
+├── next.config.ts                      # Wrapped with withSerwist() for service worker
 ├── vercel.json
 ├── CLAUDE.md                          # AI assistant instructions
 └── .env.local.example
@@ -1642,9 +1411,10 @@ Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 |---------|--------------|---------------|---------|
 | **Vercel** | Hosts the website and API | https://vercel.com/alqodes-projects/masjid-notify | alqodez@gmail.com |
 | **Supabase** | Database + Authentication | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth | alqodez@gmail.com |
-| **Meta Business** | WhatsApp API access | https://business.facebook.com | alqodez@gmail.com |
 | **cron-job.org** | Runs scheduled jobs every 5 mins | https://cron-job.org | alqodez@gmail.com |
 | **GitHub** | Code repository | https://github.com/alqode-dev/masjid-notify | alqodez@gmail.com |
+
+> **Note:** Browser push services (FCM for Chrome, Mozilla Push for Firefox, APNs for Safari) are used automatically — no account or setup needed. The VAPID keys authenticate our server with these services.
 
 ### Vercel (Website Hosting)
 
@@ -1667,28 +1437,13 @@ Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 
 **Important tables:**
 - `mosques` - Mosque settings (prayer calculation, times, etc.)
-- `subscribers` - All subscribed users
+- `subscribers` - All subscribed users (push endpoints, preferences)
 - `messages` - Log of all sent messages
+- `notifications` - In-app notification center (per subscriber)
 - `admins` - Admin users linked to mosques
 - `daily_hadith_log` - Tracks which hadith was sent each day
 - `prayer_times_cache` - Caches prayer times to reduce API calls (**invalidated on settings change**)
 - `scheduled_messages` - Future scheduled announcements (**with retry tracking**)
-
-### Meta Business / WhatsApp Cloud API
-
-**What it is:** Meta (Facebook) provides the WhatsApp Business API. We use it to send messages.
-
-**Key things to know:**
-- Currently ACTIVE (restored after appeal)
-- Need to submit message templates for approval
-- Has rate limits and quality scores
-- Phone Number ID: `895363247004714`
-- Business Account ID: `1443752210724410`
-
-**How to access:**
-1. Go to https://business.facebook.com
-2. Login
-3. Go to WhatsApp Manager
 
 ### cron-job.org (Scheduled Tasks)
 
@@ -1727,18 +1482,303 @@ Then create the new `Daily Hadith` job as shown above (runs every 5 minutes).
 - **Header:** `Authorization: Bearer masjidnotify2025cron`
 - **Used by:** cron-job.org when calling our API
 
-### WhatsApp Webhook Verification
-- **Token:** `masjidnotifywebhook2025`
-- **Used by:** Meta when verifying our webhook
-
 ### Supabase Service Role Key
 - **Location:** Vercel environment variables
 - **Name:** `SUPABASE_SERVICE_ROLE_KEY`
 - **Used for:** Server-side database operations that bypass RLS
 
+### VAPID Keys
+- **Location:** Vercel environment variables
+- **Public Key:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (also used client-side for push subscription)
+- **Private Key:** `VAPID_PRIVATE_KEY` (server-side only for signing push requests)
+- **Subject:** `VAPID_SUBJECT` = `mailto:alqodez@gmail.com`
+- **Generate:** `npx web-push generate-vapid-keys`
+
+---
+
+## Environment Variables
+
+### Production Variables (Vercel)
+
+| Variable | Status | Description |
+|----------|--------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Set | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Set | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Set | Supabase service role (admin access) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | ✅ Set | VAPID public key for push subscriptions |
+| `VAPID_PRIVATE_KEY` | ✅ Set | VAPID private key for signing push requests |
+| `VAPID_SUBJECT` | ✅ Set | `mailto:alqodez@gmail.com` |
+| `CRON_SECRET` | ✅ Set | `masjidnotify2025cron` |
+| `ALADHAN_API_URL` | ✅ Set | `https://api.aladhan.com/v1` |
+| `NEXT_PUBLIC_APP_URL` | ✅ Set | `https://masjid-notify.vercel.app` |
+| `NEXT_PUBLIC_DEFAULT_MOSQUE_SLUG` | ✅ Set | `anwaarul-islam-rondebosch-east` |
+
+### Optional Variables
+
+| Variable | Purpose | How to Enable |
+|----------|---------|---------------|
+| `UPSTASH_REDIS_REST_URL` | Rate limiting | Create Redis at console.upstash.com |
+| `UPSTASH_REDIS_REST_TOKEN` | Rate limiting | From Upstash dashboard |
+| `SENTRY_DSN` | Error tracking | Create project at sentry.io |
+
+### Removed Variables (v3.0 — WhatsApp removed)
+
+These variables are no longer needed and should be deleted from Vercel:
+
+| Variable | Reason |
+|----------|--------|
+| `WHATSAPP_ACCESS_TOKEN` | WhatsApp API removed |
+| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp API removed |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | WhatsApp API removed |
+| `WHATSAPP_APP_SECRET` | WhatsApp webhook removed |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | WhatsApp webhook removed |
+| `WHATSAPP_API_VERSION` | WhatsApp API removed |
+
+---
+
+## Admin Access
+
+### Credentials
+
+| Field | Value |
+|-------|-------|
+| **Login URL** | https://masjid-notify.vercel.app/admin/login |
+| **Email** | alqodez@gmail.com |
+| **Role** | owner |
+| **Linked Mosque** | Anwaarul Islam Rondebosch East |
+
+### Admin Pages
+
+| Page | URL | Purpose |
+|------|-----|---------|
+| **Dashboard** | `/admin` | Stats overview, quick actions, analytics charts |
+| **Subscribers** | `/admin/subscribers` | View, search, filter, export subscribers |
+| **Announcements** | `/admin/announcements` | Send immediate or scheduled push notifications |
+| **QR Code** | `/admin/qr-code` | Generate and download QR codes |
+| **Settings** | `/admin/settings` | Mosque configuration, prayer times, Ramadan mode, Eid mode, custom times |
+| **Audio Library** | `/admin/audio` | Upload and manage Islamic lectures, Quran recitations |
+| **Team** | `/admin/team` | Manage admin team members (owner-only) |
+
+### Admin Capabilities
+
+- View subscriber statistics and growth charts
+- Send announcements to all active subscribers (concurrent push sending)
+- Schedule messages for future delivery
+- Cancel pending scheduled messages
+- Export subscriber list to CSV
+- Configure prayer time calculation method
+- Set Jumu'ah times
+- Enable/disable Ramadan mode
+- Configure Taraweeh time
+- Upload and manage audio collections and files
+- Add/remove admin team members with roles (owner-only)
+- Set custom prayer times (calculation_method=99 mode)
+- Enable Eid mode with Khutbah and Salah times
+- View in-app notification center
+
+---
+
+# PART 5: HISTORY
+
+---
+
+## Recent Bug Fixes
+
+### February 5, 2026 (v1.6.0) - Comprehensive Bug Fix Release
+
+This release addresses 22 issues identified through thorough code review, including critical security fixes, performance improvements, and accessibility enhancements.
+
+#### Critical Fixes (P0)
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **IP spoofing bypass in rate limiter** | `x-forwarded-for` header can be spoofed by clients | Now uses `x-vercel-forwarded-for` (Vercel's trusted header) or rightmost IP from chain | ✅ Fixed |
+| **Scheduled messages stuck forever on failure** | No retry limit — failed messages retried infinitely | Added `retry_count` tracking, max 5 retries, then marked as `failed` | ✅ Fixed |
+
+#### High Priority Fixes (P1)
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **No delete confirmation for subscribers** | One misclick could delete subscriber | Added `window.confirm()` before deletion | ✅ Fixed |
+| **Prayer cache not invalidated on settings change** | Stale prayer times after admin changes calculation method | Added `invalidatePrayerCache()` called after settings save | ✅ Fixed |
+| **Missing ARIA labels** | Accessibility issues for screen readers | Added `aria-label` to table, action buttons; proper `id`/`htmlFor` in Checkbox | ✅ Fixed |
+
+#### Code Quality Fixes (P2)
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| **Timing-safe comparison result discarded** | Auth check result never used | Fixed to properly return comparison result | ✅ Fixed |
+| **NaN in formatTime output** | No validation of parsed time values | Added `isNaN()` check before using parsed values | ✅ Fixed |
+| **Midnight wraparound edge case** | `applyOffset()` could produce invalid times | Rewrote with modular arithmetic for proper wraparound | ✅ Fixed |
+| **Missing error handling in batchUpdateLastMessageAt** | Silent failures in subscriber updates | Added error check with logging | ✅ Fixed |
+| **Sequential message sending in announcements** | Timeout risk on large subscriber bases | Converted to concurrent sending | ✅ Fixed |
+| **Biased shuffle algorithm** | `Math.random() - 0.5` produces non-uniform distribution | Replaced with proper Fisher-Yates shuffle | ✅ Fixed |
+| **Confusing negative offset usage** | `isWithinMinutes(-90)` for "after" logic | Changed to use `isWithinMinutesAfter(90)` | ✅ Fixed |
+| **Fragile error message matching** | Checked error message text instead of codes | Now checks PostgreSQL error codes (`42703`, `PGRST204`) | ✅ Fixed |
+| **No input validation for boolean preferences** | Accepted any value for preference fields | Added type validation for all boolean prefs | ✅ Fixed |
+| **Magic numbers scattered in code** | `720`, `1440`, `10 * 60 * 1000` repeated | Extracted to `constants.ts` | ✅ Fixed |
+| **No branded 404 page** | Generic Next.js 404 | Created `src/app/not-found.tsx` | ✅ Fixed |
+
+---
+
+## E2E Test Suite
+
+### Overview
+
+| Metric | Value |
+|--------|-------|
+| **Framework** | Playwright |
+| **Total Tests** | 101 |
+| **Pass Rate** | 100% |
+| **Runtime** | ~2.5 minutes |
+| **Browser** | Chromium (Desktop) |
+
+### Test Files
+
+| File | Tests | Coverage |
+|------|-------|----------|
+| `admin-auth.spec.ts` | 3 | Login, redirects, error handling |
+| `admin-dashboard.spec.ts` | 9 | Stats cards, quick actions, navigation |
+| `admin-subscribers.spec.ts` | 12 | Table, search, filters, export, delete |
+| `admin-announcements.spec.ts` | 19 | Form, preview, scheduling |
+| `admin-settings.spec.ts` | 17 | Settings form, Ramadan toggle, save |
+| `admin-qrcode.spec.ts` | 13 | QR display, copy URL |
+| `admin-navigation.spec.ts` | 12 | Sidebar, redirects, responsive |
+| `subscription.spec.ts` | 5 | Landing page, subscription |
+| `mobile.spec.ts` | 6 | Mobile & desktop layouts |
+
+### Running Tests
+
+```bash
+# Set credentials
+export TEST_ADMIN_EMAIL="your-admin@email.com"
+export TEST_ADMIN_PASSWORD="your-password"
+
+# Run all tests
+npm test
+
+# Run with UI (interactive)
+npm run test:ui
+
+# Run specific test file
+npx playwright test admin-dashboard
+
+# Run in headed mode (see browser)
+npx playwright test --headed
+```
+
+---
+
+## Production Infrastructure
+
+### Vercel Deployment
+
+| Property | Value |
+|----------|-------|
+| **Account** | alqodes-projects |
+| **Project Name** | masjid-notify |
+| **Production URL** | https://masjid-notify.vercel.app |
+| **Framework** | Next.js 16.1.6 (Turbopack) |
+| **Node.js Version** | 18.x |
+| **Build Command** | `next build` |
+| **Region** | Washington D.C., USA (iad1) |
+| **Plan** | Hobby (Free) |
+
+### Supabase Configuration
+
+| Property | Value |
+|----------|-------|
+| **Project ID** | jlqtuynaxuooymbwrwth |
+| **Database** | PostgreSQL 15 |
+| **Auth** | Email/Password enabled |
+| **RLS** | Enabled on all tables |
+| **API URL** | https://jlqtuynaxuooymbwrwth.supabase.co |
+
 ---
 
 ## Changelog
+
+### Version 3.0.0 - February 21, 2026
+
+**MAJOR: Web Push PWA Migration — WhatsApp Completely Removed**
+
+This is a complete platform migration from WhatsApp Business API to Web Push notifications with a Progressive Web App. No phone numbers required — users simply enable browser notifications.
+
+#### What Changed
+
+| Area | Before (v2.0) | After (v3.0) |
+|------|---------------|--------------|
+| **Notification delivery** | WhatsApp messages via Meta Cloud API | Push notifications via Web Push API (VAPID) |
+| **Subscriber identification** | Phone number (+27...) | Push subscription endpoint + encryption keys |
+| **Subscription flow** | Enter phone number → receive WhatsApp message | Enable notifications → grant permission → subscribe |
+| **Settings access** | WhatsApp SETTINGS command → 24h token link | `/settings` page via localStorage subscriber ID |
+| **Notification history** | No history (WhatsApp messages disappear) | `/notifications` page — in-app notification center |
+| **Self-service** | WhatsApp commands (STOP, PAUSE, etc.) | `/settings` page (pause, unsubscribe, update prefs) |
+| **App experience** | Just a website | PWA — installable, standalone display, offline support |
+| **Service Worker** | None | Serwist-compiled SW handles push events + clicks |
+| **Cost** | Per-message charges (Meta API) | Free (Web Push is free to send) |
+| **Approval needed** | Meta template approval (24-48h each) | None — send any message instantly |
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/sw.ts` | Service worker — handles push events, notification clicks |
+| `src/lib/web-push.ts` | Web Push API client with VAPID authentication |
+| `src/lib/push-sender.ts` | Batch push sending with p-limit(10) concurrency |
+| `src/app/settings/page.tsx` | Subscriber settings page (localStorage-based) |
+| `src/app/notifications/page.tsx` | In-app notification center |
+| `src/app/api/settings/route.ts` | Subscriber settings API (GET/PUT) |
+| `src/app/api/settings/unsubscribe/route.ts` | Unsubscribe endpoint |
+| `src/app/api/notifications/route.ts` | Notification center API |
+| `public/manifest.json` | PWA manifest |
+| `public/icon-192x192.png` | PWA icon (192x192) |
+| `public/icon-512x512.png` | PWA icon (512x512) |
+| `supabase/migrations/016_web_push_migration.sql` | Add push columns, drop phone/token |
+| `supabase/migrations/017_notifications_table.sql` | Create notifications table |
+| `supabase/migrations/018_drop_phone_column.sql` | Drop legacy phone column |
+
+#### Deleted Files
+
+| File | Reason |
+|------|--------|
+| `src/lib/whatsapp.ts` | WhatsApp API removed |
+| `src/lib/whatsapp-templates.ts` | Meta templates no longer used |
+| `src/lib/message-sender.ts` | Replaced by `push-sender.ts` |
+| `src/app/api/webhook/whatsapp/route.ts` | WhatsApp webhook removed |
+| `src/app/settings/[token]/page.tsx` | Replaced by `settings/page.tsx` (localStorage) |
+| `src/app/api/settings/[token]/route.ts` | Replaced by `api/settings/route.ts` |
+| `src/components/admin/subscriber-import.tsx` | CSV import removed (no phone numbers) |
+| `src/app/api/admin/subscribers/import/route.ts` | CSV import API removed |
+
+#### New Database Migrations
+
+| Migration | Purpose |
+|-----------|---------|
+| **016** | Add push_endpoint, push_p256dh, push_auth, user_agent to subscribers. Drop settings_token, settings_token_expires. Rename phone_number to phone_number_old. |
+| **017** | Create notifications table with subscriber_id, mosque_id, type, title, body, data, read columns. Indexed for subscriber + read status queries. |
+| **018** | Drop phone_number_old column. Remove webhook_command from messages type constraint. |
+
+#### New Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | ✅ Yes | VAPID public key for push subscriptions |
+| `VAPID_PRIVATE_KEY` | ✅ Yes | VAPID private key for signing push requests |
+| `VAPID_SUBJECT` | ✅ Yes | Contact URI (e.g., `mailto:alqodez@gmail.com`) |
+
+#### Removed Environment Variables
+
+| Variable | Reason |
+|----------|--------|
+| `WHATSAPP_ACCESS_TOKEN` | WhatsApp removed |
+| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp removed |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | WhatsApp removed |
+| `WHATSAPP_APP_SECRET` | WhatsApp removed |
+| `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | WhatsApp removed |
+| `WHATSAPP_API_VERSION` | WhatsApp removed |
+
+---
 
 ### Version 2.0.0 - February 15, 2026
 
@@ -1830,7 +1870,7 @@ The v1.9.0 deep audit introduced three bugs into `prayer-reminders/route.ts` tha
 
 | Bug | Severity | Explanation |
 |-----|----------|-------------|
-| **Broken optimistic locking** | CRITICAL | Added `status: "sending" as string` to update scheduled messages before processing. The `as string` TypeScript cast hid the bug at compile time, but the database CHECK constraint only allows `pending\|sent\|cancelled\|failed`. The UPDATE failed silently, and `.single()` on 0 matched rows threw PGRST116 error. |
+| **Broken optimistic locking** | CRITICAL | Added `status: "sending" as string` to update scheduled messages before processing. The `as string` TypeScript cast hid the bug at compile time, but the database CHECK constraint only allows `pending|sent|cancelled|failed`. The UPDATE failed silently, and `.single()` on 0 matched rows threw PGRST116 error. |
 | **Auxiliary code ran BEFORE core logic** | CRITICAL | `processScheduledMessages()` and `autoResumeSubscribers()` were placed BEFORE the prayer reminder loop in the GET handler. When `processScheduledMessages()` crashed (due to the "sending" status bug), the outer try-catch caught the error and returned HTTP 500 — meaning the core prayer reminder code **never executed**. |
 | **Inline lock function** | HIGH | Used an inline `tryClaimReminderLock` with fragile legacy fallback (`.contains("metadata", ...)` JSON query) instead of the battle-tested shared version from `reminder-locks.ts` that all other cron routes use. |
 
@@ -1842,7 +1882,7 @@ The v1.9.0 deep audit introduced three bugs into `prayer-reminders/route.ts` tha
 | **Removed broken locking** | Removed the `status: "sending"` optimistic lock that doesn't match DB schema. Scheduled messages are now processed without the broken status transition. |
 | **Shared lock function** | Replaced inline `tryClaimReminderLock` with import from `reminder-locks.ts` — the same battle-tested function used by nafl-reminders, daily-hadith, jumuah-reminder, and ramadan-reminders. |
 | **`.single()` → `.maybeSingle()`** | Changed mosque lookup in `processScheduledMessages()` from `.single()` (errors on 0 rows) to `.maybeSingle()` (returns null on 0 rows). |
-| **Safe retry_count handling** | Changed `scheduled.retry_count ?? 0` to `((scheduled.retry_count as number) \|\| 0)` for NaN safety. |
+| **Safe retry_count handling** | Changed `scheduled.retry_count ?? 0` to `((scheduled.retry_count as number) || 0)` for NaN safety. |
 
 #### Architecture: Core-First Pattern (CRITICAL LESSON)
 
@@ -1890,23 +1930,6 @@ export async function GET(request: NextRequest) {
 | **Use shared, tested utilities** | The shared `tryClaimReminderLock()` in `reminder-locks.ts` has proper error handling (fail-open, table-not-found recovery). Inline reimplementations miss these edge cases. |
 | **Test with the actual database** | The `as string` cast passed TypeScript compilation and `npm run build` with 0 errors. Only the database constraint caught the bug at runtime. |
 
-#### Files Changed (1 file)
-
-| File | Change |
-|------|--------|
-| `src/app/api/cron/prayer-reminders/route.ts` | Complete rewrite: core-first architecture, removed broken optimistic locking, shared `tryClaimReminderLock`, `.maybeSingle()`, safe retry_count |
-
-#### Removed Imports (Cleanup)
-
-| Removed | Reason |
-|---------|--------|
-| `import { TEN_MINUTES_MS } from "@/lib/constants"` | Was only used by the removed inline lock function |
-
-#### Build Status
-
-- **Build:** ✅ PASS (0 errors)
-- **Lint:** ✅ 14 warnings (0 new, all pre-existing in untouched files)
-
 ---
 
 ### Version 1.9.0 - February 9, 2026
@@ -1922,16 +1945,15 @@ Comprehensive deep audit of the entire codebase identified 47 issues across 5 se
 | Issue | Root Cause | Solution |
 |-------|------------|----------|
 | **Admin pages unprotected at edge** | No `middleware.ts` existed - admin UI loaded before auth checked | Created `src/middleware.ts` with Supabase `getUser()` verification for all `/admin/*` routes |
-| ~~**Scheduled messages sent twice**~~ | No locking in `processScheduledMessages()` - concurrent cron runs process same message | ~~Added optimistic locking: atomically update `status: pending→sending` before processing~~ **BROKEN** — "sending" status doesn't exist in DB schema. **Reverted in v1.9.1** — locking removed, and the shared `tryClaimReminderLock` handles dedup for prayer reminders instead. |
+| ~~**Scheduled messages sent twice**~~ | No locking in `processScheduledMessages()` - concurrent cron runs process same message | ~~Added optimistic locking: atomically update `status: pending→sending` before processing~~ **BROKEN** — "sending" status doesn't exist in DB schema. **Reverted in v1.9.1** |
 | **Paused subscribers stuck forever** | No code checked `pause_until` expiry - users stayed paused unless they texted RESUME | Added auto-resume logic to prayer-reminders cron: updates `status→active` when `pause_until` has passed |
-| **Analytics/stats OOM risk** | `analytics/route.ts` and `stats/route.ts` fetched ALL rows into memory for aggregation | Replaced with `count: "exact", head: true` for status breakdown; removed full-table scan; removed debug `console.log` |
+| **Analytics/stats OOM risk** | `analytics/route.ts` and `stats/route.ts` fetched ALL rows into memory for aggregation | Replaced with `count: "exact", head: true` for status breakdown; removed full-table scan |
 | **Import timeout at 250+ subscribers** | N+1 individual INSERT calls in a `for` loop | Replaced with batched upsert (50 per batch) using `ignoreDuplicates: true` |
 
 #### High Severity Fixes (6)
 
 | Issue | Fix |
 |-------|-----|
-| **WhatsApp API v18.0 hardcoded** | Configurable via `WHATSAPP_API_VERSION` env var (default `v21.0`) |
 | **Prayer cache date uses UTC** | `getDateString()` now accepts timezone; all 5 cron routes pass `mosque.timezone` |
 | **Settings tokens reusable** | Token + expiry set to `null` after successful preference update (one-time use) |
 | **Admin layout uses unverified `getSession()`** | Changed to verified `getUser()`; removed redundant `pathname` dependency |
@@ -1942,13 +1964,11 @@ Comprehensive deep audit of the entire codebase identified 47 issues across 5 se
 
 | Issue | Fix |
 |-------|-----|
-| **Dead code in whatsapp.ts** | Removed 7 unused message builder functions (`getWelcomeMessage`, `getPrayerReminderMessage`, etc.) |
 | **Auth pattern inconsistency** | All 4 announcement routes converted from manual `verifyAdminAuth()` to `withAdminAuth` wrapper |
 | **No content length validation** | Added 4096-char server-side limit to announcements and schedule routes |
 | **Hardcoded "Rondebosch East"** | Replaced with `{mosque.city}, {mosque.country}` from database |
 | **No batch size limit on `batchUpdateLastMessageAt`** | Now processes in batches of 100 to avoid oversized SQL `IN()` clauses |
 | **Duplicate utility functions** | `formatPhoneNumber` is now an alias for `normalizePhoneNumber` |
-| **Dead `TEMPLATE_NAMESPACE` export** | Removed from whatsapp-templates.ts (never used) |
 
 #### Low Severity / Code Quality Fixes (5)
 
@@ -1960,38 +1980,6 @@ Comprehensive deep audit of the entire codebase identified 47 issues across 5 se
 | **Unused imports and variables** | Cleaned up `previewTemplate` import, unused `message` variable, middleware `options` param |
 | **Scheduled date validation** | Added `isNaN()` check for `scheduled_at` dates in schedule route |
 
-#### Files Changed (20 files)
-
-| File | Change |
-|------|--------|
-| `src/middleware.ts` | **NEW** - Edge auth protection for `/admin/*` routes |
-| `next.config.ts` | Added security headers (HSTS, X-Frame-Options, etc.) |
-| `src/app/admin/layout.tsx` | `getSession()` → `getUser()`, removed pathname dependency |
-| `src/app/api/cron/prayer-reminders/route.ts` | ~~Scheduled msg locking~~, auto-resume, timezone-aware cache, removed unused var. **Note:** The optimistic locking introduced here was broken and caused a production outage. See v1.9.1 for the fix. |
-| `src/app/api/cron/daily-hadith/route.ts` | Timezone-aware prayer cache |
-| `src/app/api/cron/nafl-reminders/route.ts` | Timezone-aware prayer cache, fixed Ishraq comment |
-| `src/app/api/cron/ramadan-reminders/route.ts` | Timezone-aware prayer cache (both calls) |
-| `src/app/api/admin/announcements/route.ts` | Converted to `withAdminAuth`, added content length validation |
-| `src/app/api/admin/announcements/schedule/route.ts` | Converted to `withAdminAuth`, added content + date validation |
-| `src/app/api/admin/announcements/schedule/[id]/route.ts` | Converted to `withAdminAuth` |
-| `src/app/api/admin/analytics/route.ts` | Optimized: count-based status breakdown, exclude webhook_command, added nafl color |
-| `src/app/api/admin/stats/route.ts` | Removed debug `console.log`, cleaned up query |
-| `src/app/api/admin/subscribers/import/route.ts` | Batched upsert (50/batch), validation-first approach |
-| `src/app/api/settings/[token]/route.ts` | One-time token invalidation after PUT |
-| `src/lib/whatsapp.ts` | Configurable API version, removed 7 dead message builder functions |
-| `src/lib/whatsapp-templates.ts` | `.replace()` → `.replaceAll()`, removed dead `TEMPLATE_NAMESPACE` |
-| `src/lib/prayer-times.ts` | Timezone-aware `getDateString()`, constants-based nafl times, removed `getMonthlyPrayerTimes()` |
-| `src/lib/constants.ts` | Fixed `ISHRAQ_MINUTES_AFTER_SUNRISE` from 180 → 20 |
-| `src/lib/utils.ts` | `generateToken()` bias fix, `formatPhoneNumber` → alias for `normalizePhoneNumber` |
-| `src/lib/message-sender.ts` | Batched `batchUpdateLastMessageAt()` (100/batch) |
-| `src/app/landing-page.tsx` | Replaced hardcoded "Rondebosch East" with dynamic `mosque.city, mosque.country` |
-
-#### Build Status
-
-- **Build:** ✅ PASS (0 errors)
-- **Lint:** ✅ 14 warnings (0 new, all pre-existing in untouched files)
-- **E2E Tests:** Run before deployment
-
 ---
 
 ### Version 1.8.0 - February 8, 2026
@@ -2000,20 +1988,7 @@ Comprehensive deep audit of the entire codebase identified 47 issues across 5 se
 
 This release fixes two critical production issues: WhatsApp webhook commands (STOP, PAUSE, SETTINGS, HELP) not working because the WABA was not subscribed to the app, and all prayer/nafl message logging silently failing because the `metadata` JSONB column didn't exist on the `messages` table.
 
-#### WhatsApp Webhook Fixed
-
-| Issue | Root Cause | Solution |
-|-------|------------|----------|
-| **Commands not working (STOP, PAUSE, SETTINGS, HELP)** | WhatsApp Business Account (WABA) was subscribed to "WANotifier App" but NOT to our own "Alqode Masjid Notify" app | Subscribed WABA to app via Graph API: `POST /v18.0/1443752210724410/subscribed_apps` |
-| **No POST requests reaching webhook** | Without WABA subscription, Meta never delivers incoming messages to our webhook endpoint | WABA subscription fixed this - POST requests now appear in Vercel logs |
-| **Signature verification failing** | `WHATSAPP_APP_SECRET` in Vercel must match Meta App Secret exactly | User must verify: Meta > App Dashboard > App Settings > Basic > App Secret matches Vercel env var |
-| **Signature STILL failing after correct secret** | Trailing `\n` (newline) silently appended when pasting into Vercel env var UI | Deleted and re-added env var via CLI: `printf 'secret' \| npx vercel env add`. Also added `.trim()` to code. |
-
-**How WABA subscription works:**
-- The WhatsApp Business Account must be explicitly subscribed to your app via the Graph API
-- This is separate from webhook URL verification (which only proves your server can respond)
-- Without this subscription, Meta will not deliver any incoming messages to your webhook
-- Command: `curl -X POST "https://graph.facebook.com/v18.0/{WABA_ID}/subscribed_apps" -H "Authorization: Bearer {ACCESS_TOKEN}"`
+> **Note:** The WhatsApp webhook and commands were later removed entirely in v3.0.0 (Web Push migration). This changelog entry is preserved for historical reference.
 
 #### Message Logging Fixed
 
@@ -2022,25 +1997,10 @@ This release fixes two critical production issues: WhatsApp webhook commands (ST
 | **Prayer messages not logged in dashboard** | `messages` table was missing `metadata` JSONB column | Created migration 011 to add the column |
 | **Nafl messages not logged** | Same - all inserts with `metadata` field failed with PGRST204 | Same migration fix |
 | **Scheduled message logging failing** | Same root cause | Same migration fix |
-| **Database evidence** | `prayer_reminder_locks` had entries for ALL prayers but `messages` table had ZERO entries | Confirms messages were sent to WhatsApp but DB logging failed |
-
-**Additional resilience:** Added PGRST204 fallback retry in prayer-reminders and nafl-reminders routes. If the metadata column doesn't exist, the insert is retried without metadata so messages are still logged.
 
 #### Vercel Environment Variables Fixed (CRITICAL)
 
-**9 of 11 environment variables** had invisible trailing `\n` (newline) characters, causing multiple cascading failures:
-
-| Env Var | Impact of `\n` |
-|---------|----------------|
-| `WHATSAPP_APP_SECRET` | HMAC signature mismatch → all webhook commands rejected (401) |
-| `NEXT_PUBLIC_APP_URL` | Settings link URL split across lines → not clickable in WhatsApp |
-| `WHATSAPP_ACCESS_TOKEN` | Could cause WhatsApp API auth failures |
-| `WHATSAPP_PHONE_NUMBER_ID` | Could cause message send failures |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Could cause API failures |
-| `NEXT_PUBLIC_SUPABASE_URL` | Could cause database connection issues |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Could cause auth/query failures |
-| `SUPABASE_SERVICE_ROLE_KEY` | Could cause server-side DB failures |
-| `ALADHAN_API_URL` | Could cause prayer time API failures |
+**9 of 11 environment variables** had invisible trailing `\n` (newline) characters, causing multiple cascading failures. Fixed by deleting and re-adding via CLI.
 
 **Root cause:** When pasting values into Vercel's environment variable web UI, a trailing newline is silently appended.
 
@@ -2053,36 +2013,6 @@ npx vercel env rm VARIABLE_NAME production -y
 printf 'clean_value_here' | npx vercel env add VARIABLE_NAME production
 ```
 
-**How to detect:**
-```bash
-# Pull env vars and look for \n at end of values
-npx vercel env pull .env.check --environment production
-grep '\\n"' .env.check
-```
-
-**Code-level defense:** Added `.trim()` to `process.env.WHATSAPP_APP_SECRET` and set `preview_url: true` in WhatsApp text messages so URLs are properly rendered as clickable links.
-
-**IMPORTANT:** `NEXT_PUBLIC_` env vars are baked into the build at build time. After fixing them, you must redeploy: `npx vercel --prod`
-
-#### Migration Required
-
-Run `supabase/migrations/011_add_messages_metadata.sql` in Supabase SQL Editor:
-
-```sql
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT NULL;
-CREATE INDEX IF NOT EXISTS idx_messages_metadata ON messages USING gin (metadata);
-```
-
-#### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/011_add_messages_metadata.sql` | **NEW** - Adds metadata JSONB column to messages table |
-| `src/app/api/cron/prayer-reminders/route.ts` | Added PGRST204 fallback retry for prayer + scheduled message inserts |
-| `src/app/api/cron/nafl-reminders/route.ts` | Added PGRST204 fallback retry for tahajjud, ishraq, awwabin message inserts |
-| `src/app/api/webhook/whatsapp/route.ts` | Added `.trim()` to `WHATSAPP_APP_SECRET` to prevent trailing whitespace mismatch |
-| `src/lib/whatsapp.ts` | Changed `preview_url: false` to `true` so URLs in messages are clickable in WhatsApp |
-
 ---
 
 ### Version 1.7.2 - February 6, 2026
@@ -2091,55 +2021,13 @@ CREATE INDEX IF NOT EXISTS idx_messages_metadata ON messages USING gin (metadata
 
 This release addresses 40+ issues identified through a thorough codebase audit, covering security vulnerabilities, accessibility gaps, CSS bugs, and code quality improvements across 22 files.
 
-#### Security Fixes
-
-| Issue | Fix | File |
-|-------|-----|------|
-| **XSS in QR print** | HTML entity escaping in `document.write()` | `qr-code.tsx` |
-| **Supabase errors leaked to client** | Sanitized error messages in settings API | `admin/settings/route.ts` |
-| **Auth details leaked on failed login** | Generic "Invalid credentials" error message | `admin/login/page.tsx` |
-| **Admin URL exposed on 404 page** | Removed admin link from public 404 page | `not-found.tsx` |
-| **Import missing validation** | Phone validation + size limits on CSV import | `admin/subscribers/import/route.ts` |
-| **Status field not validated** | Status validated on subscriber PATCH | `admin/subscribers/route.ts` |
-
-#### Accessibility Fixes
-
-| Issue | Fix | File |
-|-------|-----|------|
-| **Login form missing labels** | Added form labels and autoComplete attributes | `admin/login/page.tsx` |
-| **Sidebar missing ARIA** | Added aria-label to hamburger button and mobile nav | `sidebar.tsx` |
-| **Error states not announced** | Added role=alert to error messages | Multiple files |
-| **Decorative icons read aloud** | Added aria-hidden to decorative icons | Multiple files |
-| **Search input missing label** | Added accessible label for subscriber search | `subscribers-table.tsx` |
-
-#### CSS & UI Fixes
-
-| Issue | Fix | File |
-|-------|-----|------|
-| **`hsl(oklch(...))` invalid** | Use `var(--css-var)` directly (Tailwind CSS 4 uses oklch) | Multiple files |
-| **Framer Motion 25s delay** | Capped animation delay with `Math.min()` for large lists | `subscribers-table.tsx` |
-| **`URL.createObjectURL()` leak** | Added `revokeObjectURL()` cleanup | `qr-code.tsx` |
-| **Clipboard API unhandled rejection** | Added await + catch to `navigator.clipboard.writeText()` | Multiple files |
-
-#### Code Quality Fixes
-
-| Issue | Fix | File |
-|-------|-----|------|
-| **`parseInt("")` returns NaN** | Added fallback: `parseInt(val, 10) \|\| default` | Multiple files |
-| **`??` defaults reset fields** | Use conditional object building for updates | `admin/settings/route.ts` |
-| **Missing mosque null checks** | Added early return on null mosque data | Multiple cron routes |
-
-#### Files Changed (22 files)
-
-See git commit `8b022a8` for full diff.
-
 ---
 
 ### Version 1.7.1 - February 6, 2026
 
 **MAJOR: Dynamic Hadith Timing & Ishraq Fix**
 
-This release changes hadith notifications from fixed UTC times to dynamic prayer-based timing, and fixes Ishraq reminder to a practical time.
+This release changes hadith notifications from fixed UTC times to dynamic prayer-based timing.
 
 #### Dynamic Hadith Timing (BREAKING CHANGE)
 
@@ -2150,96 +2038,13 @@ Hadith notifications now send **15 minutes after prayer times** instead of at fi
 | Morning hadith | 3:30 AM UTC (5:30 AM SAST) | **15 min after Fajr** (~6:00 AM in summer, ~7:00 AM in winter) |
 | Evening hadith | 4:00 PM UTC (6:00 PM SAST) | **15 min after Maghrib** (~6:30 PM in summer, ~8:00 PM in winter) |
 
-**Benefits:**
-- Hadith timing follows actual prayer times throughout the year
-- No more out-of-context timing (old evening hadith at 6 PM was before Maghrib in summer)
-- Consistent user experience regardless of season
-
-#### Ishraq Reminder Timing Fixed
-
-Changed from 20 minutes after sunrise (~6:30 AM) to **3 hours after sunrise (~9:00 AM)** so users can actually act on the reminder during work hours.
-
-> **Note:** Reverted to 20 minutes in v1.9.0 to match Sunnah timing for Ishraq prayer. `calculateNaflTimes()` was also synced to use the constant.
-
-| Setting | Old Value | New Value |
-|---------|-----------|-----------|
-| `ISHRAQ_MINUTES_AFTER_SUNRISE` | 20 | **180** (reverted to 20 in v1.9.0) |
-
-#### cron-job.org Migration Required
-
-**DELETE these old jobs:**
-- Morning Hadith (3:30 AM UTC)
-- Evening Hadith (4:00 PM UTC)
-
-**CREATE this new job:**
-- Daily Hadith - `*/5 * * * *` - `https://masjid-notify.vercel.app/api/cron/daily-hadith`
-
-See [External Cron Setup](#external-cron-setup-cron-joborg) for full configuration.
-
-#### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/app/api/cron/daily-hadith/route.ts` | Completely rewritten to use dynamic prayer-based timing |
-| `src/lib/constants.ts` | Added `HADITH_MINUTES_AFTER_PRAYER = 15`, fixed `ISHRAQ_MINUTES_AFTER_SUNRISE = 180` |
-
 ---
 
 ### Version 1.7.0 - February 6, 2026
 
 **MAJOR: Fix Duplicate Reminders & Improve Reliability**
 
-This release fixes critical duplicate message issues reported by users and improves webhook command handling.
-
-#### Duplicate Reminders Fixed (CRITICAL)
-
-All reminder types now use atomic database locking to prevent duplicates when cron runs overlap:
-
-| Component | Issue | Solution |
-|-----------|-------|----------|
-| **Nafl Reminders** | Tahajjud/Ishraq/Awwabin sent 2x | Added atomic locking via `tryClaimReminderLock()` |
-| **Jumu'ah Reminder** | Sent multiple times on Friday | Added atomic locking (was ZERO protection before!) |
-| **Daily Hadith** | Could send twice | Added atomic locking with `hadith_morning`/`hadith_evening` keys |
-| **Ramadan Reminders** | Suhoor/Iftar/Taraweeh could duplicate | Replaced time-based check with atomic locking |
-
-#### New Files
-
-| File | Purpose |
-|------|---------|
-| `src/lib/reminder-locks.ts` | Shared utility for atomic reminder locking across all cron jobs |
-| `supabase/migrations/010_unified_reminder_locks.sql` | Ensures lock table exists and is properly configured |
-
-#### Supported Lock Types
-
-The `ReminderType` in `reminder-locks.ts` supports:
-- **Prayers:** `fajr`, `dhuhr`, `asr`, `maghrib`, `isha`
-- **Hadith:** `hadith_morning`, `hadith_evening`
-- **Jumu'ah:** `jumuah`
-- **Nafl:** `tahajjud`, `ishraq`, `awwabin`
-- **Ramadan:** `suhoor`, `suhoor_planning`, `iftar`, `taraweeh`
-
-#### Ishraq Timing Fixed
-
-Changed from 20 minutes after sunrise (~6:30 AM) to 3 hours after sunrise (~9:00 AM) so users can actually act on the reminder during work hours.
-
-#### Webhook Command Logging Improved
-
-Added comprehensive logging to help diagnose STOP/PAUSE/SETTINGS command issues:
-- Clear error messages when `WHATSAPP_APP_SECRET` is not configured
-- Success/failure logging for all commands
-- Database update error handling with user feedback
-
-#### Migration Required
-
-Run `supabase/migrations/010_unified_reminder_locks.sql` in Supabase SQL Editor.
-
-#### cron-job.org Configuration (v1.7.0)
-
-> **Note:** This was later superseded by v1.7.1 which uses dynamic prayer-based timing. See the v1.7.1 changelog for the current configuration.
-
-#### Verify WHATSAPP_APP_SECRET
-
-If STOP/SETTINGS/PAUSE commands are not working, check Vercel Dashboard > Settings > Environment Variables and ensure `WHATSAPP_APP_SECRET` is set to your Meta App Secret.
+All reminder types now use atomic database locking to prevent duplicates when cron runs overlap.
 
 ---
 
@@ -2249,90 +2054,13 @@ If STOP/SETTINGS/PAUSE commands are not working, check Vercel Dashboard > Settin
 
 The `messages` and `prayer_times_cache` tables were always empty because database CHECK constraints and RLS policies were blocking inserts.
 
-#### Root Causes Fixed
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| **Messages table empty** | CHECK constraint only allowed types: `prayer`, `hadith`, `announcement`, `ramadan`, `welcome`, `jumuah` | Added `nafl` and `webhook_command` to allowed types |
-| **Messages table empty** | CHECK constraint only allowed statuses: `pending`, `sent`, `failed` | Added `received` to allowed statuses |
-| **Messages missing status column** | Column didn't exist in production database | Migration adds column if missing |
-| **Prayer times cache empty** | RLS enabled but no INSERT/UPDATE policies | Added permissive policies for service role |
-
-#### Migration Required
-
-Run `supabase/migrations/009_fix_messages_constraints.sql` in Supabase SQL Editor:
-
-```sql
--- Updates messages type constraint
-ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_type_check;
-ALTER TABLE messages ADD CONSTRAINT messages_type_check
-  CHECK (type IN ('prayer', 'hadith', 'announcement', 'ramadan', 'welcome', 'jumuah', 'nafl', 'webhook_command'));
-
--- Adds status column if missing, updates constraint
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'messages' AND column_name = 'status') THEN
-    ALTER TABLE messages ADD COLUMN status VARCHAR(20) DEFAULT 'sent';
-  END IF;
-END $$;
-
-ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_status_check;
-ALTER TABLE messages ADD CONSTRAINT messages_status_check
-  CHECK (status IN ('pending', 'sent', 'failed', 'received'));
-
--- Adds RLS policies for prayer_times_cache
-CREATE POLICY "Service role can insert prayer times cache" ON prayer_times_cache FOR INSERT WITH CHECK (true);
-CREATE POLICY "Service role can update prayer times cache" ON prayer_times_cache FOR UPDATE USING (true) WITH CHECK (true);
-```
-
-#### Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/009_fix_messages_constraints.sql` | **NEW** - Migration to fix constraints |
-| `src/lib/supabase.ts` | Updated `Message` type to include `nafl`, `webhook_command` types and `received` status |
-
-#### Impact
-
-- ✅ Nafl reminder cron (`/api/cron/nafl-reminders`) can now log messages
-- ✅ Webhook commands (STOP, START, PAUSE, etc.) can now be logged
-- ✅ Prayer times will be cached, reducing Aladhan API calls
-- ✅ Messages table will populate with all notification types
-
 ---
 
 ### Version 1.6.2 - February 5, 2026
 
 **CRITICAL: Hadith API Migration**
 
-The original hadith API (random-hadith-generator.vercel.app) was down/returning 404 errors. This release completely rewrites the hadith integration using a reliable CDN-hosted alternative.
-
-#### Changes
-
-| Category | Description |
-|----------|-------------|
-| **API Migration** | Replaced dead random-hadith-generator.vercel.app with fawazahmed0/hadith-api hosted on jsDelivr CDN |
-| **6 Collections** | Now supports Bukhari, Muslim, Abu Dawud, Tirmidhi, Ibn Majah, Nasai |
-| **Reliability** | jsDelivr CDN provides high availability and caching |
-| **Retry Logic** | 5 attempts per collection to find valid hadith |
-| **Rate Limiting** | Uses HADITH_API_DELAY_MS constant between retries |
-| **TypeScript** | Full type definitions for API responses |
-
-#### API Details
-
-```typescript
-const HADITH_CDN_BASE = "https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1";
-
-export const HADITH_COLLECTIONS = [
-  { name: "bukhari", source: "Sahih al-Bukhari", edition: "eng-bukhari", maxHadith: 7563 },
-  { name: "muslim", source: "Sahih Muslim", edition: "eng-muslim", maxHadith: 7563 },
-  { name: "abudawud", source: "Sunan Abu Dawud", edition: "eng-abudawud", maxHadith: 5274 },
-  { name: "tirmidhi", source: "Jami at-Tirmidhi", edition: "eng-tirmidhi", maxHadith: 3956 },
-  { name: "ibnmajah", source: "Sunan Ibn Majah", edition: "eng-ibnmajah", maxHadith: 4341 },
-  { name: "nasai", source: "Sunan an-Nasa'i", edition: "eng-nasai", maxHadith: 5758 },
-];
-```
-
-**Impact:** Daily hadith notifications now work reliably. Without this fix, all hadith-related features were broken.
+Replaced dead random-hadith-generator.vercel.app with fawazahmed0/hadith-api hosted on jsDelivr CDN.
 
 ---
 
@@ -2340,47 +2068,13 @@ export const HADITH_COLLECTIONS = [
 
 **P3 Fixes + Social Preview Image**
 
-This release completes the comprehensive bug fix initiative with 15 additional P3 fixes and adds custom OG image for social sharing.
-
-#### Highlights
-
-- **Social Sharing:** Custom OG image for WhatsApp/social media previews
-- **Security:** Timing-safe comparison for webhook verify token
-- **Validation:** reminder_offset validation, token param validation
-- **Constants:** 15+ magic numbers extracted to constants.ts
-- **Error Handling:** All cron job message inserts now have error handling
-- **Code Quality:** Stable hash ID for hadith fallback, shared REMINDER_OPTIONS
-
-#### Changes
-
-| Category | Count |
-|----------|-------|
-| Security fixes | 2 |
-| Validation fixes | 3 |
-| Error handling | 4 |
-| Constants extraction | 6 |
-| Social/SEO | 1 |
-
 ---
 
 ### Version 1.6.0 - February 5, 2026
 
 **Comprehensive Bug Fix & Security Release**
 
-This release addresses 22 issues identified through thorough code review, including 2 critical security fixes, 5 high-priority fixes, and numerous code quality improvements.
-
-#### Highlights
-
-- **Security:** Fixed IP spoofing vulnerability in rate limiting
-- **Reliability:** Scheduled messages now have retry limits (max 5 attempts)
-- **Performance:** Announcements now send concurrently (10 at a time)
-- **UX:** Delete confirmation prevents accidental subscriber deletion
-- **Accessibility:** ARIA labels and proper form linking throughout
-- **Code Quality:** Constants extracted, NaN-safe parsing, proper algorithms
-
-#### Full Change List
-
-See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
+Addresses 22 issues including 2 critical security fixes, 5 high-priority fixes, and numerous code quality improvements.
 
 ---
 
@@ -2397,7 +2091,6 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 - Complete admin dashboard API migration (RLS fix)
 - 9 admin pages migrated to server-side routes
 - Migration 007 for Ramadan columns
-- WhatsApp 24-hour policy notice added
 
 ---
 
@@ -2434,12 +2127,13 @@ See [Recent Bug Fixes](#recent-bug-fixes) section for complete details.
 | **GitHub Repo** | https://github.com/alqode-dev/masjid-notify |
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
-| **Meta Developer Console** | https://developers.facebook.com/apps |
 | **Hadith API Docs** | https://github.com/fawazahmed0/hadith-api |
+| **Web Push Docs** | https://web.dev/articles/push-notifications-overview |
+| **Serwist Docs** | https://serwist.pages.dev/ |
 
 ---
 
-**Document Version:** 1.9.1
-**Last Updated:** February 10, 2026 @ 01:00 SAST
+**Document Version:** 3.0.0
+**Last Updated:** February 21, 2026 @ 12:00 SAST
 **Author:** Claude Code
-**Status:** Production - Hotfix applied for prayer-reminders outage (v1.9.1). Core-first architecture ensures prayer reminders always execute. WhatsApp templates pending Meta approval. Monitoring for confirmation that prayer notifications are sending correctly.
+**Status:** Production - Web Push PWA. WhatsApp fully removed and replaced with browser push notifications. All cron jobs, admin dashboard, and subscriber features fully operational via Web Push.

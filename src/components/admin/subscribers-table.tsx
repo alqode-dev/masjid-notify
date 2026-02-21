@@ -12,15 +12,26 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPhoneForDisplay, formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@/lib/utils";
 import type { Subscriber } from "@/lib/supabase";
-import { Pause, Play, Trash2 } from "lucide-react";
+import { Pause, Play, Trash2, Monitor, Smartphone } from "lucide-react";
 
 interface SubscribersTableProps {
   subscribers: Subscriber[];
   loading?: boolean;
   onStatusChange?: (id: string, status: Subscriber["status"]) => void;
   onDelete?: (id: string) => void;
+}
+
+function parseDevice(userAgent: string | null): { label: string; isMobile: boolean } {
+  if (!userAgent) return { label: "Unknown", isMobile: false };
+  const ua = userAgent.toLowerCase();
+  if (ua.includes("iphone") || ua.includes("ipad")) return { label: "iOS", isMobile: true };
+  if (ua.includes("android")) return { label: "Android", isMobile: true };
+  if (ua.includes("windows")) return { label: "Windows", isMobile: false };
+  if (ua.includes("mac")) return { label: "Mac", isMobile: false };
+  if (ua.includes("linux")) return { label: "Linux", isMobile: false };
+  return { label: "Browser", isMobile: false };
 }
 
 export function SubscribersTable({
@@ -67,7 +78,7 @@ export function SubscribersTable({
       <Table aria-label="Subscribers list">
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead>Phone Number</TableHead>
+            <TableHead>Device</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="hidden md:table-cell">Subscribed</TableHead>
             <TableHead className="hidden lg:table-cell">Preferences</TableHead>
@@ -77,6 +88,7 @@ export function SubscribersTable({
         <TableBody>
           {subscribers.map((subscriber, index) => {
             const statusInfo = getStatusBadge(subscriber.status);
+            const device = parseDevice(subscriber.user_agent);
 
             return (
               <motion.tr
@@ -87,7 +99,14 @@ export function SubscribersTable({
                 className="group"
               >
                 <TableCell className="font-medium">
-                  {formatPhoneForDisplay(subscriber.phone_number)}
+                  <div className="flex items-center gap-2">
+                    {device.isMobile ? (
+                      <Smartphone className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Monitor className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    {device.label}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
@@ -137,7 +156,6 @@ export function SubscribersTable({
                         size="sm"
                         onClick={() => onStatusChange?.(subscriber.id, "paused")}
                         title="Pause notifications"
-                        aria-label={`Pause notifications for ${formatPhoneForDisplay(subscriber.phone_number)}`}
                       >
                         <Pause className="w-4 h-4" />
                       </Button>
@@ -148,7 +166,6 @@ export function SubscribersTable({
                         size="sm"
                         onClick={() => onStatusChange?.(subscriber.id, "active")}
                         title="Resume notifications"
-                        aria-label={`Resume notifications for ${formatPhoneForDisplay(subscriber.phone_number)}`}
                       >
                         <Play className="w-4 h-4" />
                       </Button>
@@ -157,13 +174,12 @@ export function SubscribersTable({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        if (window.confirm(`Are you sure you want to delete this subscriber (${formatPhoneForDisplay(subscriber.phone_number)})? This action cannot be undone.`)) {
+                        if (window.confirm("Are you sure you want to delete this subscriber? This action cannot be undone.")) {
                           onDelete?.(subscriber.id);
                         }
                       }}
                       className="text-destructive hover:text-destructive"
                       title="Delete subscriber"
-                      aria-label={`Delete subscriber ${formatPhoneForDisplay(subscriber.phone_number)}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

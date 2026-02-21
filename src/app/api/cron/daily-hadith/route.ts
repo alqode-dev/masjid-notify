@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { DAILY_HADITH_TEMPLATE } from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
@@ -9,33 +8,22 @@ import {
   finalizeCronLog,
 } from "@/lib/logger";
 import {
-  sendTemplatesConcurrently,
+  sendPushNotificationsBatch,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
-} from "@/lib/message-sender";
-import { previewTemplate } from "@/lib/whatsapp-templates";
+  storeNotifications,
+} from "@/lib/push-sender";
 import { getTodaysHadith } from "@/lib/hadith-api";
 import { getMosquePrayerTimes, isWithinMinutesAfter } from "@/lib/prayer-times";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { tryClaimReminderLock, ReminderType } from "@/lib/reminder-locks";
 import { HADITH_MINUTES_AFTER_PRAYER } from "@/lib/constants";
+import { truncate } from "@/lib/utils";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
 
-/**
- * Daily Hadith Cron Job
- *
- * This should run every 5 minutes (like prayer-reminders).
- * It automatically sends hadith based on prayer times:
- * - Morning hadith: 15 minutes after Fajr
- * - Evening hadith: 15 minutes after Maghrib
- *
- * This way hadith timing always follows the actual prayer times,
- * which change throughout the year.
- */
 export async function GET(request: NextRequest) {
-  // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
   if (!verifyCronSecret(authHeader)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +32,6 @@ export async function GET(request: NextRequest) {
   const logger = createCronLogger("daily-hadith");
 
   try {
-    // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*");
@@ -65,7 +52,6 @@ export async function GET(request: NextRequest) {
     let totalSent = 0;
 
     for (const mosque of mosques as Mosque[]) {
-      // Get prayer times for this mosque (with caching)
       const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
@@ -80,13 +66,11 @@ export async function GET(request: NextRequest) {
       const eveningMatch = isWithinMinutesAfter(prayerTimes.maghrib, HADITH_MINUTES_AFTER_PRAYER, mosque.timezone);
       console.log(`[daily-hadith] ${mosque.name}: fajr=${prayerTimes.fajr} morningMatch=${morningMatch}, maghrib=${prayerTimes.maghrib} eveningMatch=${eveningMatch}`);
 
-      // Check if it's time for morning hadith (15 minutes after Fajr)
       if (morningMatch) {
         const sent = await sendHadithIfNotAlreadySent(mosque, "morning", logger);
         totalSent += sent;
       }
 
-      // Check if it's time for evening hadith (15 minutes after Maghrib)
       if (eveningMatch) {
         const sent = await sendHadithIfNotAlreadySent(mosque, "evening", logger);
         totalSent += sent;
@@ -112,23 +96,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Send hadith to subscribers if not already sent today
- */
 async function sendHadithIfNotAlreadySent(
   mosque: Mosque,
   timeOfDay: "morning" | "evening",
   logger: ReturnType<typeof createCronLogger>
 ): Promise<number> {
-  // ATOMIC LOCK: Claim exclusive right to send hadith for this mosque today
   const lockKey: ReminderType = timeOfDay === "morning" ? "hadith_morning" : "hadith_evening";
   const lockAcquired = await tryClaimReminderLock(mosque.id, lockKey, 0, mosque.timezone);
-  if (!lockAcquired) {
-    // Another cron run already sent hadith for this mosque today
-    return 0;
-  }
+  if (!lockAcquired) return 0;
 
-  // Get today's hadith from the external API
   const hadith = await getTodaysHadith(timeOfDay, mosque.timezone);
 
   if (!hadith) {
@@ -138,7 +114,6 @@ async function sendHadithIfNotAlreadySent(
     return 0;
   }
 
-  // Get subscribers who want daily hadith
   const { data: subscribers } = await supabaseAdmin
     .from("subscribers")
     .select("*")
@@ -146,37 +121,40 @@ async function sendHadithIfNotAlreadySent(
     .eq("status", "active")
     .eq("pref_hadith", true);
 
-  if (!subscribers || subscribers.length === 0) {
-    return 0;
-  }
+  if (!subscribers || subscribers.length === 0) return 0;
 
-  // Template variables: hadith_text, source_and_reference, mosque_name
-  const templateVars = [
-    hadith.textEnglish,
-    `${hadith.source}, Hadith ${hadith.reference}`,
-    mosque.name,
-  ];
+  const sourceRef = `${hadith.source}, Hadith ${hadith.reference}`;
+  const payload = {
+    title: "Daily Hadith",
+    body: truncate(hadith.textEnglish, 200),
+    icon: "/icon-192x192.png",
+    tag: `hadith-${timeOfDay}`,
+    url: "/notifications",
+    data: {
+      fullText: hadith.textEnglish,
+      source: sourceRef,
+      arabic: hadith.textArabic,
+    },
+  };
 
-  // Send messages concurrently with p-limit (max 10 concurrent) using template
-  const batchResult = await sendTemplatesConcurrently(
+  const batchResult = await sendPushNotificationsBatch(
     subscribers as Subscriber[],
-    DAILY_HADITH_TEMPLATE,
-    templateVars,
+    payload,
     logger
   );
 
-  // Generate message content for logging (preview with actual values)
-  const message = previewTemplate(DAILY_HADITH_TEMPLATE, templateVars);
-
-  // Batch update last_message_at for successful sends
   const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
   await batchUpdateLastMessageAt(successfulIds);
 
-  // Log the message with error handling
+  await storeNotifications(subscribers as Subscriber[], {
+    ...payload,
+    body: hadith.textEnglish, // Store full text in notifications table
+  }, mosque.id, "hadith");
+
   const { error: msgError } = await supabaseAdmin.from("messages").insert({
     mosque_id: mosque.id,
     type: "hadith",
-    content: message,
+    content: `${hadith.textEnglish}\n\n— ${sourceRef}`,
     sent_to_count: batchResult.successful,
     status: "sent",
     metadata: {

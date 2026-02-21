@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Masjid Notify is a WhatsApp notification platform for mosques. Users subscribe via a web form and receive automated WhatsApp messages for prayer reminders, hadith, announcements, and Ramadan-specific notifications.
+Masjid Notify is a PWA (Progressive Web App) push notification platform for mosques. Users subscribe via the web app, enable browser notifications, and receive automated push notifications for prayer reminders, hadith, announcements, and Ramadan-specific notifications.
 
-**Tech Stack:** Next.js 16 (App Router), React 19, TypeScript, Supabase (PostgreSQL), WhatsApp Cloud API, Tailwind CSS 4, shadcn/ui
+**Tech Stack:** Next.js 16 (App Router), React 19, TypeScript, Supabase (PostgreSQL), Web Push (VAPID), Serwist (Service Worker), Tailwind CSS 4, shadcn/ui
 
 ## Commands
 
@@ -32,9 +32,10 @@ TEST_ADMIN_PASSWORD=your-password
 
 ### Data Flow
 
-1. **Subscription:** User submits form → API saves to Supabase → Welcome message sent via WhatsApp
-2. **Automated reminders:** cron-job.org pings `/api/cron/*` endpoints every 5 min → API checks prayer times (Aladhan API) → Sends WhatsApp to opted-in subscribers
-3. **Admin announcements:** Admin dashboard → `/api/admin/announcements` → WhatsApp Cloud API
+1. **Subscription:** User enables browser notifications → Service worker registers → Push subscription sent to API → Saved to Supabase → Welcome push notification sent
+2. **Automated reminders:** cron-job.org pings `/api/cron/*` endpoints every 5 min → API checks prayer times (Aladhan API) → Sends push notifications to opted-in subscribers
+3. **Admin announcements:** Admin dashboard → `/api/admin/announcements` → Web Push API → Push notifications to subscribers
+4. **In-app notifications:** All sent notifications are also stored in the `notifications` table for in-app viewing at `/notifications`
 
 ### Key Directories
 
@@ -46,43 +47,50 @@ src/
 │   │   ├── admin/       # Protected admin endpoints (require auth)
 │   │   ├── cron/        # Automated reminder endpoints (prayer, jumuah, hadith, ramadan, nafl)
 │   │   ├── subscribe/   # Public subscription endpoint
-│   │   └── webhook/     # WhatsApp webhook (incoming messages, STOP/START/PAUSE commands)
-│   └── settings/[token] # User preference page (24h token-based access)
+│   │   ├── settings/    # Subscriber settings API (GET/PUT by subscriber ID)
+│   │   └── notifications/ # In-app notification center API
+│   ├── settings/        # Subscriber settings page (localStorage-based ID)
+│   └── notifications/   # In-app notification center page
 ├── components/
 │   ├── admin/           # Dashboard components (sidebar, tables, forms, charts)
 │   └── ui/              # shadcn/ui components
+├── sw.ts                # Service worker source (push events, notification clicks)
 └── lib/
-    ├── supabase.ts      # Database client + TypeScript types (Mosque, Subscriber, Message, etc.)
-    ├── whatsapp.ts      # WhatsApp Cloud API client
-    ├── whatsapp-templates.ts  # Meta template definitions (12 templates)
+    ├── supabase.ts      # Database client + TypeScript types (Mosque, Subscriber, Message, Notification, etc.)
+    ├── web-push.ts      # Web Push API client (VAPID-based)
+    ├── push-sender.ts   # Batch push sending with concurrency control (p-limit)
     ├── prayer-times.ts  # Aladhan API integration
     ├── hadith-api.ts    # Random hadith fetcher
     ├── auth.ts          # Supabase auth helpers
-    └── message-sender.ts # Batch message sending with rate limiting
+    └── time-format.ts   # Client-safe time formatting utilities
 ```
+
+### PWA & Service Worker
+
+- `public/manifest.json` - PWA manifest (standalone display, icons, theme color)
+- `src/sw.ts` - Service worker source compiled by Serwist
+- `next.config.ts` - Wrapped with `withSerwist()` for service worker compilation
+- Service worker handles `push` events (show notification) and `notificationclick` (open app)
+- VAPID keys authenticate push subscriptions
 
 ### Database Schema (Supabase)
 
-Main tables: `mosques`, `subscribers`, `admins`, `messages`, `scheduled_messages`, `prayer_times_cache`, `daily_hadith_log`
+Main tables: `mosques`, `subscribers`, `admins`, `messages`, `scheduled_messages`, `prayer_times_cache`, `daily_hadith_log`, `notifications`
+
+Subscriber identification: Push subscription endpoint + mosque_id (UNIQUE constraint). Subscriber ID stored in localStorage for settings access.
 
 Types are defined in `src/lib/supabase.ts`. Use `getSupabaseAdmin()` for server-side operations.
-
-### WhatsApp Templates
-
-Two types of "templates" in this project:
-1. **Meta Templates** (`src/lib/whatsapp-templates.ts`) - 12 templates registered with WhatsApp API for automated messages
-2. **Dashboard Templates** (`src/components/admin/message-templates.tsx`) - UI helpers for admins, all sent through the single `mosque_announcement` Meta template
 
 ### Cron Jobs
 
 Five automated jobs via cron-job.org hitting `/api/cron/*`:
-- `prayer-reminders` - 5 daily prayers
+- `prayer-reminders` - 5 daily prayers + scheduled messages + auto-resume paused subscribers
 - `jumuah-reminder` - Friday reminder
 - `daily-hadith` - Morning/evening hadith
 - `ramadan-reminders` - Suhoor/Iftar/Taraweeh
 - `nafl-reminders` - Tahajjud/Ishraq/Awwabin
 
-All require `CRON_SECRET` header for authentication.
+All require `CRON_SECRET` header for authentication. All use `tryClaimReminderLock` for idempotency.
 
 ### Mosque Configuration
 
@@ -92,7 +100,7 @@ Single-mosque MVP uses `DEFAULT_MOSQUE_SLUG` from `src/lib/constants.ts`. Multi-
 
 Required:
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 - `CRON_SECRET`
 
 Optional:

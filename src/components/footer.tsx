@@ -8,7 +8,15 @@ export function Footer() {
       className="w-full py-6 px-4 text-center border-t border-border/50"
     >
       <div className="flex flex-col items-center gap-3">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap justify-center">
+          <Link href="/settings" className="hover:text-primary transition-colors">
+            Settings
+          </Link>
+          <span className="text-border" aria-hidden="true">|</span>
+          <Link href="/notifications" className="hover:text-primary transition-colors">
+            Notifications
+          </Link>
+          <span className="text-border" aria-hidden="true">|</span>
           <Link href="/privacy" className="hover:text-primary transition-colors">
             Privacy Policy
           </Link>

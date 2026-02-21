@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, type Subscriber } from "@/lib/supabase";
-import { ANNOUNCEMENT_TEMPLATE } from "@/lib/whatsapp";
 import { withAdminAuth } from "@/lib/auth";
-import { sendTemplatesConcurrently } from "@/lib/message-sender";
+import { sendPushNotificationsBatch, storeNotifications } from "@/lib/push-sender";
 
 const MAX_CONTENT_LENGTH = 4096;
 
@@ -70,15 +69,21 @@ export const POST = withAdminAuth(async (request, { admin }) => {
       );
     }
 
-    // Template variables: mosque_name, announcement_content
-    const templateVars = [mosque.name, content];
+    const payload = {
+      title: `${mosque.name} Announcement`,
+      body: content,
+      icon: "/icon-192x192.png",
+      tag: `announcement-${Date.now()}`,
+      url: "/notifications",
+    };
 
-    // Send to all subscribers concurrently (with p-limit for rate limiting)
-    const batchResult = await sendTemplatesConcurrently(
+    const batchResult = await sendPushNotificationsBatch(
       subscribers as Subscriber[],
-      ANNOUNCEMENT_TEMPLATE,
-      templateVars
+      payload
     );
+
+    // Store in-app notifications
+    await storeNotifications(subscribers as Subscriber[], payload, mosque_id, "announcement");
 
     const successCount = batchResult.successful;
     const failCount = batchResult.failed;

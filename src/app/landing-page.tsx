@@ -148,7 +148,7 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
                 Stay Connected
               </h2>
               <p className="text-muted-foreground text-sm md:text-base">
-                Get prayer reminders and announcements via WhatsApp
+                Get prayer reminders and announcements on your device
               </p>
             </div>
 
@@ -167,7 +167,7 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
             <FeatureCard
               icon="🕌"
               title="Prayer Reminders"
-              description="Never miss a prayer with timely WhatsApp notifications"
+              description="Never miss a prayer with timely push notifications"
             />
             <FeatureCard
               icon="📢"

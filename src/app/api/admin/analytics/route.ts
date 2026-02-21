@@ -71,7 +71,7 @@ export const GET = withAdminAuth(async (request, { admin }) => {
       .from("messages")
       .select("type, sent_to_count")
       .eq("mosque_id", admin.mosque_id)
-      .neq("type", "webhook_command");
+;
 
     const typeCounts = new Map<string, number>();
     messages?.forEach((msg) => {

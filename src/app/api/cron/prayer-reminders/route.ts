@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getMosquePrayerTimes, isWithinMinutes, getJamaatTime } from "@/lib/prayer-times";
-import {
-  PRAYER_REMINDER_TEMPLATE,
-  ANNOUNCEMENT_TEMPLATE,
-} from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
@@ -14,13 +10,14 @@ import {
   CronLogContext,
 } from "@/lib/logger";
 import {
-  sendTemplatesConcurrently,
+  sendPushNotificationsBatch,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
-} from "@/lib/message-sender";
-import { previewTemplate } from "@/lib/whatsapp-templates";
+  storeNotifications,
+} from "@/lib/push-sender";
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
 import { tryClaimReminderLock, cleanupOldLocks, type ReminderType } from "@/lib/reminder-locks";
+import { formatTime12h } from "@/lib/utils";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -58,7 +55,6 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 
   for (const scheduled of scheduledMessages as ScheduledMessage[]) {
     try {
-      // Get mosque details for the announcement message format
       const { data: mosque } = await supabaseAdmin
         .from("mosques")
         .select("name")
@@ -76,7 +72,6 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
         .eq("pref_announcements", true);
 
       if (!subscribers || subscribers.length === 0) {
-        // No subscribers - mark as sent anyway (nothing to send)
         await supabaseAdmin
           .from("scheduled_messages")
           .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -85,22 +80,26 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
         continue;
       }
 
-      // Template variables: mosque_name, announcement_content
-      const templateVars = [mosqueName, scheduled.content];
+      const payload = {
+        title: `${mosqueName} Announcement`,
+        body: scheduled.content,
+        icon: "/icon-192x192.png",
+        tag: `announcement-${scheduled.id}`,
+        url: "/notifications",
+      };
 
-      // Send messages concurrently using template
-      const batchResult = await sendTemplatesConcurrently(
+      const batchResult = await sendPushNotificationsBatch(
         subscribers as Subscriber[],
-        ANNOUNCEMENT_TEMPLATE,
-        templateVars,
+        payload,
         logger
       );
 
-      // Batch update last_message_at for successful sends
       const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
       await batchUpdateLastMessageAt(successfulIds);
 
-      // Log the scheduled message as sent in messages table
+      // Store in-app notifications
+      await storeNotifications(subscribers as Subscriber[], payload, scheduled.mosque_id, "announcement");
+
       const { error: msgError } = await supabaseAdmin.from("messages").insert({
         mosque_id: scheduled.mosque_id,
         type: "announcement",
@@ -115,21 +114,8 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
       });
       if (msgError) {
         console.error('[prayer-reminders] Failed to log scheduled message:', msgError.message, msgError.code, msgError.details);
-        if (msgError.code === "PGRST204") {
-          const { error: retryError } = await supabaseAdmin.from("messages").insert({
-            mosque_id: scheduled.mosque_id,
-            type: "announcement",
-            content: scheduled.content,
-            sent_to_count: batchResult.successful,
-            status: "sent",
-          });
-          if (retryError) {
-            console.error('[prayer-reminders] Retry without metadata also failed:', retryError.message);
-          }
-        }
       }
 
-      // Mark the scheduled message as sent
       await supabaseAdmin
         .from("scheduled_messages")
         .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -137,7 +123,6 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 
       successful++;
     } catch (err) {
-      // Handle individual failure without stopping the batch
       const currentRetries = ((scheduled.retry_count as number) || 0) + 1;
 
       logCronError(logger, "Failed to process scheduled message", {
@@ -148,19 +133,12 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
         error: err instanceof Error ? err.message : String(err),
       });
 
-      // Update retry count or mark as failed if max retries exceeded
       if (currentRetries >= MAX_SCHEDULED_MESSAGE_RETRIES) {
         await supabaseAdmin
           .from("scheduled_messages")
           .update({ status: "failed", retry_count: currentRetries })
           .eq("id", scheduled.id);
-
-        logCronError(logger, "Scheduled message permanently failed after max retries", {
-          scheduledMessageId: scheduled.id,
-          mosqueId: scheduled.mosque_id,
-        });
       } else {
-        // Save incremented retry count so retries are actually tracked
         await supabaseAdmin
           .from("scheduled_messages")
           .update({ retry_count: currentRetries })
@@ -179,7 +157,6 @@ async function processScheduledMessages(logger: CronLogContext): Promise<{
 }
 
 // Auto-resume subscribers whose pause period has expired.
-// Isolated function so failures don't affect prayer reminders.
 async function autoResumeSubscribers(logger: CronLogContext): Promise<void> {
   const { data: resumed, error: resumeError } = await supabaseAdmin
     .from("subscribers")
@@ -197,7 +174,6 @@ async function autoResumeSubscribers(logger: CronLogContext): Promise<void> {
 
 // This endpoint should be called every 5 minutes by cron-job.org
 export async function GET(request: NextRequest) {
-  // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
   if (!verifyCronSecret(authHeader)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -210,7 +186,6 @@ export async function GET(request: NextRequest) {
     // CORE: Prayer Reminders — this MUST run, it's the primary function
     // =========================================================
 
-    // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*");
@@ -227,7 +202,6 @@ export async function GET(request: NextRequest) {
     setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
-      // Get today's prayer times for this mosque (with caching)
       const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
@@ -238,9 +212,6 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Convert Adhan times to Jamaat times
-      // Jamaat = Adhan + 15 minutes (except Maghrib where Jamaat starts immediately)
-      // This way reminders are based on when congregation actually prays
       const prayers = [
         { key: "fajr", name: "Fajr", time: getJamaatTime(prayerTimes.fajr, "fajr") },
         { key: "dhuhr", name: "Dhuhr", time: getJamaatTime(prayerTimes.dhuhr, "dhuhr") },
@@ -249,7 +220,6 @@ export async function GET(request: NextRequest) {
         { key: "isha", name: "Isha", time: getJamaatTime(prayerTimes.isha, "isha") },
       ];
 
-      // Log prayer times for diagnostic visibility
       console.log(`[prayer-reminders] ${mosque.name} prayer times:`, {
         fajr: prayerTimes.fajr,
         dhuhr: prayerTimes.dhuhr,
@@ -259,7 +229,6 @@ export async function GET(request: NextRequest) {
         jamaatTimes: prayers.map(p => `${p.name}=${p.time}`).join(', '),
       });
 
-      // Get subscribers for this mosque
       const { data: subscribers } = await supabaseAdmin
         .from("subscribers")
         .select("*")
@@ -274,15 +243,12 @@ export async function GET(request: NextRequest) {
       console.log(`[prayer-reminders] ${subscribers.length} active subscribers for ${mosque.name}`);
 
       for (const prayer of prayers) {
-        // Get subscribers who want this prayer reminder
-        // With simplified preferences, pref_daily_prayers covers all 5 prayers
         const eligibleSubscribers = (subscribers as Subscriber[]).filter((s) => {
           return s.pref_daily_prayers;
         });
 
         if (eligibleSubscribers.length === 0) continue;
 
-        // Group by reminder offset and check if it's time
         const offsetGroups = new Map<number, Subscriber[]>();
         for (const sub of eligibleSubscribers) {
           const offset = sub.reminder_offset || 15;
@@ -294,12 +260,9 @@ export async function GET(request: NextRequest) {
 
         for (const [offset, subs] of offsetGroups) {
           const timeMatch = isWithinMinutes(prayer.time, offset, mosque.timezone);
-          // Log every prayer check so we can diagnose timing issues
           console.log(`[prayer-reminders] ${prayer.name} offset=${offset}: jamaat=${prayer.time}, match=${timeMatch}`);
 
           if (timeMatch) {
-            // ATOMIC LOCK: Claim exclusive right to send this reminder
-            // Uses database UNIQUE constraint - impossible to race
             const lockAcquired = await tryClaimReminderLock(
               mosque.id,
               prayer.key as ReminderType,
@@ -308,37 +271,38 @@ export async function GET(request: NextRequest) {
             );
             if (!lockAcquired) {
               console.log(`[prayer-reminders] Lock already claimed for ${prayer.name} offset=${offset}`);
-              continue; // Another cron run already claimed this - skip
+              continue;
             }
 
             console.log(`[prayer-reminders] Sending ${prayer.name} reminder to ${subs.length} subscribers`);
 
-            // Template variables: prayer_name, prayer_time, mosque_name
-            const templateVars = [prayer.name, prayer.time, mosque.name];
+            const payload = {
+              title: `${prayer.name} Prayer`,
+              body: `${formatTime12h(prayer.time)} at ${mosque.name}`,
+              icon: "/icon-192x192.png",
+              tag: `prayer-${prayer.key}`,
+              url: "/",
+            };
 
-            // Send messages concurrently with p-limit (max 10 concurrent) using template
-            const batchResult = await sendTemplatesConcurrently(
+            const batchResult = await sendPushNotificationsBatch(
               subs,
-              PRAYER_REMINDER_TEMPLATE,
-              templateVars,
+              payload,
               logger
             );
 
             console.log(`[prayer-reminders] ${prayer.name} result: ${batchResult.successful}/${batchResult.total} sent, ${batchResult.failed} failed`);
 
-            // Generate message content for logging (preview with actual values)
-            const message = previewTemplate(PRAYER_REMINDER_TEMPLATE, templateVars);
-
-            // Batch update last_message_at for successful sends
             const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
             await batchUpdateLastMessageAt(successfulIds);
 
-            // Log the batch
+            // Store in-app notifications
+            await storeNotifications(subs, payload, mosque.id, "prayer");
+
             if (subs.length > 0) {
               const { error: msgError } = await supabaseAdmin.from("messages").insert({
                 mosque_id: mosque.id,
                 type: "prayer",
-                content: message,
+                content: `${prayer.name} Prayer - ${formatTime12h(prayer.time)} at ${mosque.name}`,
                 sent_to_count: batchResult.successful,
                 status: "sent",
                 metadata: {
@@ -357,10 +321,8 @@ export async function GET(request: NextRequest) {
 
     // =========================================================
     // AUXILIARY: These run AFTER prayer reminders, in isolated try-catches.
-    // If they fail, prayer reminders have already been sent.
     // =========================================================
 
-    // Process any due scheduled messages
     try {
       const scheduledResult = await processScheduledMessages(logger);
       if (scheduledResult.processed > 0) {
@@ -376,14 +338,12 @@ export async function GET(request: NextRequest) {
       console.error("[prayer-reminders] processScheduledMessages failed:", err instanceof Error ? err.message : String(err));
     }
 
-    // Auto-resume paused subscribers
     try {
       await autoResumeSubscribers(logger);
     } catch (err) {
       console.error("[prayer-reminders] autoResumeSubscribers failed:", err instanceof Error ? err.message : String(err));
     }
 
-    // Clean up old reminder locks to prevent table bloat
     try {
       const firstMosque = mosques[0] as Mosque | undefined;
       await cleanupOldLocks(2, firstMosque?.timezone);
@@ -391,7 +351,6 @@ export async function GET(request: NextRequest) {
       console.error("[prayer-reminders] cleanupOldLocks failed:", err instanceof Error ? err.message : String(err));
     }
 
-    // Clean up old prayer times cache entries (older than 7 days)
     try {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 7);

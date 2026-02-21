@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { JUMUAH_REMINDER_TEMPLATE } from "@/lib/whatsapp";
 import { isFriday, formatTime12h } from "@/lib/utils";
 import { verifyCronSecret } from "@/lib/auth";
 import {
@@ -10,20 +9,18 @@ import {
   finalizeCronLog,
 } from "@/lib/logger";
 import {
-  sendTemplatesConcurrently,
+  sendPushNotificationsBatch,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
-} from "@/lib/message-sender";
-import { previewTemplate } from "@/lib/whatsapp-templates";
+  storeNotifications,
+} from "@/lib/push-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { tryClaimReminderLock } from "@/lib/reminder-locks";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
 
-// This should run every Friday morning (e.g., 10:00 AM)
 export async function GET(request: NextRequest) {
-  // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
   if (!verifyCronSecret(authHeader)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +29,6 @@ export async function GET(request: NextRequest) {
   const logger = createCronLogger("jumuah-reminder");
 
   try {
-    // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*");
@@ -49,18 +45,11 @@ export async function GET(request: NextRequest) {
     setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
-      // Check if it's Friday in the mosque's timezone
       if (!isFriday(mosque.timezone)) continue;
 
-      // ATOMIC LOCK: Claim exclusive right to send Jumu'ah reminder for this mosque today
-      // This prevents duplicate sends when cron runs multiple times on Friday
       const lockAcquired = await tryClaimReminderLock(mosque.id, "jumuah", 0, mosque.timezone);
-      if (!lockAcquired) {
-        // Another cron run already sent Jumu'ah reminder for this mosque today
-        continue;
-      }
+      if (!lockAcquired) continue;
 
-      // Get subscribers who want Jumu'ah reminders
       const { data: subscribers } = await supabaseAdmin
         .from("subscribers")
         .select("*")
@@ -70,36 +59,30 @@ export async function GET(request: NextRequest) {
 
       if (!subscribers || subscribers.length === 0) continue;
 
-      // Template variables: adhaan_time, khutbah_time, mosque_name
-      const templateVars = [
-        formatTime12h(mosque.jumuah_adhaan_time),
-        formatTime12h(mosque.jumuah_khutbah_time),
-        mosque.name,
-      ];
+      const payload = {
+        title: "Jumu'ah Reminder",
+        body: `Khutbah at ${formatTime12h(mosque.jumuah_khutbah_time)} | Adhaan at ${formatTime12h(mosque.jumuah_adhaan_time)} - ${mosque.name}`,
+        icon: "/icon-192x192.png",
+        tag: "jumuah",
+        url: "/",
+      };
 
-      // Send messages concurrently with p-limit (max 10 concurrent) using template
-      const batchResult = await sendTemplatesConcurrently(
+      const batchResult = await sendPushNotificationsBatch(
         subscribers as Subscriber[],
-        JUMUAH_REMINDER_TEMPLATE,
-        templateVars,
+        payload,
         logger
       );
 
-      // Generate message content for logging (preview with actual values)
-      const message = previewTemplate(JUMUAH_REMINDER_TEMPLATE, templateVars);
-
-      // Batch update last_message_at for successful sends
       const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
       await batchUpdateLastMessageAt(successfulIds);
 
-      const sentCount = batchResult.successful;
+      await storeNotifications(subscribers as Subscriber[], payload, mosque.id, "jumuah");
 
-      // Log the message with error handling
       const { error: msgError } = await supabaseAdmin.from("messages").insert({
         mosque_id: mosque.id,
         type: "jumuah",
-        content: message,
-        sent_to_count: sentCount,
+        content: payload.body,
+        sent_to_count: batchResult.successful,
         status: "sent",
       });
       if (msgError) {

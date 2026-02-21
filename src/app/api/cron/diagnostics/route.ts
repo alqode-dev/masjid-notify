@@ -19,19 +19,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/**
- * Diagnostic endpoint for debugging cron reminder issues.
- * Shows the complete state of the reminder system at the current moment.
- * Protected by CRON_SECRET - same auth as cron jobs.
- *
- * Call this at any time to see:
- * - Current times (UTC + mosque timezone)
- * - Today's prayer times and jamaat times
- * - Which reminders would fire RIGHT NOW
- * - Locks claimed today
- * - Subscriber counts
- * - Recent messages sent
- */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (!verifyCronSecret(authHeader)) {
@@ -39,7 +26,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get all mosques
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*");
@@ -51,7 +37,6 @@ export async function GET(request: NextRequest) {
     const diagnostics = [];
 
     for (const mosque of mosques as Mosque[]) {
-      // Current time info
       const now = new Date();
       const tzFormatter = new Intl.DateTimeFormat("en-US", {
         timeZone: mosque.timezone,
@@ -71,7 +56,6 @@ export async function GET(request: NextRequest) {
       const localTime = tzFormatter.format(now);
       const localDate = dateFormatter.format(now);
 
-      // Prayer times
       const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
@@ -82,7 +66,6 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Jamaat times
       const jamaatTimes = {
         fajr: getJamaatTime(prayerTimes.fajr, "fajr"),
         dhuhr: getJamaatTime(prayerTimes.dhuhr, "dhuhr"),
@@ -91,10 +74,8 @@ export async function GET(request: NextRequest) {
         isha: getJamaatTime(prayerTimes.isha, "isha"),
       };
 
-      // Nafl times
       const naflTimes = calculateNaflTimes(prayerTimes);
 
-      // Check which reminders would fire RIGHT NOW
       const prayerChecks: Record<string, Record<string, boolean>> = {};
       const prayerKeys = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
       for (const key of prayerKeys) {
@@ -119,12 +100,18 @@ export async function GET(request: NextRequest) {
         evening: isWithinMinutesAfter(prayerTimes.maghrib, 15, mosque.timezone),
       };
 
-      // Subscriber counts
       const { count: totalActive } = await supabaseAdmin
         .from("subscribers")
         .select("*", { count: "exact", head: true })
         .eq("mosque_id", mosque.id)
         .eq("status", "active");
+
+      const { count: withPushSub } = await supabaseAdmin
+        .from("subscribers")
+        .select("*", { count: "exact", head: true })
+        .eq("mosque_id", mosque.id)
+        .eq("status", "active")
+        .not("push_endpoint", "is", null);
 
       const { count: dailyPrayers } = await supabaseAdmin
         .from("subscribers")
@@ -154,7 +141,6 @@ export async function GET(request: NextRequest) {
         .eq("status", "active")
         .eq("pref_jumuah", true);
 
-      // Today's locks
       const { data: todayLocks } = await supabaseAdmin
         .from("prayer_reminder_locks")
         .select("prayer_key, reminder_offset, claimed_at")
@@ -162,7 +148,6 @@ export async function GET(request: NextRequest) {
         .eq("reminder_date", localDate)
         .order("claimed_at", { ascending: true });
 
-      // Recent messages (last 10)
       const { data: recentMessages } = await supabaseAdmin
         .from("messages")
         .select("type, content, sent_to_count, sent_at, status, metadata")
@@ -197,6 +182,7 @@ export async function GET(request: NextRequest) {
         },
         subscribers: {
           totalActive,
+          withPushSubscription: withPushSub,
           dailyPrayers,
           naflSalahs,
           hadith: hadithPref,

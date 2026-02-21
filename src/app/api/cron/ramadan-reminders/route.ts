@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getMosquePrayerTimes, isWithinMinutes, isWithinMinutesAfter, isTimeWithinMinutesBefore, formatDbTime } from "@/lib/prayer-times";
-import {
-  SUHOOR_REMINDER_TEMPLATE,
-  IFTAR_REMINDER_TEMPLATE,
-  TARAWEEH_REMINDER_TEMPLATE,
-  SUHOOR_PLANNING_TEMPLATE,
-} from "@/lib/whatsapp";
 import { verifyCronSecret } from "@/lib/auth";
 import {
   createCronLogger,
@@ -15,21 +9,20 @@ import {
   finalizeCronLog,
 } from "@/lib/logger";
 import {
-  sendTemplatesConcurrently,
+  sendPushNotificationsBatch,
   getSuccessfulSubscriberIds,
   batchUpdateLastMessageAt,
-} from "@/lib/message-sender";
-import { previewTemplate } from "@/lib/whatsapp-templates";
+  storeNotifications,
+} from "@/lib/push-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { TARAWEEH_REMINDER_MINUTES, SUHOOR_PLANNING_OFFSET_MINUTES } from "@/lib/constants";
 import { tryClaimReminderLock } from "@/lib/reminder-locks";
+import { formatTime12h } from "@/lib/utils";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
 
-// This should run every 5 minutes during Ramadan
 export async function GET(request: NextRequest) {
-  // Verify cron secret using constant-time comparison for security
   const authHeader = request.headers.get("authorization");
   if (!verifyCronSecret(authHeader)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,7 +31,6 @@ export async function GET(request: NextRequest) {
   const logger = createCronLogger("ramadan-reminders");
 
   try {
-    // Get mosques with Ramadan mode enabled
     const { data: mosques, error: mosqueError } = await supabaseAdmin
       .from("mosques")
       .select("*")
@@ -58,7 +50,6 @@ export async function GET(request: NextRequest) {
     setCronMetadata(logger, { mosqueCount: mosques.length });
 
     for (const mosque of mosques as Mosque[]) {
-      // Get prayer times for Suhoor (Fajr) and Iftar (Maghrib) - with caching
       const prayerTimes = await getMosquePrayerTimes(mosque);
 
       if (!prayerTimes) {
@@ -69,7 +60,6 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Get subscribers who want Ramadan reminders
       const { data: subscribers } = await supabaseAdmin
         .from("subscribers")
         .select("*")
@@ -79,186 +69,126 @@ export async function GET(request: NextRequest) {
 
       if (!subscribers || subscribers.length === 0) continue;
 
-      // Check Suhoor reminder (before Fajr)
-      if (
-        isWithinMinutes(
-          prayerTimes.fajr,
-          mosque.suhoor_reminder_mins,
-          mosque.timezone
-        )
-      ) {
-        // ATOMIC LOCK: Claim exclusive right to send suhoor reminder
+      // Suhoor reminder (before Fajr)
+      if (isWithinMinutes(prayerTimes.fajr, mosque.suhoor_reminder_mins, mosque.timezone)) {
         const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor", 0, mosque.timezone);
         if (lockAcquired) {
-          // Template variables: fajr_time, mosque_name
-          const templateVars = [prayerTimes.fajr, mosque.name];
+          const payload = {
+            title: "Suhoor Reminder",
+            body: `Fajr at ${formatTime12h(prayerTimes.fajr)} - Finish your suhoor | ${mosque.name}`,
+            icon: "/icon-192x192.png",
+            tag: "suhoor",
+            url: "/",
+          };
 
-          // Send messages concurrently with p-limit (max 10 concurrent) using template
-          const batchResult = await sendTemplatesConcurrently(
-            subscribers as Subscriber[],
-            SUHOOR_REMINDER_TEMPLATE,
-            templateVars,
-            logger
-          );
-
-          // Generate message content for logging (preview with actual values)
-          const message = previewTemplate(SUHOOR_REMINDER_TEMPLATE, templateVars);
-
-          // Batch update last_message_at for successful sends
+          const batchResult = await sendPushNotificationsBatch(subscribers as Subscriber[], payload, logger);
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
+          await storeNotifications(subscribers as Subscriber[], payload, mosque.id, "ramadan");
 
-          const { error: suhoorMsgError } = await supabaseAdmin.from("messages").insert({
+          const { error: msgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "ramadan",
-            content: message,
+            content: payload.body,
             sent_to_count: batchResult.successful,
             status: "sent",
             metadata: { reminder_type: "suhoor" },
           });
-          if (suhoorMsgError) {
-            console.error('[ramadan-reminders] Failed to log suhoor message:', suhoorMsgError.message, suhoorMsgError.code, suhoorMsgError.details);
-          }
+          if (msgError) console.error('[ramadan-reminders] Failed to log suhoor message:', msgError.message);
         }
       }
 
-      // Check Iftar reminder (before Maghrib)
-      if (
-        isWithinMinutes(
-          prayerTimes.maghrib,
-          mosque.iftar_reminder_mins,
-          mosque.timezone
-        )
-      ) {
-        // ATOMIC LOCK: Claim exclusive right to send iftar reminder
+      // Iftar reminder (before Maghrib)
+      if (isWithinMinutes(prayerTimes.maghrib, mosque.iftar_reminder_mins, mosque.timezone)) {
         const lockAcquired = await tryClaimReminderLock(mosque.id, "iftar", 0, mosque.timezone);
         if (lockAcquired) {
-          // Template variables: minutes_until, maghrib_time, mosque_name
-          const templateVars = [
-            String(mosque.iftar_reminder_mins),
-            prayerTimes.maghrib,
-            mosque.name,
-          ];
+          const payload = {
+            title: "Iftar Reminder",
+            body: `${mosque.iftar_reminder_mins} minutes until Iftar at ${formatTime12h(prayerTimes.maghrib)} | ${mosque.name}`,
+            icon: "/icon-192x192.png",
+            tag: "iftar",
+            url: "/",
+          };
 
-          // Send messages concurrently with p-limit (max 10 concurrent) using template
-          const batchResult = await sendTemplatesConcurrently(
-            subscribers as Subscriber[],
-            IFTAR_REMINDER_TEMPLATE,
-            templateVars,
-            logger
-          );
-
-          // Generate message content for logging (preview with actual values)
-          const message = previewTemplate(IFTAR_REMINDER_TEMPLATE, templateVars);
-
-          // Batch update last_message_at for successful sends
+          const batchResult = await sendPushNotificationsBatch(subscribers as Subscriber[], payload, logger);
           const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
           await batchUpdateLastMessageAt(successfulIds);
+          await storeNotifications(subscribers as Subscriber[], payload, mosque.id, "ramadan");
 
-          const { error: iftarMsgError } = await supabaseAdmin.from("messages").insert({
+          const { error: msgError } = await supabaseAdmin.from("messages").insert({
             mosque_id: mosque.id,
             type: "ramadan",
-            content: message,
+            content: payload.body,
             sent_to_count: batchResult.successful,
             status: "sent",
             metadata: { reminder_type: "iftar" },
           });
-          if (iftarMsgError) {
-            console.error('[ramadan-reminders] Failed to log iftar message:', iftarMsgError.message, iftarMsgError.code, iftarMsgError.details);
-          }
+          if (msgError) console.error('[ramadan-reminders] Failed to log iftar message:', msgError.message);
         }
       }
 
-      // Check Taraweeh reminder (if taraweeh_time is set)
+      // Taraweeh reminder
       if (mosque.taraweeh_time) {
-        if (
-          isTimeWithinMinutesBefore(
-            mosque.taraweeh_time,
-            TARAWEEH_REMINDER_MINUTES,
-            mosque.timezone
-          )
-        ) {
-          // ATOMIC LOCK: Claim exclusive right to send taraweeh reminder
+        if (isTimeWithinMinutesBefore(mosque.taraweeh_time, TARAWEEH_REMINDER_MINUTES, mosque.timezone)) {
           const lockAcquired = await tryClaimReminderLock(mosque.id, "taraweeh", 0, mosque.timezone);
           if (lockAcquired) {
             const formattedTime = formatDbTime(mosque.taraweeh_time);
+            const payload = {
+              title: "Taraweeh Reminder",
+              body: `Taraweeh at ${formattedTime} | ${mosque.name}`,
+              icon: "/icon-192x192.png",
+              tag: "taraweeh",
+              url: "/",
+            };
 
-            // Template variables: taraweeh_time, mosque_name
-            const templateVars = [formattedTime, mosque.name];
-
-            // Send messages concurrently with p-limit (max 10 concurrent) using template
-            const batchResult = await sendTemplatesConcurrently(
-              subscribers as Subscriber[],
-              TARAWEEH_REMINDER_TEMPLATE,
-              templateVars,
-              logger
-            );
-
-            // Generate message content for logging (preview with actual values)
-            const message = previewTemplate(TARAWEEH_REMINDER_TEMPLATE, templateVars);
-
-            // Batch update last_message_at for successful sends
+            const batchResult = await sendPushNotificationsBatch(subscribers as Subscriber[], payload, logger);
             const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
             await batchUpdateLastMessageAt(successfulIds);
+            await storeNotifications(subscribers as Subscriber[], payload, mosque.id, "ramadan");
 
-            const { error: taraweehMsgError } = await supabaseAdmin.from("messages").insert({
+            const { error: msgError } = await supabaseAdmin.from("messages").insert({
               mosque_id: mosque.id,
               type: "ramadan",
-              content: message,
+              content: payload.body,
               sent_to_count: batchResult.successful,
               status: "sent",
               metadata: { reminder_type: "taraweeh" },
             });
-            if (taraweehMsgError) {
-              console.error('[ramadan-reminders] Failed to log taraweeh message:', taraweehMsgError.message, taraweehMsgError.code, taraweehMsgError.details);
-            }
+            if (msgError) console.error('[ramadan-reminders] Failed to log taraweeh message:', msgError.message);
           }
         }
 
-        // Also send suhoor planning reminder after Isha/Taraweeh
-        // This helps people prepare for the next day's suhoor
-        if (
-          isWithinMinutesAfter(
-            prayerTimes.isha,
-            SUHOOR_PLANNING_OFFSET_MINUTES,
-            mosque.timezone
-          )
-        ) {
-          // ATOMIC LOCK: Claim exclusive right to send suhoor planning reminder
+        // Suhoor planning reminder after Isha
+        if (isWithinMinutesAfter(prayerTimes.isha, SUHOOR_PLANNING_OFFSET_MINUTES, mosque.timezone)) {
           const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor_planning", 0, mosque.timezone);
           if (lockAcquired) {
-            // Get tomorrow's Fajr time
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             const tomorrowPrayerTimes = await getMosquePrayerTimes(mosque, tomorrow);
 
             if (tomorrowPrayerTimes) {
-              // Template variables: fajr_time, mosque_name
-              const templateVars = [tomorrowPrayerTimes.fajr, mosque.name];
+              const payload = {
+                title: "Suhoor Planning",
+                body: `Tomorrow's Fajr is at ${formatTime12h(tomorrowPrayerTimes.fajr)} - Set your alarm! | ${mosque.name}`,
+                icon: "/icon-192x192.png",
+                tag: "suhoor-planning",
+                url: "/",
+              };
 
-              const batchResult = await sendTemplatesConcurrently(
-                subscribers as Subscriber[],
-                SUHOOR_PLANNING_TEMPLATE,
-                templateVars,
-                logger
-              );
-
-              const message = previewTemplate(SUHOOR_PLANNING_TEMPLATE, templateVars);
-
+              const batchResult = await sendPushNotificationsBatch(subscribers as Subscriber[], payload, logger);
               const successfulIds = getSuccessfulSubscriberIds(batchResult.results);
               await batchUpdateLastMessageAt(successfulIds);
+              await storeNotifications(subscribers as Subscriber[], payload, mosque.id, "ramadan");
 
-              const { error: planningMsgError } = await supabaseAdmin.from("messages").insert({
+              const { error: msgError } = await supabaseAdmin.from("messages").insert({
                 mosque_id: mosque.id,
                 type: "ramadan",
-                content: message,
+                content: payload.body,
                 sent_to_count: batchResult.successful,
                 status: "sent",
                 metadata: { reminder_type: "suhoor_planning" },
               });
-              if (planningMsgError) {
-                console.error('[ramadan-reminders] Failed to log suhoor_planning message:', planningMsgError.message, planningMsgError.code, planningMsgError.details);
-              }
+              if (msgError) console.error('[ramadan-reminders] Failed to log suhoor_planning message:', msgError.message);
             }
           }
         }

@@ -20,7 +20,7 @@ export default function NotFound() {
           </Link>
         </div>
         <p className="text-sm text-muted-foreground mt-12">
-          Masjid Notify - Prayer Reminders via WhatsApp
+          Masjid Notify - Prayer Reminders
         </p>
       </div>
     </div>

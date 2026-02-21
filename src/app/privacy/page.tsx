@@ -4,7 +4,7 @@ import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Masjid Notify",
-  description: "Privacy Policy for Masjid Notify WhatsApp notification service",
+  description: "Privacy Policy for Masjid Notify push notification service",
 };
 
 export default function PrivacyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
 
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-6">
           <p className="text-muted-foreground">
-            Last updated: February 1, 2026
+            Last updated: February 21, 2026
           </p>
 
           <section className="space-y-4">
@@ -24,7 +24,8 @@ export default function PrivacyPage() {
               Masjid Notify collects the following information when you subscribe to our service:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li><strong>Phone Number:</strong> Your WhatsApp phone number, used to send you notifications</li>
+              <li><strong>Push Subscription Data:</strong> Your browser&apos;s push notification endpoint and encryption keys, used to send you notifications</li>
+              <li><strong>Device Information:</strong> Your browser&apos;s user agent string, used to identify your device in our system</li>
               <li><strong>Notification Preferences:</strong> Your choices for which types of messages you want to receive (prayer reminders, Jumu&apos;ah notifications, Ramadan reminders, daily hadith, announcements)</li>
               <li><strong>Subscription Date:</strong> When you subscribed to the service</li>
             </ul>
@@ -47,14 +48,14 @@ export default function PrivacyPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">3. Data Storage and Security</h2>
             <p className="text-muted-foreground">
-              Your data is stored securely using Supabase, a trusted database platform with enterprise-grade security. We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.
+              Your data is stored securely using Supabase, a trusted database platform with enterprise-grade security. We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. Push subscription data is encrypted end-to-end using Web Push protocol standards (VAPID).
             </p>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">4. Data Sharing</h2>
             <p className="text-muted-foreground">
-              We do not sell, trade, or share your personal information with third parties. Your data is used exclusively for providing the Masjid Notify service. The only third-party service that receives your phone number is WhatsApp (Meta) for the purpose of delivering messages.
+              We do not sell, trade, or share your personal information with third parties. Your data is used exclusively for providing the Masjid Notify service. Push notifications are delivered through your browser&apos;s built-in push service (e.g., Google FCM for Chrome, Mozilla Push Service for Firefox, APNs for Safari).
             </p>
           </section>
 
@@ -64,10 +65,10 @@ export default function PrivacyPage() {
               You have the following rights regarding your data:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li><strong>Unsubscribe:</strong> Send &quot;STOP&quot; to our WhatsApp number at any time to stop receiving messages</li>
-              <li><strong>Manage Preferences:</strong> Send &quot;SETTINGS&quot; to update your notification preferences</li>
-              <li><strong>Data Deletion:</strong> Request complete deletion of your data by emailing us</li>
-              <li><strong>Pause:</strong> Send &quot;PAUSE [days]&quot; to temporarily pause notifications</li>
+              <li><strong>Unsubscribe:</strong> Visit the <Link href="/settings" className="text-primary hover:underline">Settings</Link> page at any time to unsubscribe from all notifications</li>
+              <li><strong>Manage Preferences:</strong> Update your notification preferences on the <Link href="/settings" className="text-primary hover:underline">Settings</Link> page</li>
+              <li><strong>Data Deletion:</strong> Request complete deletion of your data by emailing us or unsubscribing through Settings</li>
+              <li><strong>Pause:</strong> Temporarily pause notifications from the Settings page</li>
             </ul>
           </section>
 
@@ -94,7 +95,7 @@ export default function PrivacyPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">8. Changes to This Policy</h2>
             <p className="text-muted-foreground">
-              We may update this Privacy Policy from time to time. We will notify subscribers of any significant changes via WhatsApp message. Your continued use of the service after changes constitutes acceptance of the updated policy.
+              We may update this Privacy Policy from time to time. We will notify subscribers of any significant changes via push notification. Your continued use of the service after changes constitutes acceptance of the updated policy.
             </p>
           </section>
         </div>

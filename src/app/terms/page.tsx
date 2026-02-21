@@ -4,7 +4,7 @@ import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Terms of Service | Masjid Notify",
-  description: "Terms of Service for Masjid Notify WhatsApp notification service",
+  description: "Terms of Service for Masjid Notify push notification service",
 };
 
 export default function TermsPage() {
@@ -15,7 +15,7 @@ export default function TermsPage() {
 
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-6">
           <p className="text-muted-foreground">
-            Last updated: February 1, 2026
+            Last updated: February 21, 2026
           </p>
 
           <section className="space-y-4">
@@ -28,7 +28,7 @@ export default function TermsPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">2. Service Description</h2>
             <p className="text-muted-foreground">
-              Masjid Notify is a WhatsApp-based notification service that sends:
+              Masjid Notify is a web-based push notification service that sends:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Prayer time reminders for the five daily prayers</li>
@@ -45,7 +45,7 @@ export default function TermsPage() {
               As a user of Masjid Notify, you agree to:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>Provide a valid WhatsApp phone number that belongs to you</li>
+              <li>Grant browser notification permissions to receive notifications</li>
               <li>Not use the service for any unlawful purpose</li>
               <li>Not attempt to reverse engineer, hack, or disrupt the service</li>
               <li>Keep your notification preferences up to date</li>
@@ -53,19 +53,20 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">4. Message Frequency</h2>
+            <h2 className="text-xl font-semibold text-foreground">4. Notification Frequency</h2>
             <p className="text-muted-foreground">
-              Message frequency depends on your preferences. You may receive:
+              Notification frequency depends on your preferences. You may receive:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
               <li>Up to 5 prayer reminders daily (if all prayers selected)</li>
               <li>1 Jumu&apos;ah reminder on Fridays</li>
-              <li>1 daily hadith message</li>
+              <li>1 daily hadith notification</li>
               <li>Occasional mosque announcements</li>
               <li>Additional Ramadan reminders during Ramadan (if enabled)</li>
             </ul>
             <p className="text-muted-foreground">
-              You can adjust your preferences at any time by sending &quot;SETTINGS&quot; to our WhatsApp number.
+              You can adjust your preferences at any time from the{" "}
+              <Link href="/settings" className="text-primary hover:underline">Settings</Link> page.
             </p>
           </section>
 
@@ -75,7 +76,8 @@ export default function TermsPage() {
               You may unsubscribe from Masjid Notify at any time by:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>Sending &quot;STOP&quot; to our WhatsApp number</li>
+              <li>Visiting the <Link href="/settings" className="text-primary hover:underline">Settings</Link> page and clicking Unsubscribe</li>
+              <li>Disabling notifications in your browser settings</li>
               <li>Contacting us at alqodez@gmail.com</li>
             </ul>
           </section>
@@ -111,7 +113,7 @@ export default function TermsPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">10. Changes to Terms</h2>
             <p className="text-muted-foreground">
-              We reserve the right to modify these Terms of Service at any time. Significant changes will be communicated via WhatsApp message. Continued use of the service after changes constitutes acceptance of the new terms.
+              We reserve the right to modify these Terms of Service at any time. Significant changes will be communicated via push notification. Continued use of the service after changes constitutes acceptance of the new terms.
             </p>
           </section>
 

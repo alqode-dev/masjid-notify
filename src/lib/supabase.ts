@@ -38,7 +38,6 @@ export type Mosque = {
   jumuah_adhaan_time: string;
   jumuah_khutbah_time: string;
   timezone: string;
-  whatsapp_number: string | null;
   ramadan_mode: boolean;
   suhoor_reminder_mins: number;
   iftar_reminder_mins: number;
@@ -60,8 +59,11 @@ export type Mosque = {
 
 export type Subscriber = {
   id: string;
-  phone_number: string;
   mosque_id: string;
+  push_endpoint: string | null;
+  push_p256dh: string | null;
+  push_auth: string | null;
+  user_agent: string | null;
   subscribed_at: string;
   status: "active" | "paused" | "unsubscribed";
   pause_until: string | null;
@@ -75,6 +77,18 @@ export type Subscriber = {
   last_message_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type Notification = {
+  id: string;
+  subscriber_id: string;
+  mosque_id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  read: boolean;
+  created_at: string;
 };
 
 export type Admin = {
@@ -91,7 +105,7 @@ export type Admin = {
 export type Message = {
   id: string;
   mosque_id: string;
-  type: "prayer" | "hadith" | "announcement" | "ramadan" | "welcome" | "jumuah" | "nafl" | "webhook_command";
+  type: "prayer" | "hadith" | "announcement" | "ramadan" | "welcome" | "jumuah" | "nafl";
   content: string;
   sent_to_count: number;
   sent_at: string;

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Send, AlertCircle, Clock, Calendar, Info } from "lucide-react";
+import { Send, AlertCircle, Clock, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { MessageTemplates } from "./message-templates";
 
@@ -119,21 +119,11 @@ export function AnnouncementForm({
     }
   };
 
-  const formattedPreview = `Announcement from ${mosqueName}:\n\n${content}\n\nReply STOP to unsubscribe.`;
+  const formattedPreview = `${mosqueName} Announcement\n\n${content}`;
 
   return (
     <div className="space-y-4">
       <MessageTemplates onSelectTemplate={(template) => setContent(template)} />
-
-      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-        <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-          <strong>WhatsApp Policy:</strong> Custom messages can only be delivered
-          to subscribers who have messaged your WhatsApp number within the last
-          24 hours. Pre-approved templates (like prayer reminders) are not
-          affected by this limit.
-        </p>
-      </div>
 
       <div>
         <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -148,7 +138,7 @@ export function AnnouncementForm({
           maxLength={1000}
         />
         <p className="text-xs text-muted-foreground mt-1.5">
-          Sent as: &quot;Announcement from {mosqueName}: [your message] / Reply STOP to unsubscribe&quot; &mdash; the header and footer are added automatically.
+          Sent as a push notification with title &quot;{mosqueName} Announcement&quot;
         </p>
         <div className="flex justify-between mt-1.5">
           <p className="text-xs text-muted-foreground">
@@ -171,7 +161,7 @@ export function AnnouncementForm({
         >
           <Card className="p-4 bg-muted/50">
             <p className="text-xs text-muted-foreground mb-2">
-              WhatsApp Preview:
+              Notification Preview:
             </p>
             <pre className="text-sm text-foreground whitespace-pre-wrap font-sans">
               {formattedPreview}

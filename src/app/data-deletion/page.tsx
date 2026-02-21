@@ -19,17 +19,18 @@ export default function DataDeletionPage() {
           </p>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">Option 1: Unsubscribe via WhatsApp</h2>
+            <h2 className="text-xl font-semibold text-foreground">Option 1: Unsubscribe via Settings</h2>
             <p className="text-muted-foreground">
-              The quickest way to stop receiving messages is to send <strong>&quot;STOP&quot;</strong> to our WhatsApp number. This will:
+              The quickest way to stop receiving notifications is to visit the{" "}
+              <Link href="/settings" className="text-primary hover:underline">Settings</Link> page and click <strong>Unsubscribe</strong>. This will:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>Immediately stop all notifications</li>
+              <li>Immediately stop all push notifications</li>
               <li>Mark your subscription as inactive</li>
               <li>Retain your data for 90 days (in case you want to resubscribe)</li>
             </ul>
             <p className="text-muted-foreground">
-              You can resubscribe at any time by sending <strong>&quot;START&quot;</strong> or <strong>&quot;RESUME&quot;</strong>.
+              You can resubscribe at any time by visiting the home page and enabling notifications again.
             </p>
           </section>
 
@@ -50,7 +51,7 @@ export default function DataDeletionPage() {
               </p>
             </div>
             <p className="text-muted-foreground">
-              Please include the phone number associated with your subscription. We will process your request and permanently delete all your data within <strong>30 days</strong>.
+              Please include details to identify your subscription (e.g., the device and browser you used). We will process your request and permanently delete all your data within <strong>30 days</strong>.
             </p>
           </section>
 
@@ -60,10 +61,10 @@ export default function DataDeletionPage() {
               Upon a complete data deletion request, we will permanently remove:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>Your phone number</li>
+              <li>Your push notification subscription data</li>
               <li>Your notification preferences</li>
               <li>Your subscription history</li>
-              <li>Any message delivery records associated with your number</li>
+              <li>Any notification delivery records associated with your subscription</li>
             </ul>
           </section>
 
@@ -73,7 +74,7 @@ export default function DataDeletionPage() {
               Once your data has been deleted, we will send you a confirmation email. Please note that after deletion:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-              <li>You will no longer receive any messages from Masjid Notify</li>
+              <li>You will no longer receive any notifications from Masjid Notify</li>
               <li>Your data cannot be recovered</li>
               <li>You can subscribe again at any time as a new user</li>
             </ul>

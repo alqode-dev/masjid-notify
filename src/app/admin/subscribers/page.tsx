@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { SubscribersTable } from "@/components/admin/subscribers-table";
-import { SubscriberImport } from "@/components/admin/subscriber-import";
 import { Select } from "@/components/ui/select";
-import type { Subscriber, Mosque } from "@/lib/supabase";
+import type { Subscriber } from "@/lib/supabase";
 import { Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -18,7 +17,6 @@ const STATUS_OPTIONS = [
 
 export default function SubscribersPage() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
-  const [mosque, setMosque] = useState<Mosque | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -34,9 +32,6 @@ export default function SubscribersPage() {
 
       const data = await response.json();
       setSubscribers(data.subscribers || []);
-      if (data.mosque) {
-        setMosque(data.mosque);
-      }
     } catch (error) {
       console.error("Error fetching subscribers:", error);
       toast.error("Failed to load subscribers");
@@ -89,9 +84,9 @@ export default function SubscribersPage() {
 
   const handleExport = () => {
     const csv = [
-      ["Phone Number", "Status", "Subscribed At", "Daily Prayers", "Jumuah", "Ramadan", "Hadith", "Announcements"],
+      ["Device", "Status", "Subscribed At", "Daily Prayers", "Jumuah", "Ramadan", "Hadith", "Announcements", "Nafl"],
       ...subscribers.map((s) => [
-        s.phone_number,
+        (s.user_agent || "Unknown").replace(/,/g, " "),
         s.status,
         new Date(s.subscribed_at).toLocaleDateString("en-ZA"),
         s.pref_daily_prayers ? "Yes" : "No",
@@ -99,6 +94,7 @@ export default function SubscribersPage() {
         s.pref_ramadan ? "Yes" : "No",
         s.pref_hadith ? "Yes" : "No",
         s.pref_announcements ? "Yes" : "No",
+        s.pref_nafl_salahs ? "Yes" : "No",
       ]),
     ]
       .map((row) => row.join(","))
@@ -113,10 +109,13 @@ export default function SubscribersPage() {
     URL.revokeObjectURL(url);
   };
 
-  const normalizedQuery = searchQuery.replace(/[\s\-+]/g, "");
-  const filteredSubscribers = subscribers.filter((s) =>
-    normalizedQuery === "" || s.phone_number.replace(/[\s\-+]/g, "").includes(normalizedQuery)
-  );
+  // Search by device/user-agent or status
+  const filteredSubscribers = subscribers.filter((s) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const device = (s.user_agent || "").toLowerCase();
+    return device.includes(q) || s.status.includes(q);
+  });
 
   return (
     <div className="space-y-6">
@@ -129,12 +128,6 @@ export default function SubscribersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {mosque && (
-            <SubscriberImport
-              mosqueId={mosque.id}
-              onImportComplete={fetchSubscribers}
-            />
-          )}
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
@@ -145,11 +138,11 @@ export default function SubscribersPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
-          <label htmlFor="subscriber-search" className="sr-only">Search by phone number</label>
+          <label htmlFor="subscriber-search" className="sr-only">Search subscribers</label>
           <input
             id="subscriber-search"
             type="text"
-            placeholder="Search by phone number..."
+            placeholder="Search by device..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50"
