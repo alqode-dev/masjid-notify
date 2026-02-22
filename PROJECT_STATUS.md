@@ -1,7 +1,7 @@
 # Masjid Notify - Project Status
 
-> **Last Updated:** February 21, 2026 @ 23:00 SAST
-> **Version:** 3.0.1
+> **Last Updated:** February 22, 2026 @ 23:00 SAST
+> **Version:** 3.1.0
 > **Status:** Production - Web Push PWA (WhatsApp completely removed, replaced with browser push notifications)
 > **Production URL:** https://masjid-notify.vercel.app
 
@@ -22,6 +22,7 @@
 | **GitHub Repo** | https://github.com/alqode-dev/masjid-notify |
 | **Vercel Dashboard** | https://vercel.com/alqodes-projects/masjid-notify |
 | **Supabase Dashboard** | https://supabase.com/dashboard/project/jlqtuynaxuooymbwrwth |
+| **Announcements** | https://masjid-notify.vercel.app/announcements |
 | **Audio Library** | https://masjid-notify.vercel.app/listen |
 
 ---
@@ -247,7 +248,7 @@ git push origin master
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Landing page | ✅ Works | Shows prayer times (with Hijri date + year), additional sun/prayer times (Ishraq, Duha, Zawal, Sunset), subscribe form, dynamic location from DB |
+| Landing page | ✅ Works | Shows prayer times (with Hijri date + year), additional sun/prayer times, subscribe form, sticky header with notification bell, 6 feature cards (Prayer Reminders, Announcements, Ramadan Ready, Audio Library, Settings, Notifications) |
 | Subscribe form | ✅ Works | Enable notifications → choose preferences → subscribe (no phone number) |
 | Web Push sending | ✅ Works | VAPID-authenticated push notifications to all major browsers |
 | Welcome notifications | ✅ Works | Sent on subscription via push notification |
@@ -258,7 +259,9 @@ git push origin master
 | Admin login | ✅ Works | Email: alqodez@gmail.com |
 | Admin dashboard | ✅ Works | Stats cards, subscriber counts, analytics charts, **middleware-protected (v1.9.0)** |
 | Admin subscribers | ✅ Works | Table with ARIA labels, search, filter, export, **delete confirmation** |
-| Admin announcements | ✅ Works | Send now (concurrent push), schedule, templates |
+| Public Announcements | ✅ Works | `/announcements` page — view recent mosque announcements with image/PDF attachments |
+| Notification Bell | ✅ Works | Sticky header bell icon with unread count badge, links to `/notifications` |
+| Admin announcements | ✅ Works | Send now (concurrent push), schedule, templates, **image/PDF attachment upload (v3.1)** |
 | Admin settings | ✅ Works | Prayer settings save, **cache invalidated on change** |
 | Admin QR code | ✅ Works | Generate and download QR codes |
 | Admin analytics | ✅ Works | Subscriber growth, message types, status breakdown, **optimized queries (v1.9.0)** |
@@ -271,6 +274,7 @@ git push origin master
 | Error handling | ✅ Works | Comprehensive logging, **batch update error handling** |
 | Social preview | ✅ Works | **Custom OG image** for social sharing (v1.6.1) |
 | Audio Library | ✅ Works | Upload, manage, stream Islamic lectures/Quran recitations via Supabase Storage, public `/listen` page |
+| Prayer Inspiration Messages | ✅ Works | Rotating inspirational hadith/messages per prayer, deterministic by day-of-year |
 | Custom Prayer Times | ✅ Works | calculation_method=99 mode for manual prayer time entry, bypasses Aladhan API and cache |
 | Eid Mode | ✅ Works | Admin can enable Eid mode with Khutbah + Salah times, displayed on landing page |
 | Next Salah Countdown | ✅ Works | Live countdown timer on landing page showing time until next prayer |
@@ -298,6 +302,8 @@ git push origin master
 | **Migration 016** | Web Push migration — add push columns, drop phone/token columns | ✅ **REQUIRED (v3.0)** - Run in Supabase SQL Editor |
 | **Migration 017** | Notifications table for in-app notification center | ✅ **REQUIRED (v3.0)** - Run in Supabase SQL Editor |
 | **Migration 018** | Drop legacy phone_number_old column, remove webhook_command type | ✅ **REQUIRED (v3.0)** - Run in Supabase SQL Editor |
+| **Migration 019** | Clear stale prayer cache entries missing Hijri date fields | ✅ **REQUIRED (v3.1)** - Run in Supabase SQL Editor |
+| **Migration 020** | Add attachments JSONB column to messages table | ✅ **REQUIRED (v3.1)** - Run in Supabase SQL Editor |
 | Migration 007 | Adds Ramadan columns to mosques table | Optional - settings page has fallback |
 | Add retry_count | For scheduled message retry tracking | Optional - code handles missing column |
 
@@ -345,6 +351,15 @@ git push origin master
 - Drops `phone_number_old` column from subscribers
 - Removes `webhook_command` from messages type CHECK constraint
 
+**Migration 019 Details (v3.1 - Stale Cache Cleanup):**
+- Deletes `prayer_times_cache` entries that lack `hijriDate` or `hijriMonth` fields in their JSONB `times` column
+- Forces re-fetch from Aladhan API which includes all Hijri fields
+
+**Migration 020 Details (v3.1 - Announcement Attachments):**
+- Adds `attachments` JSONB column (DEFAULT NULL) to `messages` table
+- Stores array of `{type: "image"|"pdf", url: string, name: string, size: number}` for announcement attachments
+- Requires Supabase Storage bucket `announcements` to be created (public read access)
+
 ---
 
 # PART 2: CURRENT STATUS
@@ -357,20 +372,22 @@ git push origin master
 
 | Component | Status | Last Verified | Notes |
 |-----------|--------|---------------|-------|
-| **Frontend (Next.js)** | ✅ Operational | Feb 21, 2026 | All pages loading, PWA installable, Audio Library, Next Salah countdown, Eid mode, Team management |
-| **Backend API** | ✅ Operational | Feb 21, 2026 | All admin endpoints use secure server-side routes, push + settings + notifications APIs added |
-| **Database (Supabase)** | ✅ Connected | Feb 21, 2026 | PostgreSQL with RLS, audio tables, eid columns, notifications table, 18 migrations applied |
-| **Admin Dashboard** | ✅ Operational | Feb 21, 2026 | All pages functional, accessible, **middleware-protected**, Audio + Team pages added |
-| **Admin Settings** | ✅ Operational | Feb 21, 2026 | Custom prayer times, Eid mode, **cache invalidated on save** |
-| **Web Push Service** | ✅ Active | Feb 21, 2026 | VAPID-authenticated, concurrent sending via `p-limit(10)`, auto-unsubscribe on 410 Gone |
-| **Service Worker** | ✅ Active | Feb 21, 2026 | Serwist-compiled, handles push events + notification clicks, PWA manifest |
-| **Notification Center** | ✅ Operational | Feb 21, 2026 | In-app notification history at `/notifications` |
-| **Subscriber Settings** | ✅ Operational | Feb 21, 2026 | Preference management at `/settings` via localStorage subscriber ID |
-| **Cron Jobs** | ✅ Running | Feb 21, 2026 | 5 jobs, **atomic locking**, **timezone-aware (v2.0.0)**, **core-first architecture**, **dynamic timing**, **cache cleanup** |
-| **Hadith API** | ✅ Integrated | Feb 21, 2026 | jsDelivr CDN (6 collections), **dynamic timing**, **timezone-aware caching (v2.0.0)** |
-| **Audio Library** | ✅ Operational | Feb 21, 2026 | Supabase Storage integration, public streaming page `/listen` |
-| **Team Management** | ✅ Operational | Feb 21, 2026 | Owner-only add/delete admin team members with role-based access |
-| **Cron Diagnostics** | ✅ Operational | Feb 21, 2026 | `/api/cron/diagnostics` endpoint for real-time debugging |
+| **Frontend (Next.js)** | ✅ Operational | Feb 22, 2026 | All pages loading, PWA installable, Audio Library, Next Salah countdown, Eid mode, Team management, announcements page, notification bell |
+| **Backend API** | ✅ Operational | Feb 22, 2026 | All admin endpoints use secure server-side routes, push + settings + notifications + attachment upload APIs |
+| **Database (Supabase)** | ✅ Connected | Feb 22, 2026 | PostgreSQL with RLS, audio tables, eid columns, notifications table, attachments column, 20 migrations applied |
+| **Admin Dashboard** | ✅ Operational | Feb 22, 2026 | All pages functional, accessible, **middleware-protected**, Audio + Team pages, announcement attachments |
+| **Admin Settings** | ✅ Operational | Feb 22, 2026 | Custom prayer times, Eid mode, **cache invalidated on save** |
+| **Web Push Service** | ✅ Active | Feb 22, 2026 | VAPID-authenticated, concurrent sending via `p-limit(10)`, auto-unsubscribe on 410 Gone |
+| **Service Worker** | ✅ Active | Feb 22, 2026 | Serwist-compiled, handles push events + notification clicks, PWA manifest |
+| **Notification Center** | ✅ Operational | Feb 22, 2026 | In-app notification history at `/notifications`, read/unread filtering |
+| **Notification Bell** | ✅ Operational | Feb 22, 2026 | Sticky header bell icon with unread count badge, links to `/notifications` |
+| **Announcements Page** | ✅ Operational | Feb 22, 2026 | Public `/announcements` page — view recent mosque announcements with image/PDF attachments |
+| **Subscriber Settings** | ✅ Operational | Feb 22, 2026 | Preference management at `/settings` via localStorage subscriber ID, pause/unsubscribe |
+| **Cron Jobs** | ✅ Running | Feb 22, 2026 | 5 jobs, **atomic locking**, **timezone-aware (v2.0.0)**, **core-first architecture**, **dynamic timing**, **cache cleanup**, **prayer inspiration messages** |
+| **Hadith API** | ✅ Integrated | Feb 22, 2026 | jsDelivr CDN (6 collections), **dynamic timing**, **timezone-aware caching (v2.0.0)** |
+| **Audio Library** | ✅ Operational | Feb 22, 2026 | Supabase Storage integration, public streaming page `/listen` |
+| **Team Management** | ✅ Operational | Feb 22, 2026 | Owner-only add/delete admin team members with role-based access |
+| **Cron Diagnostics** | ✅ Operational | Feb 22, 2026 | `/api/cron/diagnostics` endpoint for real-time debugging |
 | **E2E Tests** | ✅ 101 Passing | Feb 2, 2026 | Full admin dashboard coverage |
 | **Rate Limiting** | ✅ Secure | Feb 9, 2026 | **IP spoofing protection** |
 | **Error Tracking** | ⚠️ Optional | - | Requires Sentry DSN |
@@ -393,12 +410,12 @@ git push origin master
 
 | Metric | Value |
 |--------|-------|
-| **Development Sprint** | January 31 - February 21, 2026 |
-| **User Stories Completed** | 30/30 (100%) |
+| **Development Sprint** | January 31 - February 22, 2026 |
+| **User Stories Completed** | 33/33 (100%) |
 | **E2E Tests** | 101 tests (all passing) |
-| **Bug Fixes (v1.6.x-v3.0.0)** | 100+ issues resolved |
-| **Total Commits** | 101 commits |
-| **Lines of Code** | ~12,500+ lines |
+| **Bug Fixes (v1.6.x-v3.1.0)** | 100+ issues resolved |
+| **Total Commits** | 103+ commits |
+| **Lines of Code** | ~13,500+ lines |
 | **Build Time** | ~4.8 seconds (Turbopack) |
 | **Deployment Region** | Washington D.C. (iad1) |
 
@@ -441,6 +458,13 @@ git push origin master
 - ✅ **WhatsApp fully removed** (v3.0 — replaced with Web Push + PWA)
 - ✅ **Hijri date with year** (v3.0.1 — formatted as "3 Ramadan 1447 AH")
 - ✅ **Additional sun/prayer times** (v3.0.1 — Ishraq, Duha, Zawal, Sunset computed from prayer data)
+- ✅ **Public Announcements page** (v3.1 — `/announcements` with image/PDF attachment support)
+- ✅ **Notification Bell** (v3.1 — sticky header bell with unread count badge)
+- ✅ **Announcement attachments** (v3.1 — image/PDF upload via Supabase Storage `announcements` bucket)
+- ✅ **Prayer inspiration messages** (v3.1 — rotating hadith/messages per prayer, deterministic by day-of-year)
+- ✅ **Feature cards navigation** (v3.1 — Settings + Notifications promoted to landing page, footer legal-only)
+- ✅ **Enhanced subscribe form** (v3.1 — improved UX)
+- ✅ **Notifications read/unread filtering** (v3.1 — enhanced notification center)
 
 ---
 
@@ -469,6 +493,8 @@ git push origin master
 | **Consistent admin auth** | All admin routes standardized to `withAdminAuth` wrapper | All admin routes |
 | **Push subscription validation** | Validates push endpoint, p256dh, auth keys on subscribe | `subscribe/route.ts` |
 | **Auto-unsubscribe expired** | 410 Gone from push service triggers auto-unsubscribe | `push-sender.ts` |
+| **Attachment file validation** | File type whitelist (JPEG/PNG/WebP/PDF), 10MB size limit, filename sanitization | `announcements/upload-url/route.ts` |
+| **Signed upload URLs** | Supabase Storage signed URLs for time-limited direct uploads (not through our server) | `announcements/upload-url/route.ts` |
 
 ### Code Quality Improvements (v1.6.0 - v3.0.0)
 
@@ -542,6 +568,10 @@ export const REMINDER_OPTIONS = [
   { value: "15", label: "15 minutes before" },
   { value: "30", label: "30 minutes before" },
 ];
+
+// Default mosque slug (single-mosque MVP)
+export const DEFAULT_MOSQUE_SLUG =
+  process.env.NEXT_PUBLIC_DEFAULT_MOSQUE_SLUG || "anwaarul-islam-rondebosch-east";
 ```
 
 ---
@@ -647,8 +677,10 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
 1. Login to admin dashboard
 2. Go to Announcements
 3. Type your message (or select a template)
-4. Click "Send Now" or schedule for later
-5. **Messages are sent as push notifications concurrently** for better performance
+4. **Optionally attach images (JPEG/PNG/WebP) or PDFs** (max 10MB each) — click or drag-drop to upload
+5. Click "Send Now" or schedule for later
+6. **Messages are sent as push notifications concurrently** for better performance
+7. Announcements with attachments are viewable at `/announcements`
 
 ### How to Check Vercel Deployment Status
 
@@ -739,6 +771,8 @@ curl -H "Authorization: Bearer masjidnotify2025cron" \
    - `016_web_push_migration.sql` — Adds push columns, drops phone/token columns
    - `017_notifications_table.sql` — Creates notifications table
    - `018_drop_phone_column.sql` — Drops legacy phone_number_old column
+   - `019_clear_stale_prayer_cache.sql` — Clears stale cache entries missing Hijri fields
+   - `020_announcements_attachments.sql` — Adds attachments column to messages table
 
 ### Step 9: Verify Everything Works
 
@@ -1009,7 +1043,7 @@ The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker
 
 ## All Features
 
-### Core Features (28 Total)
+### Core Features (33 Total)
 
 | # | Feature | Status | Description |
 |---|---------|--------|-------------|
@@ -1041,6 +1075,11 @@ The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker
 | 26 | Cron Diagnostics | ✅ Live | Real-time diagnostic endpoint for debugging (v2.0.0) |
 | 27 | PWA / Service Worker | ✅ Live | Installable web app, offline support, push handler (v3.0.0) |
 | 28 | Hijri Date & Additional Times | ✅ Live | Full Hijri date with year ("3 Ramadan 1447 AH"), plus Ishraq/Duha/Zawal/Sunset computed from prayer data (v3.0.1) |
+| 29 | Public Announcements Page | ✅ Live | `/announcements` — view recent mosque announcements with image/PDF attachments (v3.1.0) |
+| 30 | Notification Bell | ✅ Live | Sticky header bell icon with unread count badge, links to notification center (v3.1.0) |
+| 31 | Announcement Attachments | ✅ Live | Image/PDF upload in admin announcements, stored in Supabase Storage `announcements` bucket (v3.1.0) |
+| 32 | Prayer Inspiration Messages | ✅ Live | Rotating inspirational hadith/messages per prayer type, deterministic by day-of-year (v3.1.0) |
+| 33 | Feature Cards Navigation | ✅ Live | Landing page 6-card grid (Settings, Notifications, Announcements, Audio, Prayer, Ramadan). Footer legal-only. (v3.1.0) |
 
 ### Subscriber Preferences (6 Options)
 
@@ -1060,7 +1099,8 @@ The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker
 | **Update preferences** | `/settings` page (localStorage subscriber ID) | `settings/page.tsx`, `api/settings/route.ts` |
 | **Pause notifications** | `/settings` page — pause for 1-30 days | `api/settings/route.ts` |
 | **Unsubscribe** | `/settings` page — unsubscribe button | `api/settings/unsubscribe/route.ts` |
-| **View notifications** | `/notifications` page — all received notifications | `notifications/page.tsx`, `api/notifications/route.ts` |
+| **View notifications** | `/notifications` page — all received notifications (read/unread filter) | `notifications/page.tsx`, `api/notifications/route.ts` |
+| **View announcements** | `/announcements` page — recent mosque announcements with attachments | `announcements/page.tsx` |
 
 ---
 
@@ -1074,7 +1114,7 @@ The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker
 | `GET` | `/api/settings` | Get subscriber preferences (by subscriber ID query param) |
 | `PUT` | `/api/settings` | Update subscriber preferences |
 | `POST` | `/api/settings/unsubscribe` | Unsubscribe a subscriber |
-| `GET` | `/api/notifications` | Get subscriber's notification history |
+| `GET` | `/api/notifications` | Get subscriber's notification history (supports `countOnly=true` for unread count) |
 | `GET` | `/api/audio` | List public audio collections |
 | `GET` | `/api/audio/[collectionId]` | Get audio files in collection |
 
@@ -1089,7 +1129,8 @@ The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker
 | `GET` | `/api/admin/settings` | Get mosque settings |
 | `PUT` | `/api/admin/settings` | Update mosque settings (**invalidates prayer cache**) |
 | `GET` | `/api/admin/announcements/data` | Announcements page data (mosque, active count, recent) |
-| `POST` | `/api/admin/announcements` | Send announcement immediately (**concurrent push**) |
+| `POST` | `/api/admin/announcements` | Send announcement immediately (**concurrent push**, supports attachments) |
+| `POST` | `/api/admin/announcements/upload-url` | Get signed upload URL for announcement attachments (images/PDFs, max 10MB) |
 | `GET` | `/api/admin/announcements/schedule` | List scheduled messages |
 | `POST` | `/api/admin/announcements/schedule` | Create scheduled message |
 | `DELETE` | `/api/admin/announcements/schedule/[id]` | Cancel scheduled message |
@@ -1187,6 +1228,7 @@ The source (`src/sw.ts`) is **excluded from tsconfig** because it uses WebWorker
 | `sent_by` | UUID | Admin who sent (null for automated) |
 | `status` | TEXT | **pending / sent / failed / received** |
 | `metadata` | JSONB | Additional data (prayer name, hadith source, etc.) |
+| `attachments` | JSONB | Array of `{type, url, name, size}` for announcement attachments (v3.1) |
 
 ### Key Table: prayer_reminder_locks (v1.7.0)
 
@@ -1265,7 +1307,10 @@ masjid-notify/
 │   │   │   └── team/page.tsx           # Team management (owner-only)
 │   │   │
 │   │   ├── settings/page.tsx           # Subscriber notification preferences (localStorage ID)
-│   │   ├── notifications/page.tsx      # In-app notification center
+│   │   ├── notifications/page.tsx      # In-app notification center (read/unread filtering)
+│   │   ├── announcements/
+│   │   │   ├── page.tsx               # Public announcements page (server component, fetches from DB)
+│   │   │   └── announcements-list.tsx # Client component for announcement cards with attachments
 │   │   ├── privacy/page.tsx            # Privacy policy
 │   │   ├── terms/page.tsx              # Terms of service
 │   │   ├── data-deletion/page.tsx      # Data deletion instructions
@@ -1285,8 +1330,9 @@ masjid-notify/
 │   │       │   ├── settings/route.ts       # Mosque settings GET/PUT (cache invalidation)
 │   │       │   ├── analytics/route.ts      # Analytics charts data
 │   │       │   └── announcements/
-│   │       │       ├── route.ts            # Send announcement (concurrent push)
+│   │       │       ├── route.ts            # Send announcement (concurrent push, with attachments)
 │   │       │       ├── data/route.ts       # Announcements page data
+│   │       │       ├── upload-url/route.ts # Signed upload URL for attachments (images/PDFs, max 10MB)
 │   │       │       └── schedule/           # Scheduled messages
 │   │       │   ├── audio/
 │   │       │   │   ├── collections/        # Audio collections CRUD + [id] delete
@@ -1305,7 +1351,8 @@ masjid-notify/
 │   ├── components/
 │   │   ├── ui/                         # shadcn components
 │   │   │   └── checkbox.tsx            # Accessible checkbox (v1.6.0)
-│   │   ├── footer.tsx                  # "Powered by Alqode"
+│   │   ├── footer.tsx                  # Legal links only (Privacy, Terms, Data Deletion) + "Powered by Alqode"
+│   │   ├── notification-bell.tsx       # Sticky header bell with unread count badge (v3.1)
 │   │   ├── prayer-times.tsx            # Prayer times display + Hijri date (with year) + additional sun/prayer times (Ishraq, Duha, Zawal, Sunset)
 │   │   ├── next-salah-countdown.tsx    # Live countdown to next prayer
 │   │   ├── qr-code.tsx
@@ -1329,7 +1376,8 @@ masjid-notify/
 │       ├── hadith-api.ts               # External hadith API (Fisher-Yates shuffle)
 │       ├── ratelimit.ts                # Rate limiting (IP spoofing protection)
 │       ├── auth.ts                     # Auth utilities (constant-time comparison)
-│       ├── constants.ts                # Time constants (v1.6.0, updated v1.7.1)
+│       ├── constants.ts                # Time constants (v1.6.0, updated v1.7.1, updated v3.1 — DEFAULT_MOSQUE_SLUG)
+│       ├── prayer-messages.ts          # Inspirational messages per prayer type, rotating by day-of-year (v3.1)
 │       ├── reminder-locks.ts           # Atomic reminder locking utility (v1.7.0)
 │       ├── time-format.ts              # Client-safe time utilities: formatDbTime, parseTime12hToMinutes, minutesToTime12h, addMinutesToTime, midpointTime (v3.0.1)
 │       ├── logger.ts                   # Structured logging
@@ -1376,12 +1424,14 @@ masjid-notify/
 │       ├── 015_fix_admins_password_hash.sql # (v2.0.0) Make password_hash nullable
 │       ├── 016_web_push_migration.sql       # (v3.0.0) Add push columns, drop phone/token
 │       ├── 017_notifications_table.sql      # (v3.0.0) In-app notification center
-│       └── 018_drop_phone_column.sql        # (v3.0.0) Drop legacy phone column, clean types
+│       ├── 018_drop_phone_column.sql        # (v3.0.0) Drop legacy phone column, clean types
+│       ├── 019_clear_stale_prayer_cache.sql # (v3.1.0) Clear stale cache entries missing Hijri fields
+│       └── 020_announcements_attachments.sql # (v3.1.0) Add attachments JSONB column to messages
 │
 ├── playwright.config.ts               # Test configuration
 ├── package.json
 ├── tsconfig.json
-├── next.config.ts                      # Wrapped with withSerwist() for service worker
+├── next.config.ts                      # Wrapped with withSentryConfig() (security headers, Sentry integration)
 ├── vercel.json
 ├── CLAUDE.md                          # AI assistant instructions
 └── .env.local.example
@@ -1611,7 +1661,7 @@ These variables are no longer needed and should be deleted from Vercel:
 ### Admin Capabilities
 
 - View subscriber statistics and growth charts
-- Send announcements to all active subscribers (concurrent push sending)
+- Send announcements to all active subscribers (concurrent push sending) with image/PDF attachments
 - Schedule messages for future delivery
 - Cancel pending scheduled messages
 - Export subscriber list to CSV
@@ -1746,6 +1796,127 @@ npx playwright test --headed
 ---
 
 ## Changelog
+
+### Version 3.1.0 - February 22, 2026
+
+**FEATURE: Announcements Page, Notification Bell, Attachments, Prayer Messages, Navigation Cleanup**
+
+This release adds a public announcements page, notification bell in the header, announcement attachment support (images/PDFs), inspirational prayer messages, and reorganizes the landing page navigation.
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Public Announcements Page** | `/announcements` — server-rendered page showing recent mosque announcements. Client component (`AnnouncementsList`) renders cards with image/PDF attachment support. Fetches from `messages` table filtered by `type=announcement, status=sent`, ordered by `sent_at DESC`, limited to 20. |
+| **Notification Bell** | `NotificationBell` component in sticky header bar at top of landing page. Uses `useSyncExternalStore` to reactively read `subscriberId` from localStorage. Fetches unread count via `/api/notifications?countOnly=true`. Shows badge with count (99+ cap). Only renders if subscriber is registered. |
+| **Announcement Attachments** | Admin can attach images (JPEG, PNG, WebP) and PDFs (max 10MB each) to announcements. Upload flow: admin selects file → `/api/admin/announcements/upload-url` generates signed Supabase Storage URL → file uploaded directly to `announcements` bucket → public URL + metadata stored in `messages.attachments` JSONB column. Displayed on public `/announcements` page with image preview and PDF download cards. |
+| **Prayer Inspiration Messages** | New `src/lib/prayer-messages.ts` library with per-prayer inspirational hadith pools (fajr, dhuhr, asr, maghrib, isha, jumuah, suhoor, iftar, taraweeh, suhoor_planning, tahajjud, ishraq, awwabin). Messages rotate deterministically by day-of-year in the mosque's timezone. Used in cron job notification text for variety. |
+| **Feature Cards Navigation** | Landing page feature grid expanded from 4 to 6 cards in a `grid-cols-2 md:grid-cols-3` layout. New cards: **Settings** (gear icon → `/settings`) and **Notifications** (bell icon → `/notifications`). All linked cards have hover/tap animation and arrow indicator via `LinkedFeatureCard` component. |
+| **Footer Cleanup** | Footer stripped to legal-only links: Privacy Policy, Terms of Service, Data Deletion + "Powered by Alqode". Settings, Notifications, Announcements, and Audio Library links removed from footer (now accessible via feature cards). |
+| **Sticky Header** | Landing page has a sticky top bar with mosque name + notification bell, providing persistent navigation. |
+| **Enhanced Notifications Page** | Notifications center now supports read/unread filtering. |
+| **Enhanced Subscribe Form** | Improved UX for the subscription flow. |
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/announcements/page.tsx` | Server component — fetches announcements from DB, renders `AnnouncementsList` |
+| `src/app/announcements/announcements-list.tsx` | Client component — announcement cards with image/PDF attachment rendering, Framer Motion animations |
+| `src/app/api/admin/announcements/upload-url/route.ts` | Admin API — generates signed Supabase Storage upload URL. Validates file type (JPEG/PNG/WebP/PDF) and size (max 10MB). Sanitizes filename. Returns signed URL + public URL + file type. |
+| `src/components/notification-bell.tsx` | Client component — bell icon with unread count badge. Uses `useSyncExternalStore` for localStorage reactivity. Fetches count from notifications API. |
+| `src/lib/prayer-messages.ts` | Prayer-specific inspirational message pools. `getInspirationMessage(prayerKey, timezone)` returns message rotating by day-of-year. |
+| `supabase/migrations/019_clear_stale_prayer_cache.sql` | Clears cache entries missing Hijri date fields |
+| `supabase/migrations/020_announcements_attachments.sql` | Adds `attachments JSONB DEFAULT NULL` to messages table |
+
+#### Modified Files
+
+| File | Change |
+|------|--------|
+| `src/app/landing-page.tsx` | Added sticky header with `NotificationBell`, expanded feature grid to 6 cards with `LinkedFeatureCard` component, imported `Settings` and `BellRing` from lucide-react |
+| `src/components/footer.tsx` | Removed Settings, Notifications, Announcements, Audio Library links — footer now legal-only |
+| `src/components/admin/announcement-form.tsx` | Added file attachment upload UI — drag/drop or click to select, preview images, show PDF info, upload to Supabase Storage via signed URL |
+| `src/app/api/admin/announcements/route.ts` | Updated to accept and store `attachments` array in messages table |
+| `src/app/api/admin/announcements/schedule/route.ts` | Minor updates for attachment support |
+| `src/app/api/admin/settings/route.ts` | Added Eid mode setting fields |
+| `src/app/api/cron/prayer-reminders/route.ts` | Uses `getInspirationMessage()` for varied notification text |
+| `src/app/api/cron/jumuah-reminder/route.ts` | Uses `getInspirationMessage()` for varied notification text |
+| `src/app/api/cron/nafl-reminders/route.ts` | Uses `getInspirationMessage()` for varied notification text |
+| `src/app/api/cron/ramadan-reminders/route.ts` | Uses `getInspirationMessage()` for varied notification text |
+| `src/app/api/notifications/route.ts` | Added `countOnly` query param support for unread count, read/unread filtering |
+| `src/app/api/settings/route.ts` | Enhanced subscriber settings with pause/resume capabilities |
+| `src/app/notifications/page.tsx` | Added read/unread filter tabs |
+| `src/app/settings/page.tsx` | Enhanced settings page |
+| `src/app/page.tsx` | Updated server component |
+| `src/app/admin/audio/page.tsx` | Minor UI updates |
+| `src/app/admin/subscribers/page.tsx` | Minor UI updates |
+| `src/components/subscribe-form.tsx` | Enhanced UX |
+| `src/lib/constants.ts` | Added `DEFAULT_MOSQUE_SLUG` export |
+| `src/lib/prayer-times.ts` | Minor updates |
+| `src/lib/supabase.ts` | Added `MessageAttachment` type, added `attachments` field to `Message` type |
+| `sentry.client.config.ts` | Updated Sentry config |
+| `sentry.edge.config.ts` | Updated Sentry config |
+| `sentry.server.config.ts` | Updated Sentry config |
+| `.env.local.example` | Added Sentry env var examples |
+
+#### New Database Migrations
+
+| Migration | SQL | Purpose |
+|-----------|-----|---------|
+| **019** | `DELETE FROM prayer_times_cache WHERE NOT (times ? 'hijriDate') OR NOT (times ? 'hijriMonth');` | Clear stale cache entries |
+| **020** | `ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT NULL;` | Announcement attachment storage |
+
+#### Supabase Storage Setup (Required for Attachments)
+
+1. Go to Supabase Dashboard > Storage
+2. Create bucket: `announcements`
+3. Set bucket to **Public** (so attachment URLs are accessible without auth)
+4. Bucket policies: Allow authenticated uploads, public reads
+
+#### Architecture: Announcement Attachments
+
+```
+Admin composes announcement with file attachment
+  → Client: selects file (JPEG/PNG/WebP/PDF, max 10MB)
+  → Client: POST /api/admin/announcements/upload-url {fileName, fileType, fileSize}
+  → Server: validates type/size, sanitizes filename, creates Supabase signed upload URL
+  → Client: uploads file directly to Supabase Storage via signed URL
+  → Client: stores attachment metadata {type, url, name, size} in form state
+  → Client: POST /api/admin/announcements {content, attachments: [...]}
+  → Server: sends push notification + stores message with attachments in DB
+  → Public: /announcements page reads messages.attachments JSONB and renders images/PDFs
+```
+
+#### Architecture: Notification Bell
+
+```
+Landing page loads → sticky header renders NotificationBell
+  → useSyncExternalStore reads subscriberId from localStorage
+  → If no subscriberId: bell hidden (user not subscribed)
+  → If subscriberId exists: fetch /api/notifications?subscriberId=X&countOnly=true
+  → API returns {unreadCount: N}
+  → Badge renders count (99+ cap) or nothing if 0
+  → Click → navigate to /notifications
+```
+
+#### Architecture: Prayer Inspiration Messages
+
+```
+Cron job fires (e.g. prayer-reminders)
+  → For each prayer being sent: getInspirationMessage("fajr", mosque.timezone)
+  → Function looks up message pool for that prayer key
+  → Gets day-of-year in mosque timezone (Intl.DateTimeFormat)
+  → Returns pool[dayOfYear % pool.length] (deterministic rotation)
+  → Message included in push notification body for variety
+```
+
+#### Build Status
+
+- **Build:** PASS (0 errors)
+- **TypeScript:** PASS (0 errors)
+- **Total commits:** 103+
+
+---
 
 ### Version 3.0.1 - February 21, 2026
 
