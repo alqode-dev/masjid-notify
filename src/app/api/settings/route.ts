@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getSubscribeRateLimiter, getClientIP } from "@/lib/ratelimit";
 
 export async function GET(request: NextRequest) {
+  const limiter = getSubscribeRateLimiter();
+  if (limiter) {
+    const ip = getClientIP(request);
+    const { success } = await limiter.limit(`settings:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+  }
+
   const subscriberId = request.nextUrl.searchParams.get("subscriberId");
 
   if (!subscriberId) {
@@ -22,6 +32,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const putLimiter = getSubscribeRateLimiter();
+  if (putLimiter) {
+    const ip = getClientIP(request);
+    const { success } = await putLimiter.limit(`settings:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+  }
+
   try {
     const body = await request.json();
     const { subscriberId, ...updates } = body;

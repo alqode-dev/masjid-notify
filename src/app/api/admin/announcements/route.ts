@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, type Subscriber } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
 import { sendPushNotificationsBatch, storeNotifications } from "@/lib/push-sender";
-
-const MAX_CONTENT_LENGTH = 4096;
+import { MAX_CONTENT_LENGTH } from "@/lib/constants";
+import type { MessageAttachment } from "@/lib/supabase";
 
 export const POST = withAdminAuth(async (request, { admin }) => {
   try {
     const body = await request.json();
-    const { mosque_id, content } = body;
+    const { mosque_id, content, attachments: rawAttachments } = body;
 
     if (!mosque_id || !content) {
       return NextResponse.json(
@@ -22,6 +22,18 @@ export const POST = withAdminAuth(async (request, { admin }) => {
         { error: `Content must be a string of ${MAX_CONTENT_LENGTH} characters or fewer` },
         { status: 400 }
       );
+    }
+
+    // Validate attachments
+    let attachments: MessageAttachment[] | null = null;
+    if (rawAttachments && Array.isArray(rawAttachments)) {
+      if (rawAttachments.length > 5) {
+        return NextResponse.json(
+          { error: "Maximum 5 attachments allowed" },
+          { status: 400 }
+        );
+      }
+      attachments = rawAttachments as MessageAttachment[];
     }
 
     // Verify admin has access to this mosque
@@ -74,7 +86,8 @@ export const POST = withAdminAuth(async (request, { admin }) => {
       body: content,
       icon: "/icon-192x192.png",
       tag: `announcement-${Date.now()}`,
-      url: "/notifications",
+      url: "/announcements",
+      data: attachments ? { attachments } : undefined,
     };
 
     const batchResult = await sendPushNotificationsBatch(
@@ -100,6 +113,7 @@ export const POST = withAdminAuth(async (request, { admin }) => {
         success_count: successCount,
         fail_count: failCount,
       },
+      attachments,
     });
 
     return NextResponse.json({

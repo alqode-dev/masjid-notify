@@ -71,6 +71,17 @@ export const PUT = withAdminAuth(async (request, { admin }) => {
           { status: 400 }
         );
       }
+      // Validate HH:MM format (00:00 to 23:59)
+      const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+      const timeFields = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"] as const;
+      for (const field of timeFields) {
+        if (!timeRegex.test(cpt[field])) {
+          return NextResponse.json(
+            { error: `Invalid time format for ${field}. Use HH:MM (e.g., 05:30)` },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Eid + custom prayer times fields (migration 013)

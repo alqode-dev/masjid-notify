@@ -6,7 +6,8 @@ import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Select } from "./ui/select";
 import { REMINDER_OPTIONS } from "@/lib/constants";
-import { CheckCircle, Bell, Smartphone } from "lucide-react";
+import { CheckCircle, Bell, Smartphone, Settings, BellRing } from "lucide-react";
+import Link from "next/link";
 
 interface SubscribeFormProps {
   mosqueName: string;
@@ -33,6 +34,7 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
   const [step, setStep] = useState<"enable" | "preferences" | "success">("enable");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isReturningSubscriber, setIsReturningSubscriber] = useState(false);
   const [showIOSBanner, setShowIOSBanner] = useState(false);
   const [pushSupported, setPushSupported] = useState(true);
 
@@ -48,6 +50,7 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
     // Check if already subscribed
     const existingId = localStorage.getItem("subscriberId");
     if (existingId) {
+      setIsReturningSubscriber(true);
       setStep("success");
       return;
     }
@@ -63,6 +66,14 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
       setShowIOSBanner(true);
     }
   }, []);
+
+  // Auto-collapse fresh subscription success after 5 seconds
+  useEffect(() => {
+    if (step === "success" && !isReturningSubscriber) {
+      const timer = setTimeout(() => setIsReturningSubscriber(true), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [step, isReturningSubscriber]);
 
   const handleEnableNotifications = async () => {
     setError("");
@@ -310,6 +321,34 @@ export function SubscribeForm({ mosqueName, mosqueId }: SubscribeFormProps) {
             You can update your preferences anytime from the Settings page.
           </p>
         </motion.form>
+      ) : isReturningSubscriber ? (
+        <motion.div
+          key="success-compact"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center justify-between gap-3 py-2"
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+            <span className="text-sm font-medium text-foreground">You&apos;re subscribed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/settings"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Settings
+            </Link>
+            <Link
+              href="/notifications"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <BellRing className="w-3.5 h-3.5" />
+              Notifications
+            </Link>
+          </div>
+        </motion.div>
       ) : (
         <motion.div
           key="success"

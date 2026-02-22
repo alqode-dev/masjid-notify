@@ -18,6 +18,7 @@ import type { Mosque, Subscriber } from "@/lib/supabase";
 import { TARAWEEH_REMINDER_MINUTES, SUHOOR_PLANNING_OFFSET_MINUTES } from "@/lib/constants";
 import { tryClaimReminderLock } from "@/lib/reminder-locks";
 import { formatTime12h } from "@/lib/utils";
+import { getInspirationMessage } from "@/lib/prayer-messages";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -73,9 +74,10 @@ export async function GET(request: NextRequest) {
       if (isWithinMinutes(prayerTimes.fajr, mosque.suhoor_reminder_mins, mosque.timezone)) {
         const lockAcquired = await tryClaimReminderLock(mosque.id, "suhoor", 0, mosque.timezone);
         if (lockAcquired) {
+          const suhoorInspiration = getInspirationMessage("suhoor", mosque.timezone);
           const payload = {
             title: "Suhoor Reminder",
-            body: `Fajr at ${formatTime12h(prayerTimes.fajr)} - Finish your suhoor | ${mosque.name}`,
+            body: `Fajr at ${formatTime12h(prayerTimes.fajr)} — Finish your suhoor${suhoorInspiration ? ` | ${suhoorInspiration}` : ""}`,
             icon: "/icon-192x192.png",
             tag: "suhoor",
             url: "/",
@@ -102,9 +104,10 @@ export async function GET(request: NextRequest) {
       if (isWithinMinutes(prayerTimes.maghrib, mosque.iftar_reminder_mins, mosque.timezone)) {
         const lockAcquired = await tryClaimReminderLock(mosque.id, "iftar", 0, mosque.timezone);
         if (lockAcquired) {
+          const iftarInspiration = getInspirationMessage("iftar", mosque.timezone);
           const payload = {
             title: "Iftar Reminder",
-            body: `${mosque.iftar_reminder_mins} minutes until Iftar at ${formatTime12h(prayerTimes.maghrib)} | ${mosque.name}`,
+            body: `${mosque.iftar_reminder_mins} min until Iftar at ${formatTime12h(prayerTimes.maghrib)}${iftarInspiration ? ` — ${iftarInspiration}` : ""}`,
             icon: "/icon-192x192.png",
             tag: "iftar",
             url: "/",
@@ -133,9 +136,10 @@ export async function GET(request: NextRequest) {
           const lockAcquired = await tryClaimReminderLock(mosque.id, "taraweeh", 0, mosque.timezone);
           if (lockAcquired) {
             const formattedTime = formatDbTime(mosque.taraweeh_time);
+            const taraweehInspiration = getInspirationMessage("taraweeh", mosque.timezone);
             const payload = {
               title: "Taraweeh Reminder",
-              body: `Taraweeh at ${formattedTime} | ${mosque.name}`,
+              body: `Taraweeh at ${formattedTime}${taraweehInspiration ? ` — ${taraweehInspiration}` : ""}`,
               icon: "/icon-192x192.png",
               tag: "taraweeh",
               url: "/",
@@ -167,9 +171,10 @@ export async function GET(request: NextRequest) {
             const tomorrowPrayerTimes = await getMosquePrayerTimes(mosque, tomorrow);
 
             if (tomorrowPrayerTimes) {
+              const planningInspiration = getInspirationMessage("suhoor_planning", mosque.timezone);
               const payload = {
                 title: "Suhoor Planning",
-                body: `Tomorrow's Fajr is at ${formatTime12h(tomorrowPrayerTimes.fajr)} - Set your alarm! | ${mosque.name}`,
+                body: `Tomorrow's Fajr at ${formatTime12h(tomorrowPrayerTimes.fajr)}${planningInspiration ? ` — ${planningInspiration}` : ""}`,
                 icon: "/icon-192x192.png",
                 tag: "suhoor-planning",
                 url: "/",

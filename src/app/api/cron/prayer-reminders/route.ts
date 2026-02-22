@@ -18,6 +18,7 @@ import {
 import type { Mosque, Subscriber, ScheduledMessage } from "@/lib/supabase";
 import { tryClaimReminderLock, cleanupOldLocks, type ReminderType } from "@/lib/reminder-locks";
 import { formatTime12h } from "@/lib/utils";
+import { getInspirationMessage } from "@/lib/prayer-messages";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -276,9 +277,10 @@ export async function GET(request: NextRequest) {
 
             console.log(`[prayer-reminders] Sending ${prayer.name} reminder to ${subs.length} subscribers`);
 
+            const inspiration = getInspirationMessage(prayer.key, mosque.timezone);
             const payload = {
               title: `${prayer.name} Prayer`,
-              body: `${formatTime12h(prayer.time)} at ${mosque.name}`,
+              body: `${prayer.name} at ${formatTime12h(prayer.time)}${inspiration ? ` — ${inspiration}` : ""}`,
               icon: "/icon-192x192.png",
               tag: `prayer-${prayer.key}`,
               url: "/",
@@ -302,7 +304,7 @@ export async function GET(request: NextRequest) {
               const { error: msgError } = await supabaseAdmin.from("messages").insert({
                 mosque_id: mosque.id,
                 type: "prayer",
-                content: `${prayer.name} Prayer - ${formatTime12h(prayer.time)} at ${mosque.name}`,
+                content: payload.body,
                 sent_to_count: batchResult.successful,
                 status: "sent",
                 metadata: {

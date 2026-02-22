@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Send, AlertCircle, Clock, Calendar } from "lucide-react";
+import { Send, AlertCircle, Clock, Calendar, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { MessageTemplates } from "./message-templates";
+import type { MessageAttachment } from "@/lib/supabase";
 
 interface AnnouncementFormProps {
   mosqueId: string;
@@ -30,12 +31,82 @@ export function AnnouncementForm({
   const [preview, setPreview] = useState(false);
   const [sendMode, setSendMode] = useState<SendMode>("now");
   const [scheduledDateTime, setScheduledDateTime] = useState("");
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get minimum datetime (5 minutes from now) for scheduling
   const getMinDateTime = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 5);
     return now.toISOString().slice(0, 16);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (attachments.length + files.length > 5) {
+      toast.error("Maximum 5 attachments allowed");
+      return;
+    }
+
+    setUploading(true);
+
+    for (const file of Array.from(files)) {
+      try {
+        // Get signed upload URL
+        const urlRes = await fetch("/api/admin/announcements/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+          }),
+        });
+
+        const urlData = await urlRes.json();
+        if (!urlRes.ok) {
+          throw new Error(urlData.error || "Failed to get upload URL");
+        }
+
+        // Upload file to Supabase Storage
+        const uploadRes = await fetch(urlData.signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload file");
+        }
+
+        setAttachments((prev) => [
+          ...prev,
+          {
+            type: urlData.fileType as "image" | "pdf",
+            url: urlData.publicUrl,
+            name: file.name,
+            size: file.size,
+          },
+        ]);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : `Failed to upload ${file.name}`
+        );
+      }
+    }
+
+    setUploading(false);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
@@ -76,6 +147,7 @@ export function AnnouncementForm({
           body: JSON.stringify({
             mosque_id: mosqueId,
             content,
+            attachments: attachments.length > 0 ? attachments : undefined,
           }),
         });
 
@@ -111,6 +183,7 @@ export function AnnouncementForm({
       setContent("");
       setScheduledDateTime("");
       setSendMode("now");
+      setAttachments([]);
       onSent?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send");
@@ -152,6 +225,53 @@ export function AnnouncementForm({
             {preview ? "Hide preview" : "Show preview"}
           </button>
         </div>
+      </div>
+
+      {/* Attachments */}
+      <div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          multiple
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading || attachments.length >= 5}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+        >
+          <Paperclip className="w-4 h-4" />
+          {uploading ? "Uploading..." : "Attach images or PDF"}
+          <span className="text-xs">({attachments.length}/5)</span>
+        </button>
+
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {attachments.map((att, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border border-border text-sm"
+              >
+                {att.type === "image" ? (
+                  <ImageIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                ) : (
+                  <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                )}
+                <span className="truncate max-w-[150px]">{att.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(index)}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {preview && content && (

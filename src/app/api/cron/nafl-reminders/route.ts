@@ -26,6 +26,7 @@ import {
 } from "@/lib/constants";
 import { tryClaimReminderLock } from "@/lib/reminder-locks";
 import { formatTime12h } from "@/lib/utils";
+import { getInspirationMessage } from "@/lib/prayer-messages";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -86,9 +87,10 @@ export async function GET(request: NextRequest) {
         if (isWithinMinutes(prayerTimes.fajr, TAHAJJUD_MINUTES_BEFORE_FAJR, mosque.timezone)) {
           const lockAcquired = await tryClaimReminderLock(mosque.id, "tahajjud", 0, mosque.timezone);
           if (lockAcquired) {
+            const tahajjudInspiration = getInspirationMessage("tahajjud", mosque.timezone);
             const payload = {
               title: "Tahajjud Reminder",
-              body: `Wake up for Tahajjud - Fajr at ${formatTime12h(prayerTimes.fajr)} | ${mosque.name}`,
+              body: `Wake up for Tahajjud — Fajr at ${formatTime12h(prayerTimes.fajr)}${tahajjudInspiration ? ` | ${tahajjudInspiration}` : ""}`,
               icon: "/icon-192x192.png",
               tag: "tahajjud",
               url: "/",
@@ -120,9 +122,10 @@ export async function GET(request: NextRequest) {
         if (isWithinMinutesAfter(prayerTimes.sunrise, ISHRAQ_MINUTES_AFTER_SUNRISE, mosque.timezone)) {
           const lockAcquired = await tryClaimReminderLock(mosque.id, "ishraq", 0, mosque.timezone);
           if (lockAcquired) {
+            const ishraqInspiration = getInspirationMessage("ishraq", mosque.timezone);
             const payload = {
               title: "Ishraq Reminder",
-              body: `Time for Ishraq prayer | ${mosque.name}`,
+              body: `Time for Ishraq prayer${ishraqInspiration ? ` — ${ishraqInspiration}` : ""}`,
               icon: "/icon-192x192.png",
               tag: "ishraq",
               url: "/",
@@ -154,9 +157,10 @@ export async function GET(request: NextRequest) {
         if (isWithinMinutesAfter(prayerTimes.maghrib, AWWABIN_MINUTES_AFTER_MAGHRIB, mosque.timezone)) {
           const lockAcquired = await tryClaimReminderLock(mosque.id, "awwabin", 0, mosque.timezone);
           if (lockAcquired) {
+            const awwabinInspiration = getInspirationMessage("awwabin", mosque.timezone);
             const payload = {
               title: "Awwabin Reminder",
-              body: `Time for Awwabin prayer | ${mosque.name}`,
+              body: `Time for Awwabin prayer${awwabinInspiration ? ` — ${awwabinInspiration}` : ""}`,
               icon: "/icon-192x192.png",
               tag: "awwabin",
               url: "/",

@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { REMINDER_OPTIONS } from "@/lib/constants";
 import { Settings, Pause, Play, UserX, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface SubscriberSettings {
   id: string;
@@ -29,6 +30,7 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [subscriberId, setSubscriberId] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const id = localStorage.getItem("subscriberId");
@@ -131,6 +133,7 @@ export default function SettingsPage() {
       localStorage.removeItem("subscriberId");
       setSettings(null);
       setSuccess("You have been unsubscribed.");
+      setTimeout(() => router.push("/"), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to unsubscribe");
     } finally {

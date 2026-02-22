@@ -16,6 +16,7 @@ import {
 } from "@/lib/push-sender";
 import type { Mosque, Subscriber } from "@/lib/supabase";
 import { tryClaimReminderLock } from "@/lib/reminder-locks";
+import { getInspirationMessage } from "@/lib/prayer-messages";
 
 // Prevent Next.js from caching this route - cron jobs must run dynamically
 export const dynamic = "force-dynamic";
@@ -59,9 +60,10 @@ export async function GET(request: NextRequest) {
 
       if (!subscribers || subscribers.length === 0) continue;
 
+      const inspiration = getInspirationMessage("jumuah", mosque.timezone);
       const payload = {
         title: "Jumu'ah Reminder",
-        body: `Khutbah at ${formatTime12h(mosque.jumuah_khutbah_time)} | Adhaan at ${formatTime12h(mosque.jumuah_adhaan_time)} - ${mosque.name}`,
+        body: `Khutbah at ${formatTime12h(mosque.jumuah_khutbah_time)} | Adhaan at ${formatTime12h(mosque.jumuah_adhaan_time)}${inspiration ? ` — ${inspiration}` : ""}`,
         icon: "/icon-192x192.png",
         tag: "jumuah",
         url: "/",

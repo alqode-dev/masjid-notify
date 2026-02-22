@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SubscribersTable } from "@/components/admin/subscribers-table";
 import { Select } from "@/components/ui/select";
 import type { Subscriber } from "@/lib/supabase";
@@ -110,12 +110,14 @@ export default function SubscribersPage() {
   };
 
   // Search by device/user-agent or status
-  const filteredSubscribers = subscribers.filter((s) => {
-    if (!searchQuery) return true;
+  const filteredSubscribers = useMemo(() => {
+    if (!searchQuery) return subscribers;
     const q = searchQuery.toLowerCase();
-    const device = (s.user_agent || "").toLowerCase();
-    return device.includes(q) || s.status.includes(q);
-  });
+    return subscribers.filter((s) => {
+      const device = (s.user_agent || "").toLowerCase();
+      return device.includes(q) || s.status.includes(q);
+    });
+  }, [subscribers, searchQuery]);
 
   return (
     <div className="space-y-6">

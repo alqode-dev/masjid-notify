@@ -110,6 +110,11 @@ async function getCachedPrayerTimes(
     return null
   }
 
+  // Self-heal stale cache entries missing Hijri fields
+  if (!data.times.hijriDate || !data.times.hijriMonth) {
+    return null // Cache miss — will re-fetch from API with all fields
+  }
+
   // Return cached times with the date
   return {
     ...data.times,

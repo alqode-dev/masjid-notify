@@ -47,3 +47,6 @@ export const REMINDER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "15", label: "15 minutes before" },
   { value: "30", label: "30 minutes before" },
 ];
+
+// Content validation
+export const MAX_CONTENT_LENGTH = 4096;

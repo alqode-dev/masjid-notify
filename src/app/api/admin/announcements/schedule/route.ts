@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { withAdminAuth } from "@/lib/auth";
-
-const MAX_CONTENT_LENGTH = 4096;
+import { MAX_CONTENT_LENGTH } from "@/lib/constants";
 
 export const POST = withAdminAuth(async (request, { admin }) => {
   try {

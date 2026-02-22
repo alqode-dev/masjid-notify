@@ -102,6 +102,13 @@ export type Admin = {
   updated_at: string;
 };
 
+export type MessageAttachment = {
+  type: "image" | "pdf";
+  url: string;
+  name: string;
+  size: number;
+};
+
 export type Message = {
   id: string;
   mosque_id: string;
@@ -112,6 +119,7 @@ export type Message = {
   sent_by: string | null;
   status: "pending" | "sent" | "failed" | "received";
   metadata: Record<string, unknown> | null;
+  attachments: MessageAttachment[] | null;
 };
 
 export type Hadith = {

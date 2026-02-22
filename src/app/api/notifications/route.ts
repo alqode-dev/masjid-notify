@@ -1,11 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getSubscribeRateLimiter, getClientIP } from "@/lib/ratelimit";
 
 export async function GET(request: NextRequest) {
+  const limiter = getSubscribeRateLimiter();
+  if (limiter) {
+    const ip = getClientIP(request);
+    const { success } = await limiter.limit(`notifications:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+  }
+
   const subscriberId = request.nextUrl.searchParams.get("subscriberId");
 
   if (!subscriberId) {
     return NextResponse.json({ error: "Subscriber ID required" }, { status: 400 });
+  }
+
+  const countOnly = request.nextUrl.searchParams.get("countOnly");
+  if (countOnly === "true") {
+    const { count, error: countError } = await supabaseAdmin
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("subscriber_id", subscriberId)
+      .eq("read", false);
+
+    if (countError) {
+      return NextResponse.json({ error: "Failed to count" }, { status: 500 });
+    }
+    return NextResponse.json({ unreadCount: count || 0 });
   }
 
   const { data, error } = await supabaseAdmin
@@ -24,6 +48,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const patchLimiter = getSubscribeRateLimiter();
+  if (patchLimiter) {
+    const ip = getClientIP(request);
+    const { success } = await patchLimiter.limit(`notifications:${ip}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+  }
+
   try {
     const { subscriberId, notificationId, markAll } = await request.json();
 

@@ -425,18 +425,19 @@ export default function AudioPage() {
         open={collectionDialogOpen}
         onOpenChange={setCollectionDialogOpen}
         collection={editingCollection}
-        onSaved={() => {
-          fetchCollections();
-          // Update selected collection name
-          if (editingCollection?.id === selectedCollection.id) {
-            fetchCollections().then(() => {
-              // Re-select with updated data
-              const response = fetch(`/api/admin/audio/collections`);
-              response.then(r => r.json()).then(data => {
-                const updated = data.collections?.find((c: CollectionWithCount) => c.id === selectedCollection.id);
-                if (updated) setSelectedCollection(updated);
-              });
-            });
+        onSaved={async () => {
+          try {
+            const response = await fetch("/api/admin/audio/collections");
+            if (!response.ok) throw new Error("Failed to fetch");
+            const data = await response.json();
+            const updated = data.collections || [];
+            setCollections(updated);
+            if (editingCollection?.id === selectedCollection?.id) {
+              const match = updated.find((c: CollectionWithCount) => c.id === selectedCollection?.id);
+              if (match) setSelectedCollection(match);
+            }
+          } catch {
+            toast.error("Failed to refresh collections");
           }
         }}
       />

@@ -20,6 +20,19 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [error, setError] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     const subscriberId = localStorage.getItem("subscriberId");
@@ -150,7 +163,10 @@ export default function NotificationsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(index * 0.03, 0.3) }}
-                onClick={() => !notification.read && markAsRead(notification.id)}
+                onClick={() => {
+                  if (!notification.read) markAsRead(notification.id);
+                  toggleExpand(notification.id);
+                }}
                 className={`p-4 rounded-xl border cursor-pointer transition-colors ${
                   notification.read
                     ? "bg-background border-border"
@@ -168,7 +184,28 @@ export default function NotificationsPage() {
                       </span>
                     </div>
                     <p className="font-medium text-sm">{notification.title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-3">{notification.body}</p>
+                    <p className={`text-sm text-muted-foreground mt-0.5 ${
+                      expandedIds.has(notification.id) ? "" : "line-clamp-3"
+                    }`}>{notification.body}</p>
+                    {expandedIds.has(notification.id) && !!notification.data?.source && (
+                      <p className="text-xs text-primary mt-2 italic">— {String(notification.data.source)}</p>
+                    )}
+                    {expandedIds.has(notification.id) && !!notification.data?.arabic && (
+                      <p className="text-sm text-foreground mt-3 text-right leading-relaxed" dir="rtl">
+                        {String(notification.data.arabic)}
+                      </p>
+                    )}
+                    {notification.body.length > 150 && (
+                      <button
+                        className="text-xs text-primary mt-1 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(notification.id);
+                        }}
+                      >
+                        {expandedIds.has(notification.id) ? "Show less" : "Read more"}
+                      </button>
+                    )}
                   </div>
                   {!notification.read && (
                     <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2"></div>
