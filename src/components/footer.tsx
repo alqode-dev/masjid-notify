@@ -9,14 +9,6 @@ export function Footer() {
     >
       <div className="flex flex-col items-center gap-3">
         <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap justify-center">
-          <Link href="/settings" className="hover:text-primary transition-colors">
-            Settings
-          </Link>
-          <span className="text-border" aria-hidden="true">|</span>
-          <Link href="/notifications" className="hover:text-primary transition-colors">
-            Notifications
-          </Link>
-          <span className="text-border" aria-hidden="true">|</span>
           <Link href="/privacy" className="hover:text-primary transition-colors">
             Privacy Policy
           </Link>
@@ -27,10 +19,6 @@ export function Footer() {
           <span className="text-border" aria-hidden="true">|</span>
           <Link href="/data-deletion" className="hover:text-primary transition-colors">
             Data Deletion
-          </Link>
-          <span className="text-border" aria-hidden="true">|</span>
-          <Link href="/listen" className="hover:text-primary transition-colors">
-            Audio Library
           </Link>
         </div>
         <p className="text-sm text-muted-foreground">

@@ -6,7 +6,8 @@ import { SubscribeForm } from "@/components/subscribe-form";
 import { PrayerTimesDisplay } from "@/components/prayer-times";
 import { Footer } from "@/components/footer";
 import { QRCodeMini } from "@/components/qr-code";
-import { MapPin, Bell, QrCode, ArrowRight } from "lucide-react";
+import { MapPin, Bell, QrCode, ArrowRight, Settings, BellRing } from "lucide-react";
+import { NotificationBell } from "@/components/notification-bell";
 import Link from "next/link";
 import { NextSalahCountdown } from "@/components/next-salah-countdown";
 import { formatDbTime } from "@/lib/time-format";
@@ -22,6 +23,12 @@ interface LandingPageProps {
 export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-accent/20">
+      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border/30">
+        <div className="max-w-2xl mx-auto flex items-center justify-between px-4 py-2">
+          <span className="text-xs text-muted-foreground">{mosque.name}</span>
+          <NotificationBell />
+        </div>
+      </div>
       <main className="flex-1 flex flex-col items-center justify-start px-4 py-8 md:py-12">
         {/* Header */}
         <motion.div
@@ -163,13 +170,14 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
           transition={{ delay: 0.4 }}
           className="w-full max-w-2xl mt-8 md:mt-12"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <FeatureCard
               icon="🕌"
               title="Prayer Reminders"
               description="Never miss a prayer with timely push notifications"
             />
-            <FeatureCard
+            <LinkedFeatureCard
+              href="/announcements"
               icon="📢"
               title="Announcements"
               description="Stay informed about events, classes, and programs"
@@ -179,22 +187,24 @@ export function LandingPage({ mosque, prayerTimes, siteUrl }: LandingPageProps) 
               title="Ramadan Ready"
               description="Suhoor, Iftar, and Taraweeh reminders"
             />
-            <Link href="/listen">
-              <motion.div
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="p-4 rounded-xl bg-primary/5 border border-primary/30 text-center h-full relative group"
-              >
-                <span className="text-2xl mb-2 block">🎧</span>
-                <h3 className="font-semibold text-foreground text-sm mb-1 flex items-center justify-center gap-1">
-                  Audio Library
-                  <ArrowRight className="w-3.5 h-3.5 text-primary opacity-70 group-hover:translate-x-0.5 transition-transform" />
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Listen to lectures, tafsir, and more
-                </p>
-              </motion.div>
-            </Link>
+            <LinkedFeatureCard
+              href="/listen"
+              icon="🎧"
+              title="Audio Library"
+              description="Listen to lectures, tafsir, and more"
+            />
+            <LinkedFeatureCard
+              href="/settings"
+              lucideIcon={<Settings className="w-6 h-6 text-primary" />}
+              title="Settings"
+              description="Manage your notification preferences"
+            />
+            <LinkedFeatureCard
+              href="/notifications"
+              lucideIcon={<BellRing className="w-6 h-6 text-primary" />}
+              title="Notifications"
+              description="View your notification history"
+            />
           </div>
         </motion.div>
       </main>
@@ -222,5 +232,40 @@ function FeatureCard({
       <h3 className="font-semibold text-foreground text-sm mb-1">{title}</h3>
       <p className="text-xs text-muted-foreground">{description}</p>
     </motion.div>
+  );
+}
+
+function LinkedFeatureCard({
+  href,
+  icon,
+  lucideIcon,
+  title,
+  description,
+}: {
+  href: string;
+  icon?: string;
+  lucideIcon?: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link href={href}>
+      <motion.div
+        whileHover={{ y: -2 }}
+        whileTap={{ scale: 0.98 }}
+        className="p-4 rounded-xl bg-primary/5 border border-primary/30 text-center h-full relative group"
+      >
+        {icon ? (
+          <span className="text-2xl mb-2 block">{icon}</span>
+        ) : (
+          <span className="mb-2 flex justify-center">{lucideIcon}</span>
+        )}
+        <h3 className="font-semibold text-foreground text-sm mb-1 flex items-center justify-center gap-1">
+          {title}
+          <ArrowRight className="w-3.5 h-3.5 text-primary opacity-70 group-hover:translate-x-0.5 transition-transform" />
+        </h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </motion.div>
+    </Link>
   );
 }
